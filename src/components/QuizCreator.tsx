@@ -67,7 +67,7 @@ const QuizCreator = () => {
     academic_year: new Date().getFullYear().toString(),
     subject: '',
     subject_code: '',
-    allowed_time: 60,
+    allowed_time: ,
     visible: true,
     total_points: 0,
     created_at: new Date().toISOString(),
