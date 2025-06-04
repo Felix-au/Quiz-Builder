@@ -67,7 +67,7 @@ const QuizCreator = () => {
     academic_year: new Date().getFullYear().toString(),
     subject: '',
     subject_code: '',
-    allowed_time: ,
+    allowed_time: 0,
     visible: true,
     total_points: 0,
     created_at: new Date().toISOString(),
@@ -341,8 +341,8 @@ const QuizCreator = () => {
                 <Input
                   id="allowed-time"
                   type="number"
-                  value={metadata.allowed_time}
-                  onChange={(e) => setMetadata(prev => ({ ...prev, allowed_time: parseInt(e.target.value) || 60 }))}
+                  value={metadata.allowed_time || ''}
+                  onChange={(e) => setMetadata(prev => ({ ...prev, allowed_time: parseInt(e.target.value) || 0 }))}
                 />
               </div>
             </div>
