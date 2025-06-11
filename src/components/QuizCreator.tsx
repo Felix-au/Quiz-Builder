@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Download, X, Upload, Check } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import JSZip from 'jszip';
 import * as FileSaver from 'file-saver';
@@ -57,6 +58,7 @@ interface QuizMetadata {
 
 const QuizCreator = () => {
   const { toast } = useToast();
+  const [currentScreen, setCurrentScreen] = useState(1);
   const [metadata, setMetadata] = useState<QuizMetadata>({
     id: 1,
     code: '',
@@ -78,6 +80,164 @@ const QuizCreator = () => {
   const [instructions, setInstructions] = useState<Instruction[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [newInstruction, setNewInstruction] = useState('');
+  const [numberOfQuestions, setNumberOfQuestions] = useState(1);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+
+  // Course dropdowns state
+  const [selectedProgram, setSelectedProgram] = useState('');
+  const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [selectedSections, setSelectedSections] = useState<string[]>([]);
+  const [customProgram, setCustomProgram] = useState('');
+  const [customDepartment, setCustomDepartment] = useState('');
+  const [customSections, setCustomSections] = useState('');
+
+  const programs = [
+    { value: 'BTech', label: 'BTech', years: 4 },
+    { value: 'BA', label: 'BA', years: 3 },
+    { value: 'MBA', label: 'MBA', years: 2 },
+    { value: 'MTech', label: 'MTech', years: 2 },
+    { value: 'PhD', label: 'PhD', years: 5 },
+    { value: 'custom', label: 'Other (Type your own)', years: 4 }
+  ];
+
+  const departments = [
+    'CSE', 'ME', 'ECE', 'ECOM', 'CE', 'EE', 'IT', 'BT', 'CH', 'custom'
+  ];
+
+  const sections = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'custom'];
+
+  useEffect(() => {
+    const savedData = localStorage.getItem('quizCreatorData');
+    if (savedData) {
+      const parsed = JSON.parse(savedData);
+      setMetadata(parsed.metadata || metadata);
+      setInstructions(parsed.instructions || []);
+      setQuestions(parsed.questions || []);
+      setCurrentScreen(parsed.currentScreen || 1);
+      setNumberOfQuestions(parsed.numberOfQuestions || 1);
+      setSelectedProgram(parsed.selectedProgram || '');
+      setSelectedDepartment(parsed.selectedDepartment || '');
+      setSelectedSections(parsed.selectedSections || []);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Update course field when dropdowns change
+    let courseValue = '';
+    const program = selectedProgram === 'custom' ? customProgram : selectedProgram;
+    const department = selectedDepartment === 'custom' ? customDepartment : selectedDepartment;
+    const sectionStr = selectedSections.includes('custom') 
+      ? customSections 
+      : selectedSections.join(', ');
+    
+    if (program || department || sectionStr) {
+      courseValue = `${program} ${department} ${sectionStr}`.trim();
+    }
+    
+    setMetadata(prev => ({ ...prev, course: courseValue }));
+  }, [selectedProgram, selectedDepartment, selectedSections, customProgram, customDepartment, customSections]);
+
+  const generateYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const programYears = programs.find(p => p.value === selectedProgram)?.years || 4;
+    const options = [];
+    
+    for (let startYear = 2021; startYear <= currentYear + 1; startYear++) {
+      const endYear = startYear + programYears; // Fixed: removed - 1
+      options.push(`${startYear}-${endYear}`);
+    }
+    
+    return options;
+  };
+
+  const saveSession = () => {
+    const dataToSave = {
+      metadata,
+      instructions,
+      questions,
+      currentScreen,
+      numberOfQuestions,
+      selectedProgram,
+      selectedDepartment,
+      selectedSections,
+      customProgram,
+      customDepartment,
+      customSections
+    };
+    localStorage.setItem('quizCreatorData', JSON.stringify(dataToSave));
+    toast({
+      title: "Session Saved",
+      description: "Your progress has been saved to browser storage.",
+    });
+  };
+
+  const flushData = () => {
+    localStorage.removeItem('quizCreatorData');
+    setMetadata({
+      id: 1,
+      code: '',
+      name: '',
+      instructor: '',
+      course: '',
+      year: '',
+      academic_year: new Date().getFullYear().toString(),
+      subject: '',
+      subject_code: '',
+      allowed_time: 0,
+      visible: true,
+      total_points: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      created_by: null,
+    });
+    setInstructions([]);
+    setQuestions([]);
+    setCurrentScreen(1);
+    setNumberOfQuestions(1);
+    setSelectedProgram('');
+    setSelectedDepartment('');
+    setSelectedSections([]);
+    setCustomProgram('');
+    setCustomDepartment('');
+    setCustomSections('');
+    toast({
+      title: "Data Flushed",
+      description: "All data has been cleared. Starting fresh.",
+    });
+  };
+
+  const adjustQuestions = (newCount: number) => {
+    if (newCount > questions.length) {
+      const additionalQuestions = [];
+      for (let i = questions.length; i < newCount; i++) {
+        additionalQuestions.push({
+          id: i + 1,
+          question: '',
+          topic: 'NA',
+          summary: 'NA',
+          question_order: i,
+          points: 1,
+          image_path: '',
+          image_url: '',
+          image: '',
+          options: [
+            { id: 1, option_text: '', is_correct: false, option_order: 0 },
+            { id: 2, option_text: '', is_correct: false, option_order: 0 },
+            { id: 3, option_text: '', is_correct: false, option_order: 0 },
+            { id: 4, option_text: '', is_correct: false, option_order: 0 },
+          ],
+        });
+      }
+      setQuestions([...questions, ...additionalQuestions]);
+    } else if (newCount < questions.length) {
+      setQuestions(questions.slice(0, newCount));
+      if (currentQuestionIndex >= newCount) {
+        setCurrentQuestionIndex(Math.max(0, newCount - 1));
+      }
+    }
+    setNumberOfQuestions(newCount);
+    setMetadata(prev => ({ ...prev, total_points: newCount }));
+  };
 
   const addInstruction = () => {
     if (newInstruction.trim()) {
@@ -93,28 +253,6 @@ const QuizCreator = () => {
 
   const removeInstruction = (id: number) => {
     setInstructions(instructions.filter(inst => inst.id !== id));
-  };
-
-  const addQuestion = () => {
-    const newQuestion: Question = {
-      id: questions.length + 1,
-      question: '',
-      topic: '',
-      summary: '',
-      question_order: questions.length,
-      points: 1,
-      image_path: '',
-      image_url: '',
-      image: '',
-      options: [
-        { id: 1, option_text: '', is_correct: false, option_order: 0 },
-        { id: 2, option_text: '', is_correct: false, option_order: 0 },
-        { id: 3, option_text: '', is_correct: false, option_order: 0 },
-        { id: 4, option_text: '', is_correct: false, option_order: 0 },
-      ],
-    };
-    setQuestions([...questions, newQuestion]);
-    setMetadata(prev => ({ ...prev, total_points: questions.length + 1 }));
   };
 
   const updateQuestion = (questionId: number, field: string, value: any) => {
@@ -160,11 +298,6 @@ const QuizCreator = () => {
     ));
   };
 
-  const removeQuestion = (questionId: number) => {
-    setQuestions(questions.filter(q => q.id !== questionId));
-    setMetadata(prev => ({ ...prev, total_points: questions.length - 1 }));
-  };
-
   const handleImageUpload = (questionId: number, file: File) => {
     const fileName = file.name;
     const uuid = crypto.randomUUID();
@@ -189,7 +322,6 @@ const QuizCreator = () => {
       const zip = new JSZip();
       const imagesFolder = zip.folder('images');
 
-      // Update timestamps
       const currentTime = new Date().toISOString();
       const updatedMetadata = {
         ...metadata,
@@ -197,7 +329,6 @@ const QuizCreator = () => {
         total_points: questions.length,
       };
 
-      // Prepare quiz data with proper structure
       const quizData = {
         quiz: {
           ...updatedMetadata,
@@ -205,21 +336,24 @@ const QuizCreator = () => {
             ...inst,
             quiz_id: metadata.id,
           })),
-          questions: questions.map(q => ({
-            ...q,
-            quiz_id: metadata.id,
-            options: q.options.map(opt => ({
-              ...opt,
-              question_id: q.id,
-            })),
-          })),
+          questions: questions.map(q => {
+            // Clean up the question object, removing imageFile and quiz_id
+            const { imageFile, ...cleanQuestion } = q;
+            return {
+              ...cleanQuestion,
+              quiz_id: metadata.id,
+              image_path: cleanQuestion.image_path.replace(/\\/g, '/'), // Fix backslashes to forward slashes
+              options: cleanQuestion.options.map(opt => ({
+                ...opt,
+                question_id: cleanQuestion.id,
+              })),
+            };
+          }),
         }
       };
 
-      // Add quiz.json
       zip.file('quiz.json', JSON.stringify(quizData, null, 2));
 
-      // Add images
       for (const question of questions) {
         if (question.imageFile) {
           const fileName = question.image.split('/').pop();
@@ -229,7 +363,6 @@ const QuizCreator = () => {
         }
       }
 
-      // Generate and download zip
       const content = await zip.generateAsync({ type: 'blob' });
       FileSaver.saveAs(content, `${metadata.name || 'quiz'}.zip`);
       
@@ -247,197 +380,308 @@ const QuizCreator = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-      <div className="max-w-4xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Quiz Creator</h1>
-          <p className="text-gray-600">Create interactive quizzes with images and export them easily</p>
+  const renderScreen1 = () => (
+    <Card className="shadow-lg border-0">
+      <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
+        <CardTitle className="text-2xl">Quiz Information</CardTitle>
+      </CardHeader>
+      <CardContent className="p-6 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="subject-code">Subject Code</Label>
+            <Input
+              id="subject-code"
+              value={metadata.subject_code}
+              onChange={(e) => setMetadata(prev => ({ ...prev, subject_code: e.target.value }))}
+            />
+          </div>
+          <div>
+            <Label htmlFor="subject">Subject Name</Label>
+            <Input
+              id="subject"
+              value={metadata.subject}
+              onChange={(e) => setMetadata(prev => ({ ...prev, subject: e.target.value }))}
+            />
+          </div>
+          <div>
+            <Label htmlFor="quiz-code">Quiz Code</Label>
+            <Input
+              id="quiz-code"
+              value={metadata.code}
+              onChange={(e) => setMetadata(prev => ({ ...prev, code: e.target.value }))}
+            />
+          </div>
+          <div>
+            <Label htmlFor="quiz-name">Quiz Name</Label>
+            <Input
+              id="quiz-name"
+              value={metadata.name}
+              onChange={(e) => setMetadata(prev => ({ ...prev, name: e.target.value }))}
+            />
+          </div>
         </div>
 
-        {/* Quiz Metadata */}
-        <Card className="shadow-lg border-0">
-          <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
-            <CardTitle className="text-2xl">Quiz Information</CardTitle>
-          </CardHeader>
-          <CardContent className="p-6 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="quiz-id">Quiz ID</Label>
+        <div>
+          <Label>Program</Label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+            <div>
+              <Select value={selectedProgram} onValueChange={setSelectedProgram}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select program" />
+                </SelectTrigger>
+                <SelectContent>
+                  {programs.map(program => (
+                    <SelectItem key={program.value} value={program.value}>
+                      {program.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedProgram === 'custom' && (
                 <Input
-                  id="quiz-id"
-                  type="number"
-                  value={metadata.id}
-                  onChange={(e) => setMetadata(prev => ({ ...prev, id: parseInt(e.target.value) || 1 }))}
+                  className="mt-2"
+                  placeholder="Enter custom program"
+                  value={customProgram}
+                  onChange={(e) => setCustomProgram(e.target.value)}
                 />
-              </div>
-              <div>
-                <Label htmlFor="quiz-code">Quiz Code</Label>
-                <Input
-                  id="quiz-code"
-                  value={metadata.code}
-                  onChange={(e) => setMetadata(prev => ({ ...prev, code: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="quiz-name">Quiz Name</Label>
-                <Input
-                  id="quiz-name"
-                  value={metadata.name}
-                  onChange={(e) => setMetadata(prev => ({ ...prev, name: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="instructor">Instructor Name</Label>
-                <Input
-                  id="instructor"
-                  value={metadata.instructor}
-                  onChange={(e) => setMetadata(prev => ({ ...prev, instructor: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="course">Course</Label>
-                <Input
-                  id="course"
-                  value={metadata.course}
-                  onChange={(e) => setMetadata(prev => ({ ...prev, course: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="year">Year</Label>
-                <Input
-                  id="year"
-                  value={metadata.year}
-                  onChange={(e) => setMetadata(prev => ({ ...prev, year: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="academic-year">Academic Year</Label>
-                <Input
-                  id="academic-year"
-                  value={metadata.academic_year}
-                  onChange={(e) => setMetadata(prev => ({ ...prev, academic_year: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="subject">Subject</Label>
-                <Input
-                  id="subject"
-                  value={metadata.subject}
-                  onChange={(e) => setMetadata(prev => ({ ...prev, subject: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="subject-code">Subject Code</Label>
-                <Input
-                  id="subject-code"
-                  value={metadata.subject_code}
-                  onChange={(e) => setMetadata(prev => ({ ...prev, subject_code: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="allowed-time">Allowed Time (minutes)</Label>
-                <Input
-                  id="allowed-time"
-                  type="number"
-                  value={metadata.allowed_time || ''}
-                  onChange={(e) => setMetadata(prev => ({ ...prev, allowed_time: parseInt(e.target.value) || 0 }))}
-                />
-              </div>
+              )}
             </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="visible"
-                checked={metadata.visible}
-                onCheckedChange={(checked) => setMetadata(prev => ({ ...prev, visible: !!checked }))}
-              />
-              <Label htmlFor="visible">Quiz Visible</Label>
+            
+            <div>
+              <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map(dept => (
+                    <SelectItem key={dept} value={dept}>
+                      {dept === 'custom' ? 'Other (Type your own)' : dept}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedDepartment === 'custom' && (
+                <Input
+                  className="mt-2"
+                  placeholder="Enter custom department"
+                  value={customDepartment}
+                  onChange={(e) => setCustomDepartment(e.target.value)}
+                />
+              )}
             </div>
-          </CardContent>
-        </Card>
+            
+            <div>
+              <div className="relative">
+                <Input
+                  value={selectedSections.length === 0 
+                    ? "" 
+                    : selectedSections.includes('custom')
+                      ? customSections || selectedSections.filter(s => s !== 'custom').join(', ')
+                      : selectedSections.join(', ')
+                  }
+                  placeholder="Select section"
+                  readOnly
+                  className="cursor-pointer"
+                  onClick={() => {
+                    // This will be handled by the select dropdown
+                  }}
+                />
+                <Select>
+                  <SelectTrigger className="absolute inset-0 opacity-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sections.map(sec => (
+                      <div key={sec} className="flex items-center space-x-2 px-2 py-1.5 cursor-pointer hover:bg-accent">
+                        <Checkbox
+                          id={`sec-${sec}`}
+                          checked={selectedSections.includes(sec)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedSections([...selectedSections, sec]);
+                            } else {
+                              setSelectedSections(selectedSections.filter(s => s !== sec));
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`sec-${sec}`} className="text-sm cursor-pointer">
+                          {sec === 'custom' ? 'Other' : sec}
+                        </Label>
+                      </div>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedSections.includes('custom') && (
+                <Input
+                  className="mt-2"
+                  placeholder="Enter custom sections"
+                  value={customSections}
+                  onChange={(e) => setCustomSections(e.target.value)}
+                />
+              )}
+            </div>
+          </div>
+        </div>
 
-        {/* Instructions */}
-        <Card className="shadow-lg border-0">
-          <CardHeader className="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-t-lg">
-            <CardTitle className="text-2xl">Instructions</CardTitle>
-          </CardHeader>
-          <CardContent className="p-6 space-y-4">
-            <div className="flex gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="year">Session</Label>
+            <Select value={metadata.year} onValueChange={(value) => setMetadata(prev => ({ ...prev, year: value }))}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select session" />
+              </SelectTrigger>
+              <SelectContent>
+                {generateYearOptions().map(year => (
+                  <SelectItem key={year} value={year}>{year}</SelectItem>
+                ))}
+                <SelectItem value="custom">Other (Type your own)</SelectItem>
+              </SelectContent>
+            </Select>
+            {metadata.year === 'custom' && (
               <Input
-                placeholder="Add instruction..."
-                value={newInstruction}
-                onChange={(e) => setNewInstruction(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && addInstruction()}
+                className="mt-2"
+                placeholder="Enter custom session"
+                onChange={(e) => setMetadata(prev => ({ ...prev, year: e.target.value }))}
               />
-              <Button onClick={addInstruction} className="bg-green-600 hover:bg-green-700">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            {instructions.map((instruction, index) => (
-              <div key={instruction.id} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm text-gray-600">#{index + 1}</span>
-                <span className="flex-1">{instruction.instruction_text}</span>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="instructor">Instructor Name</Label>
+            <Input
+              id="instructor"
+              value={metadata.instructor}
+              onChange={(e) => setMetadata(prev => ({ ...prev, instructor: e.target.value }))}
+            />
+          </div>
+          <div>
+            <Label htmlFor="allowed-time">Allowed Time (minutes)</Label>
+            <Input
+              id="allowed-time"
+              type="number"
+              value={metadata.allowed_time || ''}
+              onChange={(e) => setMetadata(prev => ({ ...prev, allowed_time: parseInt(e.target.value) || 0 }))}
+            />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const renderScreen2 = () => (
+    <Card className="shadow-lg border-0">
+      <CardHeader className="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-t-lg">
+        <CardTitle className="text-2xl">Instructions</CardTitle>
+      </CardHeader>
+      <CardContent className="p-6 space-y-4">
+        <div className="flex gap-2">
+          <Textarea
+            placeholder="Add instruction..."
+            value={newInstruction}
+            onChange={(e) => setNewInstruction(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && addInstruction()}
+            className="resize-none min-h-[120px]"
+            rows={5}
+          />
+          <Button onClick={addInstruction} className="bg-green-600 hover:bg-green-700 self-start">
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="space-y-2">
+          <ol className="list-decimal list-inside space-y-2">
+            {instructions.map((instruction) => (
+              <li key={instruction.id} className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
+                <span className="flex-1 ml-2">{instruction.instruction_text}</span>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => removeInstruction(instruction.id)}
-                  className="text-red-600 hover:text-red-800"
+                  className="text-red-600 hover:text-red-800 shrink-0"
                 >
                   <X className="h-4 w-4" />
                 </Button>
-              </div>
+              </li>
             ))}
+          </ol>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const renderScreen3 = () => {
+    const currentQuestion = questions[currentQuestionIndex];
+    
+    return (
+      <div className="space-y-6">
+        <Card className="shadow-lg border-0">
+          <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">
+            <CardTitle className="text-2xl">Questions</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 space-y-4">
+            <div className="flex items-center gap-4">
+              <Label htmlFor="num-questions">Number of Questions:</Label>
+              <Input
+                id="num-questions"
+                type="number"
+                min="1"
+                max="50"
+                value={numberOfQuestions}
+                onChange={(e) => adjustQuestions(parseInt(e.target.value) || 1)}
+                className="w-20"
+              />
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
+              {Array.from({ length: numberOfQuestions }, (_, i) => (
+                <Button
+                  key={i}
+                  variant={currentQuestionIndex === i ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentQuestionIndex(i)}
+                  className="w-10 h-10 rounded-full"
+                >
+                  {i + 1}
+                </Button>
+              ))}
+            </div>
           </CardContent>
         </Card>
 
-        {/* Questions */}
-        {questions.map((question, questionIndex) => (
-          <Card key={question.id} className="shadow-lg border-0">
+        {currentQuestion && (
+          <Card className="shadow-lg border-0">
             <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-xl">Question {questionIndex + 1}</CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeQuestion(question.id)}
-                  className="text-white hover:bg-white/20"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
+              <CardTitle className="text-xl">Question {currentQuestionIndex + 1}</CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2">
-                  <Label htmlFor={`question-${question.id}`}>Question Text</Label>
+                  <Label htmlFor={`question-${currentQuestion.id}`}>Question Text</Label>
                   <Textarea
-                    id={`question-${question.id}`}
-                    value={question.question}
-                    onChange={(e) => updateQuestion(question.id, 'question', e.target.value)}
+                    id={`question-${currentQuestion.id}`}
+                    value={currentQuestion.question}
+                    onChange={(e) => updateQuestion(currentQuestion.id, 'question', e.target.value)}
                     placeholder="Enter your question..."
                   />
                 </div>
                 <div>
-                  <Label htmlFor={`topic-${question.id}`}>Topic</Label>
+                  <Label htmlFor={`topic-${currentQuestion.id}`}>Topic (Will only be visible after quiz completion)</Label>
                   <Input
-                    id={`topic-${question.id}`}
-                    value={question.topic}
-                    onChange={(e) => updateQuestion(question.id, 'topic', e.target.value)}
+                    id={`topic-${currentQuestion.id}`}
+                    value={currentQuestion.topic}
+                    onChange={(e) => updateQuestion(currentQuestion.id, 'topic', e.target.value)}
                   />
                 </div>
               </div>
               
               <div>
-                <Label htmlFor={`summary-${question.id}`}>Summary</Label>
+                <Label htmlFor={`summary-${currentQuestion.id}`}>Summary (Will only be visible after quiz completion)</Label>
                 <Input
-                  id={`summary-${question.id}`}
-                  value={question.summary}
-                  onChange={(e) => updateQuestion(question.id, 'summary', e.target.value)}
+                  id={`summary-${currentQuestion.id}`}
+                  value={currentQuestion.summary}
+                  onChange={(e) => updateQuestion(currentQuestion.id, 'summary', e.target.value)}
                 />
               </div>
 
-              {/* Image Upload */}
               <div className="space-y-2">
                 <Label>Question Image</Label>
                 <div className="flex items-center gap-4">
@@ -447,66 +691,65 @@ const QuizCreator = () => {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        handleImageUpload(question.id, file);
+                        handleImageUpload(currentQuestion.id, file);
                       }
                     }}
                     className="hidden"
-                    id={`image-${question.id}`}
+                    id={`image-${currentQuestion.id}`}
                   />
                   <Label
-                    htmlFor={`image-${question.id}`}
+                    htmlFor={`image-${currentQuestion.id}`}
                     className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     <Upload className="h-4 w-4" />
                     Upload Image
                   </Label>
-                  {question.imageFile && (
+                  {currentQuestion.imageFile && (
                     <div className="flex items-center gap-2 text-green-600">
                       <Check className="h-4 w-4" />
-                      <span className="text-sm">{question.imageFile.name}</span>
+                      <span className="text-sm">{currentQuestion.imageFile.name}</span>
                     </div>
                   )}
                 </div>
-                {question.imageFile && (
+                {currentQuestion.imageFile && (
                   <img
-                    src={URL.createObjectURL(question.imageFile)}
+                    src={URL.createObjectURL(currentQuestion.imageFile)}
                     alt="Question preview"
                     className="max-w-xs h-32 object-cover rounded-lg border"
                   />
                 )}
               </div>
 
-              {/* Options */}
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <Label>Answer Options</Label>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => addOption(question.id)}
+                    onClick={() => addOption(currentQuestion.id)}
                     className="text-blue-600 border-blue-600 hover:bg-blue-50"
                   >
                     <Plus className="h-4 w-4 mr-1" />
                     Add Option
                   </Button>
                 </div>
-                {question.options.map((option, optionIndex) => (
+                {currentQuestion.options.map((option, optionIndex) => (
                   <div key={option.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <Checkbox
                       checked={option.is_correct}
-                      onCheckedChange={(checked) => updateOption(question.id, option.id, 'is_correct', !!checked)}
+                      onCheckedChange={(checked) => updateOption(currentQuestion.id, option.id, 'is_correct', !!checked)}
                     />
                     <Input
                       value={option.option_text}
-                      onChange={(e) => updateOption(question.id, option.id, 'option_text', e.target.value)}
+                      onChange={(e) => updateOption(currentQuestion.id, option.id, 'option_text', e.target.value)}
                       placeholder={`Option ${optionIndex + 1}...`}
                       className="flex-1"
                     />
-                    {question.options.length > 2 && (
+                    {currentQuestion.options.length > 2 && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeOption(question.id, option.id)}
+                        onClick={() => removeOption(currentQuestion.id, option.id)}
                         className="text-red-600 hover:text-red-800"
                       >
                         <X className="h-4 w-4" />
@@ -517,29 +760,75 @@ const QuizCreator = () => {
               </div>
             </CardContent>
           </Card>
-        ))}
-
-        {/* Generate Button */}
-        <div className="flex justify-center">
-          <Button
-            onClick={generateZip}
-            className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-3 text-lg font-semibold rounded-lg shadow-lg transform transition-all duration-200 hover:scale-105"
-          >
-            <Download className="h-5 w-5 mr-2" />
-            Generate Quiz ZIP
-          </Button>
-        </div>
+        )}
       </div>
+    );
+  };
 
-      {/* Fixed Add Question Button */}
-      <div className="fixed bottom-6 right-6">
-        <Button
-          onClick={addQuestion}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 text-lg font-semibold rounded-full shadow-lg transform transition-all duration-200 hover:scale-110"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          Add Question
-        </Button>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+      <div className="max-w-4xl mx-auto space-y-8">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Smart Quiz: Quiz Builder</h1>
+          <p className="text-gray-600">Create interactive quizzes with images and export them easily</p>
+        </div>
+
+        {currentScreen === 1 && renderScreen1()}
+        {currentScreen === 2 && renderScreen2()}
+        {currentScreen === 3 && renderScreen3()}
+
+        <div className="flex justify-between items-center">
+          <div className="flex gap-4">
+            {currentScreen > 1 && (
+              <Button
+                onClick={() => setCurrentScreen(currentScreen - 1)}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+            )}
+          </div>
+          
+          <div className="flex gap-4">
+            <Button
+              onClick={saveSession}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Save className="h-4 w-4" />
+              Save Session
+            </Button>
+            <Button
+              onClick={flushData}
+              variant="outline"
+              className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4" />
+              Flush Data
+            </Button>
+          </div>
+
+          <div>
+            {currentScreen < 3 ? (
+              <Button
+                onClick={() => setCurrentScreen(currentScreen + 1)}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              >
+                Next
+              </Button>
+            ) : (
+              <Button
+                onClick={generateZip}
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-3 text-lg font-semibold"
+              >
+                <Download className="h-5 w-5 mr-2" />
+                Generate Quiz ZIP
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
