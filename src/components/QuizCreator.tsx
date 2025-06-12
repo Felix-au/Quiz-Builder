@@ -112,7 +112,8 @@ const QuizCreator = () => {
       const parsed = JSON.parse(savedData);
       setMetadata(parsed.metadata || metadata);
       setInstructions(parsed.instructions || []);
-      setQuestions(parsed.questions || []);
+      const loadedQuestions = parsed.questions || [];
+      setQuestions(loadedQuestions.map(q => ({ ...q, imageFile: undefined })));
       setCurrentScreen(parsed.currentScreen || 1);
       setNumberOfQuestions(parsed.numberOfQuestions || 1);
       setSelectedProgram(parsed.selectedProgram || '');
@@ -151,10 +152,16 @@ const QuizCreator = () => {
   };
 
   const saveSession = () => {
+    // Create a cleaned version of questions without imageFile properties for localStorage
+    const questionsForSave = questions.map(q => {
+      const { imageFile, ...questionWithoutFile } = q;
+      return questionWithoutFile;
+    });
+
     const dataToSave = {
       metadata,
       instructions,
-      questions,
+      questions: questionsForSave,
       currentScreen,
       numberOfQuestions,
       selectedProgram,
