@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2 } from 'luc
 import { useToast } from '@/hooks/use-toast';
 import JSZip from 'jszip';
 import * as FileSaver from 'file-saver';
+import { uploadImageToImgBB, downloadImageAsFile } from '@/utils/imageUpload';
 
 interface Option {
   id: number;
@@ -30,6 +32,8 @@ interface Question {
   image: string;
   options: Option[];
   imageFile?: File;
+  originalImageFileName?: string;
+  imgbbUrl?: string;
 }
 
 interface Instruction {
@@ -107,19 +111,46 @@ const QuizCreator = () => {
   const sections = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'custom'];
 
   useEffect(() => {
-    const savedData = localStorage.getItem('quizCreatorData');
-    if (savedData) {
-      const parsed = JSON.parse(savedData);
-      setMetadata(parsed.metadata || metadata);
-      setInstructions(parsed.instructions || []);
-      const loadedQuestions = parsed.questions || [];
-      setQuestions(loadedQuestions.map(q => ({ ...q, imageFile: undefined })));
-      setCurrentScreen(parsed.currentScreen || 1);
-      setNumberOfQuestions(parsed.numberOfQuestions || 1);
-      setSelectedProgram(parsed.selectedProgram || '');
-      setSelectedDepartment(parsed.selectedDepartment || '');
-      setSelectedSections(parsed.selectedSections || []);
-    }
+    const loadSavedData = async () => {
+      const savedData = localStorage.getItem('quizCreatorData');
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        setMetadata(parsed.metadata || metadata);
+        setInstructions(parsed.instructions || []);
+        
+        const loadedQuestions = parsed.questions || [];
+        
+        // Download images from ImgBB and recreate File objects
+        const questionsWithImages = await Promise.all(
+          loadedQuestions.map(async (q: Question) => {
+            if (q.imgbbUrl && q.originalImageFileName) {
+              try {
+                const imageFile = await downloadImageAsFile(q.imgbbUrl, q.originalImageFileName);
+                return { ...q, imageFile };
+              } catch (error) {
+                console.error('Failed to download image for question', q.id, error);
+                toast({
+                  title: "Image Download Failed",
+                  description: `Failed to restore image for question ${q.id}`,
+                  variant: "destructive",
+                });
+                return { ...q, imageFile: undefined };
+              }
+            }
+            return { ...q, imageFile: undefined };
+          })
+        );
+        
+        setQuestions(questionsWithImages);
+        setCurrentScreen(parsed.currentScreen || 1);
+        setNumberOfQuestions(parsed.numberOfQuestions || 1);
+        setSelectedProgram(parsed.selectedProgram || '');
+        setSelectedDepartment(parsed.selectedDepartment || '');
+        setSelectedSections(parsed.selectedSections || []);
+      }
+    };
+    
+    loadSavedData();
   }, []);
 
   useEffect(() => {
@@ -151,31 +182,69 @@ const QuizCreator = () => {
     return options;
   };
 
-  const saveSession = () => {
-    // Create a cleaned version of questions without imageFile properties for localStorage
-    const questionsForSave = questions.map(q => {
-      const { imageFile, ...questionWithoutFile } = q;
-      return questionWithoutFile;
-    });
+  const saveSession = async () => {
+    try {
+      // Upload images to ImgBB before saving
+      const questionsWithUploadedImages = await Promise.all(
+        questions.map(async (q) => {
+          if (q.imageFile && !q.imgbbUrl) {
+            try {
+              const imgbbUrl = await uploadImageToImgBB(q.imageFile);
+              return {
+                ...q,
+                imgbbUrl,
+                originalImageFileName: q.imageFile.name,
+              };
+            } catch (error) {
+              console.error('Failed to upload image for question', q.id, error);
+              toast({
+                title: "Image Upload Failed",
+                description: `Failed to save image for question ${q.id}`,
+                variant: "destructive",
+              });
+              return q;
+            }
+          }
+          return q;
+        })
+      );
 
-    const dataToSave = {
-      metadata,
-      instructions,
-      questions: questionsForSave,
-      currentScreen,
-      numberOfQuestions,
-      selectedProgram,
-      selectedDepartment,
-      selectedSections,
-      customProgram,
-      customDepartment,
-      customSections
-    };
-    localStorage.setItem('quizCreatorData', JSON.stringify(dataToSave));
-    toast({
-      title: "Session Saved",
-      description: "Your progress has been saved to browser storage.",
-    });
+      // Update questions with uploaded image URLs
+      setQuestions(questionsWithUploadedImages);
+
+      // Create a cleaned version of questions without imageFile properties for localStorage
+      const questionsForSave = questionsWithUploadedImages.map(q => {
+        const { imageFile, ...questionWithoutFile } = q;
+        return questionWithoutFile;
+      });
+
+      const dataToSave = {
+        metadata,
+        instructions,
+        questions: questionsForSave,
+        currentScreen,
+        numberOfQuestions,
+        selectedProgram,
+        selectedDepartment,
+        selectedSections,
+        customProgram,
+        customDepartment,
+        customSections
+      };
+      
+      localStorage.setItem('quizCreatorData', JSON.stringify(dataToSave));
+      toast({
+        title: "Session Saved",
+        description: "Your progress and images have been saved successfully.",
+      });
+    } catch (error) {
+      console.error('Error saving session:', error);
+      toast({
+        title: "Save Failed",
+        description: "Failed to save session. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const flushData = () => {
@@ -305,7 +374,7 @@ const QuizCreator = () => {
     ));
   };
 
-  const handleImageUpload = (questionId: number, file: File) => {
+  const handleImageUpload = async (questionId: number, file: File) => {
     const fileName = file.name;
     const uuid = crypto.randomUUID();
     const fileExtension = fileName.split('.').pop();
@@ -316,6 +385,7 @@ const QuizCreator = () => {
         ? {
             ...q,
             imageFile: file,
+            originalImageFileName: file.name,
             image_path: `quiz_images\\${newFileName}`,
             image_url: `http://192.168.1.194:8080/${newFileName}`,
             image: `images/${newFileName}`,
@@ -619,155 +689,163 @@ const QuizCreator = () => {
     const currentQuestion = questions[currentQuestionIndex];
     
     return (
-      <div className="space-y-6">
-        <Card className="shadow-lg border-0">
-          <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">
-            <CardTitle className="text-2xl">Questions</CardTitle>
-          </CardHeader>
-          <CardContent className="p-6 space-y-4">
-            <div className="flex items-center gap-4">
-              <Label htmlFor="num-questions">Number of Questions:</Label>
-              <Input
-                id="num-questions"
-                type="number"
-                min="1"
-                max="50"
-                value={numberOfQuestions}
-                onChange={(e) => adjustQuestions(parseInt(e.target.value) || 1)}
-                className="w-20"
-              />
-            </div>
-            
-            <div className="flex flex-wrap gap-2">
-              {Array.from({ length: numberOfQuestions }, (_, i) => (
-                <Button
-                  key={i}
-                  variant={currentQuestionIndex === i ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setCurrentQuestionIndex(i)}
-                  className="w-10 h-10 rounded-full"
-                >
-                  {i + 1}
-                </Button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {currentQuestion && (
-          <Card className="shadow-lg border-0">
-            <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">
-              <CardTitle className="text-xl">Question {currentQuestionIndex + 1}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
-                  <Label htmlFor={`question-${currentQuestion.id}`}>Question Text</Label>
-                  <Textarea
-                    id={`question-${currentQuestion.id}`}
-                    value={currentQuestion.question}
-                    onChange={(e) => updateQuestion(currentQuestion.id, 'question', e.target.value)}
-                    placeholder="Enter your question..."
-                  />
-                </div>
-                <div>
-                  <Label htmlFor={`topic-${currentQuestion.id}`}>Topic (Will only be visible after quiz completion)</Label>
-                  <Input
-                    id={`topic-${currentQuestion.id}`}
-                    value={currentQuestion.topic}
-                    onChange={(e) => updateQuestion(currentQuestion.id, 'topic', e.target.value)}
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <Label htmlFor={`summary-${currentQuestion.id}`}>Summary (Will only be visible after quiz completion)</Label>
-                <Input
-                  id={`summary-${currentQuestion.id}`}
-                  value={currentQuestion.summary}
-                  onChange={(e) => updateQuestion(currentQuestion.id, 'summary', e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Question Image</Label>
-                <div className="flex items-center gap-4">
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        handleImageUpload(currentQuestion.id, file);
-                      }
-                    }}
-                    className="hidden"
-                    id={`image-${currentQuestion.id}`}
-                  />
-                  <Label
-                    htmlFor={`image-${currentQuestion.id}`}
-                    className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Upload className="h-4 w-4" />
-                    Upload Image
-                  </Label>
-                  {currentQuestion.imageFile && (
-                    <div className="flex items-center gap-2 text-green-600">
-                      <Check className="h-4 w-4" />
-                      <span className="text-sm">{currentQuestion.imageFile.name}</span>
-                    </div>
-                  )}
-                </div>
-                {currentQuestion.imageFile && (
-                  <img
-                    src={URL.createObjectURL(currentQuestion.imageFile)}
-                    alt="Question preview"
-                    className="max-w-xs h-32 object-cover rounded-lg border"
-                  />
-                )}
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <Label>Answer Options</Label>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addOption(currentQuestion.id)}
-                    className="text-blue-600 border-blue-600 hover:bg-blue-50"
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Option
-                  </Button>
-                </div>
-                {currentQuestion.options.map((option, optionIndex) => (
-                  <div key={option.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <Checkbox
-                      checked={option.is_correct}
-                      onCheckedChange={(checked) => updateOption(currentQuestion.id, option.id, 'is_correct', !!checked)}
+      <div className="grid grid-cols-5 gap-6">
+        {/* Question Content - 80% width (4/5 columns) */}
+        <div className="col-span-4">
+          {currentQuestion && (
+            <Card className="shadow-lg border-0">
+              <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">
+                <CardTitle className="text-xl">Question {currentQuestionIndex + 1}</CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="md:col-span-2">
+                    <Label htmlFor={`question-${currentQuestion.id}`}>Question Text</Label>
+                    <Textarea
+                      id={`question-${currentQuestion.id}`}
+                      value={currentQuestion.question}
+                      onChange={(e) => updateQuestion(currentQuestion.id, 'question', e.target.value)}
+                      placeholder="Enter your question..."
                     />
+                  </div>
+                  <div>
+                    <Label htmlFor={`topic-${currentQuestion.id}`}>Topic (Will only be visible after quiz completion)</Label>
                     <Input
-                      value={option.option_text}
-                      onChange={(e) => updateOption(currentQuestion.id, option.id, 'option_text', e.target.value)}
-                      placeholder={`Option ${optionIndex + 1}...`}
-                      className="flex-1"
+                      id={`topic-${currentQuestion.id}`}
+                      value={currentQuestion.topic}
+                      onChange={(e) => updateQuestion(currentQuestion.id, 'topic', e.target.value)}
                     />
-                    {currentQuestion.options.length > 2 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeOption(currentQuestion.id, option.id)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                  </div>
+                </div>
+                
+                <div>
+                  <Label htmlFor={`summary-${currentQuestion.id}`}>Summary (Will only be visible after quiz completion)</Label>
+                  <Input
+                    id={`summary-${currentQuestion.id}`}
+                    value={currentQuestion.summary}
+                    onChange={(e) => updateQuestion(currentQuestion.id, 'summary', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Question Image</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleImageUpload(currentQuestion.id, file);
+                        }
+                      }}
+                      className="hidden"
+                      id={`image-${currentQuestion.id}`}
+                    />
+                    <Label
+                      htmlFor={`image-${currentQuestion.id}`}
+                      className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <Upload className="h-4 w-4" />
+                      Upload Image
+                    </Label>
+                    {currentQuestion.imageFile && (
+                      <div className="flex items-center gap-2 text-green-600">
+                        <Check className="h-4 w-4" />
+                        <span className="text-sm">{currentQuestion.imageFile.name}</span>
+                      </div>
                     )}
                   </div>
-                ))}
+                  {currentQuestion.imageFile && (
+                    <img
+                      src={URL.createObjectURL(currentQuestion.imageFile)}
+                      alt="Question preview"
+                      className="max-w-xs h-32 object-cover rounded-lg border"
+                    />
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <Label>Answer Options</Label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addOption(currentQuestion.id)}
+                      className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Option
+                    </Button>
+                  </div>
+                  {currentQuestion.options.map((option, optionIndex) => (
+                    <div key={option.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <Checkbox
+                        checked={option.is_correct}
+                        onCheckedChange={(checked) => updateOption(currentQuestion.id, option.id, 'is_correct', !!checked)}
+                      />
+                      <Input
+                        value={option.option_text}
+                        onChange={(e) => updateOption(currentQuestion.id, option.id, 'option_text', e.target.value)}
+                        placeholder={`Option ${optionIndex + 1}...`}
+                        className="flex-1"
+                      />
+                      {currentQuestion.options.length > 2 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeOption(currentQuestion.id, option.id)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Questions Navigation - 20% width (1/5 column) */}
+        <div className="col-span-1">
+          <Card className="shadow-lg border-0 sticky top-6">
+            <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">
+              <CardTitle className="text-lg">Questions</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="num-questions" className="text-sm">Total:</Label>
+                  <Input
+                    id="num-questions"
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={numberOfQuestions}
+                    onChange={(e) => adjustQuestions(parseInt(e.target.value) || 1)}
+                    className="w-16 h-8 text-sm"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-3 gap-1">
+                  {Array.from({ length: numberOfQuestions }, (_, i) => (
+                    <Button
+                      key={i}
+                      variant={currentQuestionIndex === i ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentQuestionIndex(i)}
+                      className="w-8 h-8 rounded text-xs p-0"
+                    >
+                      {i + 1}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </CardContent>
           </Card>
-        )}
+        </div>
       </div>
     );
   };
