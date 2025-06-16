@@ -293,7 +293,10 @@ const QuizCreator = () => {
       created_by: null,
     });
     setInstructions([]);
-    setQuestions([]);
+    
+    // Initialize with default question instead of empty array
+    initializeDefaultQuestion();
+    
     setCurrentScreen(1);
     setNumberOfQuestions(1);
     setSelectedProgram('');
@@ -530,6 +533,25 @@ const QuizCreator = () => {
     }
   };
 
+  const checkAllRequiredFieldsFilled = () => {
+    const program = selectedProgram === 'custom' ? customProgram : selectedProgram;
+    const department = selectedDepartment === 'custom' ? customDepartment : selectedDepartment;
+    const sectionStr = selectedSections.includes('custom') ? customSections : selectedSections.join(', ');
+    
+    return (
+      metadata.subject_code.trim() !== '' &&
+      metadata.subject.trim() !== '' &&
+      metadata.code.trim() !== '' &&
+      metadata.name.trim() !== '' &&
+      program.trim() !== '' &&
+      department.trim() !== '' &&
+      sectionStr.trim() !== '' &&
+      metadata.year.trim() !== '' &&
+      metadata.instructor.trim() !== '' &&
+      metadata.allowed_time > 0
+    );
+  };
+
   const renderScreen1 = () => (
     <Card className="shadow-lg border-0">
       <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
@@ -538,44 +560,48 @@ const QuizCreator = () => {
       <CardContent className="p-6 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="subject-code">Subject Code</Label>
+            <Label htmlFor="subject-code">Subject Code <span className="text-red-500">*</span></Label>
             <Input
               id="subject-code"
               value={metadata.subject_code}
               onChange={(e) => setMetadata(prev => ({ ...prev, subject_code: e.target.value }))}
+              required
             />
           </div>
           <div>
-            <Label htmlFor="subject">Subject Name</Label>
+            <Label htmlFor="subject">Subject Name <span className="text-red-500">*</span></Label>
             <Input
               id="subject"
               value={metadata.subject}
               onChange={(e) => setMetadata(prev => ({ ...prev, subject: e.target.value }))}
+              required
             />
           </div>
           <div>
-            <Label htmlFor="quiz-code">Quiz Code</Label>
+            <Label htmlFor="quiz-code">Quiz Code <span className="text-red-500">*</span></Label>
             <Input
               id="quiz-code"
               value={metadata.code}
               onChange={(e) => setMetadata(prev => ({ ...prev, code: e.target.value }))}
+              required
             />
           </div>
           <div>
-            <Label htmlFor="quiz-name">Quiz Name</Label>
+            <Label htmlFor="quiz-name">Quiz Name <span className="text-red-500">*</span></Label>
             <Input
               id="quiz-name"
               value={metadata.name}
               onChange={(e) => setMetadata(prev => ({ ...prev, name: e.target.value }))}
+              required
             />
           </div>
         </div>
 
         <div>
-          <Label>Program</Label>
+          <Label>Program <span className="text-red-500">*</span></Label>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
             <div>
-              <Select value={selectedProgram} onValueChange={setSelectedProgram}>
+              <Select value={selectedProgram} onValueChange={setSelectedProgram} required>
                 <SelectTrigger>
                   <SelectValue placeholder="Select program" />
                 </SelectTrigger>
@@ -593,12 +619,13 @@ const QuizCreator = () => {
                   placeholder="Enter custom program"
                   value={customProgram}
                   onChange={(e) => setCustomProgram(e.target.value)}
+                  required
                 />
               )}
             </div>
             
             <div>
-              <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+              <Select value={selectedDepartment} onValueChange={setSelectedDepartment} required>
                 <SelectTrigger>
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
@@ -616,6 +643,7 @@ const QuizCreator = () => {
                   placeholder="Enter custom department"
                   value={customDepartment}
                   onChange={(e) => setCustomDepartment(e.target.value)}
+                  required
                 />
               )}
             </div>
@@ -635,6 +663,7 @@ const QuizCreator = () => {
                   onClick={() => {
                     // This will be handled by the select dropdown
                   }}
+                  required
                 />
                 <Select>
                   <SelectTrigger className="absolute inset-0 opacity-0">
@@ -668,6 +697,7 @@ const QuizCreator = () => {
                   placeholder="Enter custom sections"
                   value={customSections}
                   onChange={(e) => setCustomSections(e.target.value)}
+                  required
                 />
               )}
             </div>
@@ -676,8 +706,8 @@ const QuizCreator = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="year">Session</Label>
-            <Select value={metadata.year} onValueChange={(value) => setMetadata(prev => ({ ...prev, year: value }))}>
+            <Label htmlFor="year">Session <span className="text-red-500">*</span></Label>
+            <Select value={metadata.year} onValueChange={(value) => setMetadata(prev => ({ ...prev, year: value }))} required>
               <SelectTrigger>
                 <SelectValue placeholder="Select session" />
               </SelectTrigger>
@@ -693,27 +723,38 @@ const QuizCreator = () => {
                 className="mt-2"
                 placeholder="Enter custom session"
                 onChange={(e) => setMetadata(prev => ({ ...prev, year: e.target.value }))}
+                required
               />
             )}
           </div>
           <div>
-            <Label htmlFor="instructor">Instructor Name</Label>
+            <Label htmlFor="instructor">Instructor Name <span className="text-red-500">*</span></Label>
             <Input
               id="instructor"
               value={metadata.instructor}
               onChange={(e) => setMetadata(prev => ({ ...prev, instructor: e.target.value }))}
+              required
             />
           </div>
           <div>
-            <Label htmlFor="allowed-time">Allowed Time (minutes)</Label>
+            <Label htmlFor="allowed-time">Allowed Time (minutes) <span className="text-red-500">*</span></Label>
             <Input
               id="allowed-time"
               type="number"
               value={metadata.allowed_time || ''}
               onChange={(e) => setMetadata(prev => ({ ...prev, allowed_time: parseInt(e.target.value) || 0 }))}
+              required
             />
           </div>
         </div>
+        
+        {!checkAllRequiredFieldsFilled() && (
+          <div className="mt-6 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-600 text-sm">
+              Fields marked with * are required
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
