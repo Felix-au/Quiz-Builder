@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -147,11 +146,35 @@ const QuizCreator = () => {
         setSelectedProgram(parsed.selectedProgram || '');
         setSelectedDepartment(parsed.selectedDepartment || '');
         setSelectedSections(parsed.selectedSections || []);
+      } else {
+        // Initialize with one default question if no saved data
+        initializeDefaultQuestion();
       }
     };
     
     loadSavedData();
   }, []);
+
+  const initializeDefaultQuestion = () => {
+    const defaultQuestion: Question = {
+      id: 1,
+      question: '',
+      topic: 'NA',
+      summary: 'NA',
+      question_order: 0,
+      points: 1,
+      image_path: '',
+      image_url: '',
+      image: '',
+      options: [
+        { id: 1, option_text: '', is_correct: false, option_order: 0 },
+        { id: 2, option_text: '', is_correct: false, option_order: 0 },
+        { id: 3, option_text: '', is_correct: false, option_order: 0 },
+        { id: 4, option_text: '', is_correct: false, option_order: 0 },
+      ],
+    };
+    setQuestions([defaultQuestion]);
+  };
 
   useEffect(() => {
     // Update course field when dropdowns change
@@ -310,6 +333,29 @@ const QuizCreator = () => {
       if (currentQuestionIndex >= newCount) {
         setCurrentQuestionIndex(Math.max(0, newCount - 1));
       }
+    } else if (questions.length === 0 && newCount > 0) {
+      // Handle case where questions array is empty but we need questions
+      const newQuestions = [];
+      for (let i = 0; i < newCount; i++) {
+        newQuestions.push({
+          id: i + 1,
+          question: '',
+          topic: 'NA',
+          summary: 'NA',
+          question_order: i,
+          points: 1,
+          image_path: '',
+          image_url: '',
+          image: '',
+          options: [
+            { id: 1, option_text: '', is_correct: false, option_order: 0 },
+            { id: 2, option_text: '', is_correct: false, option_order: 0 },
+            { id: 3, option_text: '', is_correct: false, option_order: 0 },
+            { id: 4, option_text: '', is_correct: false, option_order: 0 },
+          ],
+        });
+      }
+      setQuestions(newQuestions);
     }
     setNumberOfQuestions(newCount);
     setMetadata(prev => ({ ...prev, total_points: newCount }));
