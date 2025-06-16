@@ -6,7 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import JSZip from 'jszip';
 import * as FileSaver from 'file-saver';
@@ -62,6 +63,8 @@ interface QuizMetadata {
 const QuizCreator = () => {
   const { toast } = useToast();
   const [currentScreen, setCurrentScreen] = useState(1);
+  const [showFlushDialog, setShowFlushDialog] = useState(false);
+  
   const [metadata, setMetadata] = useState<QuizMetadata>({
     id: 1,
     code: '',
@@ -299,6 +302,7 @@ const QuizCreator = () => {
     setCustomProgram('');
     setCustomDepartment('');
     setCustomSections('');
+    setShowFlushDialog(false);
     toast({
       title: "Data Flushed",
       description: "All data has been cleared. Starting fresh.",
@@ -500,6 +504,29 @@ const QuizCreator = () => {
         description: "Failed to generate quiz ZIP file.",
         variant: "destructive",
       });
+    }
+  };
+
+  const validateCurrentQuestion = () => {
+    if (currentScreen === 3 && questions[currentQuestionIndex]) {
+      const currentQuestion = questions[currentQuestionIndex];
+      return currentQuestion.question.trim() !== '';
+    }
+    return true;
+  };
+
+  const handleNext = () => {
+    if (currentScreen === 3 && !validateCurrentQuestion()) {
+      toast({
+        title: "Question Required",
+        description: "Please enter a question before proceeding.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (currentScreen < 3) {
+      setCurrentScreen(currentScreen + 1);
     }
   };
 
@@ -746,13 +773,20 @@ const QuizCreator = () => {
               <CardContent className="p-6 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="md:col-span-2">
-                    <Label htmlFor={`question-${currentQuestion.id}`}>Question Text</Label>
+                    <Label htmlFor={`question-${currentQuestion.id}`}>
+                      Question Text <span className="text-red-500">*</span>
+                    </Label>
                     <Textarea
                       id={`question-${currentQuestion.id}`}
                       value={currentQuestion.question}
                       onChange={(e) => updateQuestion(currentQuestion.id, 'question', e.target.value)}
                       placeholder="Enter your question..."
+                      className={currentQuestion.question.trim() === '' ? 'border-red-300 focus:border-red-500' : ''}
+                      required
                     />
+                    {currentQuestion.question.trim() === '' && (
+                      <p className="text-red-500 text-sm mt-1">Question is required</p>
+                    )}
                   </div>
                   <div>
                     <Label htmlFor={`topic-${currentQuestion.id}`}>Topic (Will only be visible after quiz completion)</Label>
@@ -931,20 +965,49 @@ const QuizCreator = () => {
               <Save className="h-4 w-4" />
               Save Session
             </Button>
-            <Button
-              onClick={flushData}
-              variant="outline"
-              className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
-            >
-              <Trash2 className="h-4 w-4" />
-              Flush Data
-            </Button>
+            
+            <AlertDialog open={showFlushDialog} onOpenChange={setShowFlushDialog}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Flush Data
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-red-500" />
+                    Confirm Data Flush
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action will permanently delete all quiz data including:
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>Quiz information and metadata</li>
+                      <li>All instructions</li>
+                      <li>All questions and their options</li>
+                      <li>Uploaded images</li>
+                      <li>Saved session data</li>
+                    </ul>
+                    This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={flushData} className="bg-red-600 hover:bg-red-700">
+                    Yes, Clear All Data
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
 
           <div>
             {currentScreen < 3 ? (
               <Button
-                onClick={() => setCurrentScreen(currentScreen + 1)}
+                onClick={handleNext}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
               >
                 Next
