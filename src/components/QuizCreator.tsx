@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import JSZip from 'jszip';
 import * as FileSaver from 'file-saver';
@@ -55,6 +55,7 @@ interface QuizMetadata {
   allowed_time: number;
   visible: boolean;
   total_points: number;
+  num_displayed_questions: number;
   created_at: string;
   updated_at: string;
   created_by: null;
@@ -78,6 +79,7 @@ const QuizCreator = () => {
     allowed_time: 0,
     visible: true,
     total_points: 0,
+    num_displayed_questions: 1,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     created_by: null,
@@ -118,7 +120,19 @@ const QuizCreator = () => {
       if (savedData) {
         const parsed = JSON.parse(savedData);
         setMetadata(parsed.metadata || metadata);
-        setInstructions(parsed.instructions || []);
+        
+        // Load instructions or set default if none exist
+        if (parsed.instructions && parsed.instructions.length > 0) {
+          setInstructions(parsed.instructions);
+        } else {
+          // Add default instruction
+          const defaultInstruction: Instruction = {
+            id: 1,
+            instruction_text: 'Once the quiz starts, full screen will trigger automatically, everytime window goes out of focus or is switched, one fault is counted. Faculty may terminate quiz or negative marks may be given based on it.',
+            instruction_order: 1,
+          };
+          setInstructions([defaultInstruction]);
+        }
         
         const loadedQuestions = parsed.questions || [];
         
@@ -145,12 +159,25 @@ const QuizCreator = () => {
         
         setQuestions(questionsWithImages);
         setCurrentScreen(parsed.currentScreen || 1);
-        setNumberOfQuestions(parsed.numberOfQuestions || 1);
+        
+        // Set numberOfQuestions based on num_displayed_questions from metadata, or parsed value
+        const displayedQuestions = parsed.metadata?.num_displayed_questions || 1;
+        const totalQuestions = Math.max(displayedQuestions, parsed.numberOfQuestions || 1);
+        setNumberOfQuestions(totalQuestions);
+        
         setSelectedProgram(parsed.selectedProgram || '');
         setSelectedDepartment(parsed.selectedDepartment || '');
         setSelectedSections(parsed.selectedSections || []);
       } else {
-        // Initialize with one default question if no saved data
+        // Initialize with default instruction
+        const defaultInstruction: Instruction = {
+          id: 1,
+          instruction_text: 'Once the quiz starts, full screen will trigger automatically, everytime window goes out of focus or is switched, one fault is counted. Faculty may terminate quiz or negative marks may be given based on it.',
+          instruction_order: 1,
+        };
+        setInstructions([defaultInstruction]);
+        
+        // Initialize with default question instead of empty array
         initializeDefaultQuestion();
       }
     };
@@ -288,11 +315,19 @@ const QuizCreator = () => {
       allowed_time: 0,
       visible: true,
       total_points: 0,
+      num_displayed_questions: 1,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       created_by: null,
     });
-    setInstructions([]);
+    
+    // Reset to default instruction
+    const defaultInstruction: Instruction = {
+      id: 1,
+      instruction_text: 'Once the quiz starts, full screen will trigger automatically, everytime window goes out of focus or is switched, one fault is counted. Faculty may terminate quiz or negative marks may be given based on it.',
+      instruction_order: 1,
+    };
+    setInstructions([defaultInstruction]);
     
     // Initialize with default question instead of empty array
     initializeDefaultQuestion();
@@ -313,9 +348,21 @@ const QuizCreator = () => {
   };
 
   const adjustQuestions = (newCount: number) => {
-    if (newCount > questions.length) {
+    // Ensure newCount cannot be less than num_displayed_questions
+    const minCount = metadata.num_displayed_questions;
+    const actualCount = Math.max(newCount, minCount);
+    
+    if (actualCount !== newCount) {
+      toast({
+        title: "Question Count Adjusted",
+        description: `Cannot have fewer than ${minCount} questions (Number of Displayed Questions).`,
+        variant: "destructive",
+      });
+    }
+    
+    if (actualCount > questions.length) {
       const additionalQuestions = [];
-      for (let i = questions.length; i < newCount; i++) {
+      for (let i = questions.length; i < actualCount; i++) {
         additionalQuestions.push({
           id: i + 1,
           question: '',
@@ -335,15 +382,15 @@ const QuizCreator = () => {
         });
       }
       setQuestions([...questions, ...additionalQuestions]);
-    } else if (newCount < questions.length) {
-      setQuestions(questions.slice(0, newCount));
-      if (currentQuestionIndex >= newCount) {
-        setCurrentQuestionIndex(Math.max(0, newCount - 1));
+    } else if (actualCount < questions.length) {
+      setQuestions(questions.slice(0, actualCount));
+      if (currentQuestionIndex >= actualCount) {
+        setCurrentQuestionIndex(Math.max(0, actualCount - 1));
       }
-    } else if (questions.length === 0 && newCount > 0) {
+    } else if (questions.length === 0 && actualCount > 0) {
       // Handle case where questions array is empty but we need questions
       const newQuestions = [];
-      for (let i = 0; i < newCount; i++) {
+      for (let i = 0; i < actualCount; i++) {
         newQuestions.push({
           id: i + 1,
           question: '',
@@ -364,8 +411,8 @@ const QuizCreator = () => {
       }
       setQuestions(newQuestions);
     }
-    setNumberOfQuestions(newCount);
-    setMetadata(prev => ({ ...prev, total_points: newCount }));
+    setNumberOfQuestions(actualCount);
+    setMetadata(prev => ({ ...prev, total_points: actualCount }));
   };
 
   const addInstruction = () => {
@@ -462,20 +509,32 @@ const QuizCreator = () => {
       const quizData = {
         quiz: {
           ...updatedMetadata,
-          instructions: instructions.map(inst => ({
-            ...inst,
+          instructions: instructions.map((inst, index) => ({
+            id: inst.id,
             quiz_id: metadata.id,
+            instruction_text: inst.instruction_text,
+            instruction_order: index + 1,
           })),
-          questions: questions.map(q => {
-            // Clean up the question object, removing imageFile and quiz_id
-            const { imageFile, ...cleanQuestion } = q;
+          questions: questions.map((q, index) => {
+            // Clean up the question object, removing imageFile, originalImageFileName, and imgbbUrl
+            const { imageFile, originalImageFileName, imgbbUrl, ...cleanQuestion } = q;
             return {
-              ...cleanQuestion,
+              id: cleanQuestion.id,
               quiz_id: metadata.id,
-              image_path: cleanQuestion.image_path.replace(/\\/g, '/'), // Fix backslashes to forward slashes
-              options: cleanQuestion.options.map(opt => ({
-                ...opt,
+              question: cleanQuestion.question,
+              topic: cleanQuestion.topic,
+              summary: cleanQuestion.summary,
+              question_order: index,
+              points: cleanQuestion.points,
+              image_path: cleanQuestion.image_path.replace(/\\/g, '/'),
+              image_url: cleanQuestion.image_url,
+              image: cleanQuestion.image,
+              options: cleanQuestion.options.map((opt, optIndex) => ({
+                id: opt.id,
                 question_id: cleanQuestion.id,
+                option_text: opt.option_text,
+                is_correct: opt.is_correct,
+                option_order: optIndex + 1,
               })),
             };
           }),
@@ -548,7 +607,8 @@ const QuizCreator = () => {
       sectionStr.trim() !== '' &&
       metadata.year.trim() !== '' &&
       metadata.instructor.trim() !== '' &&
-      metadata.allowed_time > 0
+      metadata.allowed_time > 0 &&
+      metadata.num_displayed_questions > 0
     );
   };
 
@@ -704,7 +764,7 @@ const QuizCreator = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label htmlFor="year">Session <span className="text-red-500">*</span></Label>
             <Select value={metadata.year} onValueChange={(value) => setMetadata(prev => ({ ...prev, year: value }))} required>
@@ -746,6 +806,27 @@ const QuizCreator = () => {
               required
             />
           </div>
+        </div>
+
+        <div>
+          <Label htmlFor="num-displayed-questions">Number of Displayed Questions <span className="text-red-500">*</span></Label>
+          <Input
+            id="num-displayed-questions"
+            type="number"
+            min="1"
+            max="50"
+            value={metadata.num_displayed_questions || ''}
+            onChange={(e) => {
+              const value = parseInt(e.target.value) || 1;
+              setMetadata(prev => ({ ...prev, num_displayed_questions: value }));
+              // Adjust numberOfQuestions if it's less than the new displayed questions value
+              if (numberOfQuestions < value) {
+                setNumberOfQuestions(value);
+                adjustQuestions(value);
+              }
+            }}
+            required
+          />
         </div>
         
         {!checkAllRequiredFieldsFilled() && (
@@ -803,18 +884,20 @@ const QuizCreator = () => {
     const currentQuestion = questions[currentQuestionIndex];
     
     return (
-      <div className="grid grid-cols-5 gap-6">
-        {/* Question Content - 80% width (4/5 columns) */}
+      <div className="grid grid-cols-5 gap-4 h-[calc(100vh-12rem)]">
+        {/* Question Content - Optimized layout */}
         <div className="col-span-4">
           {currentQuestion && (
-            <Card className="shadow-lg border-0">
-              <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">
-                <CardTitle className="text-xl">Question {currentQuestionIndex + 1}</CardTitle>
+            <Card className="shadow-lg border-0 h-full">
+              <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg py-3">
+                <CardTitle className="text-lg">Question {currentQuestionIndex + 1}</CardTitle>
               </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="md:col-span-2">
-                    <Label htmlFor={`question-${currentQuestion.id}`}>
+              <CardContent className="p-4 space-y-3 overflow-y-auto">
+                {/* Compact form layout */}
+                <div className="grid grid-cols-3 gap-3">
+                  {/* Question text - spans 2 columns */}
+                  <div className="col-span-2">
+                    <Label htmlFor={`question-${currentQuestion.id}`} className="text-sm">
                       Question Text <span className="text-red-500">*</span>
                     </Label>
                     <Textarea
@@ -822,35 +905,43 @@ const QuizCreator = () => {
                       value={currentQuestion.question}
                       onChange={(e) => updateQuestion(currentQuestion.id, 'question', e.target.value)}
                       placeholder="Enter your question..."
-                      className={currentQuestion.question.trim() === '' ? 'border-red-300 focus:border-red-500' : ''}
+                      className={`min-h-[80px] text-sm ${currentQuestion.question.trim() === '' ? 'border-red-300 focus:border-red-500' : ''}`}
                       required
                     />
                     {currentQuestion.question.trim() === '' && (
-                      <p className="text-red-500 text-sm mt-1">Question is required</p>
+                      <p className="text-red-500 text-xs mt-1">Question is required</p>
                     )}
                   </div>
-                  <div>
-                    <Label htmlFor={`topic-${currentQuestion.id}`}>Topic (Will only be visible after quiz completion)</Label>
-                    <Input
-                      id={`topic-${currentQuestion.id}`}
-                      value={currentQuestion.topic}
-                      onChange={(e) => updateQuestion(currentQuestion.id, 'topic', e.target.value)}
-                    />
+                  
+                  {/* Topic and Summary - stacked in 1 column */}
+                  <div className="space-y-2">
+                    <div>
+                      <Label htmlFor={`topic-${currentQuestion.id}`} className="text-sm">Topic (Visible only after submission)</Label>
+                      <Input
+                        id={`topic-${currentQuestion.id}`}
+                        value={currentQuestion.topic}
+                        onChange={(e) => updateQuestion(currentQuestion.id, 'topic', e.target.value)}
+                        className="text-sm h-8"
+                        placeholder="Topic"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`summary-${currentQuestion.id}`} className="text-sm">Summary (Visible only after submission)</Label>
+                      <Input
+                        id={`summary-${currentQuestion.id}`}
+                        value={currentQuestion.summary}
+                        onChange={(e) => updateQuestion(currentQuestion.id, 'summary', e.target.value)}
+                        className="text-sm h-8"
+                        placeholder="Summary"
+                      />
+                    </div>
                   </div>
                 </div>
-                
-                <div>
-                  <Label htmlFor={`summary-${currentQuestion.id}`}>Summary (Will only be visible after quiz completion)</Label>
-                  <Input
-                    id={`summary-${currentQuestion.id}`}
-                    value={currentQuestion.summary}
-                    onChange={(e) => updateQuestion(currentQuestion.id, 'summary', e.target.value)}
-                  />
-                </div>
 
+                {/* Image upload - compact */}
                 <div className="space-y-2">
-                  <Label>Question Image</Label>
-                  <div className="flex items-center gap-4">
+                  <Label className="text-sm">Question Image</Label>
+                  <div className="flex items-center gap-3">
                     <Input
                       type="file"
                       accept="image/*"
@@ -865,15 +956,15 @@ const QuizCreator = () => {
                     />
                     <Label
                       htmlFor={`image-${currentQuestion.id}`}
-                      className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      className="cursor-pointer flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
                     >
-                      <Upload className="h-4 w-4" />
-                      Upload Image
+                      <Upload className="h-3 w-3" />
+                      Upload
                     </Label>
                     {currentQuestion.imageFile && (
                       <div className="flex items-center gap-2 text-green-600">
-                        <Check className="h-4 w-4" />
-                        <span className="text-sm">{currentQuestion.imageFile.name}</span>
+                        <Check className="h-3 w-3" />
+                        <span className="text-xs">{currentQuestion.imageFile.name}</span>
                       </div>
                     )}
                   </div>
@@ -881,64 +972,160 @@ const QuizCreator = () => {
                     <img
                       src={URL.createObjectURL(currentQuestion.imageFile)}
                       alt="Question preview"
-                      className="max-w-xs h-32 object-cover rounded-lg border"
+                      className="max-w-[200px] h-20 object-cover rounded border"
                     />
                   )}
                 </div>
 
-                <div className="space-y-3">
+                {/* Options - 2 per row layout */}
+                <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <Label>Answer Options</Label>
+                    <Label className="text-sm">Answer Options</Label>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => addOption(currentQuestion.id)}
-                      className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                      className="text-blue-600 border-blue-600 hover:bg-blue-50 h-7 text-xs px-2"
                     >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Option
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add
                     </Button>
                   </div>
-                  {currentQuestion.options.map((option, optionIndex) => (
-                    <div key={option.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                      <Checkbox
-                        checked={option.is_correct}
-                        onCheckedChange={(checked) => updateOption(currentQuestion.id, option.id, 'is_correct', !!checked)}
-                      />
-                      <Input
-                        value={option.option_text}
-                        onChange={(e) => updateOption(currentQuestion.id, option.id, 'option_text', e.target.value)}
-                        placeholder={`Option ${optionIndex + 1}...`}
-                        className="flex-1"
-                      />
-                      {currentQuestion.options.length > 2 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeOption(currentQuestion.id, option.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
+                  
+                  {/* Options grid - 2 columns */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {currentQuestion.options.map((option, optionIndex) => (
+                      <div key={option.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                        <Checkbox
+                          checked={option.is_correct}
+                          onCheckedChange={(checked) => updateOption(currentQuestion.id, option.id, 'is_correct', !!checked)}
+                        />
+                        <Input
+                          value={option.option_text}
+                          onChange={(e) => updateOption(currentQuestion.id, option.id, 'option_text', e.target.value)}
+                          placeholder={`Option ${optionIndex + 1}`}
+                          className="flex-1 h-8 text-sm"
+                        />
+                        {currentQuestion.options.length > 2 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeOption(currentQuestion.id, option.id)}
+                            className="text-red-600 hover:text-red-800 h-6 w-6 p-0"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Navigation buttons */}
+                <div className="flex justify-between items-center pt-2 border-t">
+                  <Button
+                    onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
+                    disabled={currentQuestionIndex === 0}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-1"
+                  >
+                    <ChevronLeft className="h-3 w-3" />
+                    Previous
+                  </Button>
+                  
+                  <span className="text-sm text-gray-600">
+                    {currentQuestionIndex + 1} of {numberOfQuestions}
+                  </span>
+                  
+                  <Button
+                    onClick={() => setCurrentQuestionIndex(Math.min(numberOfQuestions - 1, currentQuestionIndex + 1))}
+                    disabled={currentQuestionIndex === numberOfQuestions - 1}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-1"
+                  >
+                    Next
+                    <ChevronLeft className="h-3 w-3 rotate-180" />
+                  </Button>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex justify-center gap-2 pt-2 border-t">
+                  <Button
+                    onClick={() => setCurrentScreen(2)}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-1 text-xs px-3"
+                  >
+                    <FileText className="h-3 w-3" />
+                    Instructions Screen
+                  </Button>
+                  
+                  <Button
+                    onClick={saveSession}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-1 text-xs px-3"
+                  >
+                    <Save className="h-3 w-3" />
+                    Save Session
+                  </Button>
+                  
+                  <AlertDialog open={showFlushDialog} onOpenChange={setShowFlushDialog}>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-1 text-red-600 border-red-600 hover:bg-red-50 text-xs px-3"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Flush Data
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                          <AlertTriangle className="h-5 w-5 text-red-500" />
+                          Confirm Data Flush
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action will permanently delete all quiz data. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={flushData} className="bg-red-600 hover:bg-red-700">
+                          Yes, Clear All Data
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  
+                  <Button
+                    onClick={generateZip}
+                    size="sm"
+                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-xs px-3"
+                  >
+                    <Download className="h-3 w-3 mr-1" />
+                    Generate ZIP
+                  </Button>
                 </div>
               </CardContent>
             </Card>
           )}
         </div>
 
-        {/* Questions Navigation - 20% width (1/5 column) */}
+        {/* Questions Navigation - Compact sidebar */}
         <div className="col-span-1">
           <Card className="shadow-lg border-0 sticky top-6">
-            <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">
-              <CardTitle className="text-lg">Questions</CardTitle>
+            <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg py-2">
+              <CardTitle className="text-sm">Questions</CardTitle>
             </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="num-questions" className="text-sm">Total:</Label>
+            <CardContent className="p-3 space-y-3">
+              <div className="space-y-2">
+                <div className="flex items-center gap-1">
+                  <Label htmlFor="num-questions" className="text-xs">Total:</Label>
                   <Input
                     id="num-questions"
                     type="number"
@@ -946,18 +1133,18 @@ const QuizCreator = () => {
                     max="50"
                     value={numberOfQuestions}
                     onChange={(e) => adjustQuestions(parseInt(e.target.value) || 1)}
-                    className="w-16 h-8 text-sm"
+                    className="w-12 h-6 text-xs"
                   />
                 </div>
                 
-                <div className="grid grid-cols-3 gap-1">
+                <div className="grid grid-cols-4 gap-1">
                   {Array.from({ length: numberOfQuestions }, (_, i) => (
                     <Button
                       key={i}
                       variant={currentQuestionIndex === i ? "default" : "outline"}
                       size="sm"
                       onClick={() => setCurrentQuestionIndex(i)}
-                      className="w-8 h-8 rounded text-xs p-0"
+                      className="w-6 h-6 rounded text-xs p-0"
                     >
                       {i + 1}
                     </Button>
@@ -972,10 +1159,10 @@ const QuizCreator = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="max-w-6xl mx-auto space-y-6">
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Smart Quiz: Quiz Builder</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Smart Quiz: Quiz Builder</h1>
           <p className="text-gray-600">Create interactive quizzes with images and export them easily</p>
         </div>
 
@@ -983,87 +1170,80 @@ const QuizCreator = () => {
         {currentScreen === 2 && renderScreen2()}
         {currentScreen === 3 && renderScreen3()}
 
-        <div className="flex justify-between items-center">
-          <div className="flex gap-4">
-            {currentScreen > 1 && (
+        {/* Main navigation - only show for screens 1 and 2 */}
+        {currentScreen < 3 && (
+          <div className="flex justify-between items-center">
+            <div className="flex gap-4">
+              {currentScreen > 1 && (
+                <Button
+                  onClick={() => setCurrentScreen(currentScreen - 1)}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+              )}
+            </div>
+            
+            <div className="flex gap-4">
               <Button
-                onClick={() => setCurrentScreen(currentScreen - 1)}
+                onClick={saveSession}
                 variant="outline"
                 className="flex items-center gap-2"
               >
-                <ChevronLeft className="h-4 w-4" />
-                Previous
+                <Save className="h-4 w-4" />
+                Save Session
               </Button>
-            )}
-          </div>
-          
-          <div className="flex gap-4">
-            <Button
-              onClick={saveSession}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <Save className="h-4 w-4" />
-              Save Session
-            </Button>
-            
-            <AlertDialog open={showFlushDialog} onOpenChange={setShowFlushDialog}>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Flush Data
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-red-500" />
-                    Confirm Data Flush
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action will permanently delete all quiz data including:
-                    <ul className="list-disc list-inside mt-2 space-y-1">
-                      <li>Quiz information and metadata</li>
-                      <li>All instructions</li>
-                      <li>All questions and their options</li>
-                      <li>Uploaded images</li>
-                      <li>Saved session data</li>
-                    </ul>
-                    This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={flushData} className="bg-red-600 hover:bg-red-700">
-                    Yes, Clear All Data
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
+              
+              <AlertDialog open={showFlushDialog} onOpenChange={setShowFlushDialog}>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Flush Data
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-red-500" />
+                      Confirm Data Flush
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action will permanently delete all quiz data including:
+                      <ul className="list-disc list-inside mt-2 space-y-1">
+                        <li>Quiz information and metadata</li>
+                        <li>All instructions</li>
+                        <li>All questions and their options</li>
+                        <li>Uploaded images</li>
+                        <li>Saved session data</li>
+                      </ul>
+                      This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={flushData} className="bg-red-600 hover:bg-red-700">
+                      Yes, Clear All Data
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
 
-          <div>
-            {currentScreen < 3 ? (
+            <div>
               <Button
                 onClick={handleNext}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
               >
                 Next
               </Button>
-            ) : (
-              <Button
-                onClick={generateZip}
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-3 text-lg font-semibold"
-              >
-                <Download className="h-5 w-5 mr-2" />
-                Generate Quiz ZIP
-              </Button>
-            )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
