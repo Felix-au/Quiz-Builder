@@ -1130,7 +1130,7 @@ const QuizCreator = () => {
                     id="num-questions"
                     type="number"
                     min="1"
-                    max="50"
+                    max="500"
                     value={numberOfQuestions}
                     onChange={(e) => adjustQuestions(parseInt(e.target.value) || 1)}
                     className="w-12 h-6 text-xs"
