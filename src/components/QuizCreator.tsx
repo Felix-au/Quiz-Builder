@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import JSZip from 'jszip';
 import * as FileSaver from 'file-saver';
 import { uploadImageToImgBB, downloadImageAsFile } from '@/utils/imageUpload';
+import emailjs from '@emailjs/browser';
 
 interface Option {
   id: number;
@@ -298,6 +299,11 @@ const QuizCreator = () => {
     }
   };
 
+  // Initialize EmailJS
+  useEffect(() => {
+    emailjs.init('wnSCgvOBG9hB6q1_g');
+  }, []);
+
   useEffect(() => {
     const loadSavedData = async () => {
       const savedData = localStorage.getItem('quizCreatorData');
@@ -421,70 +427,58 @@ const QuizCreator = () => {
 
   const sendReminderEmail = async (date: string, time: string, email: string) => {
     try {
-      const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          service_id: 'default_service',
-          template_id: 'quiz_reminder',
-          user_id: 'zebg hrev zwyt ftiu',
-          template_params: {
-            to_email: email,
-            quiz_name: metadata.name,
-            quiz_date: date,
-            quiz_time: time,
-            subject: metadata.subject,
-            instructor: metadata.instructor,
-            from_name: 'Quiz Builder',
-            from_email: 'quizbuilder86@gmail.com',
-          },
-        }),
-      });
+      // Create Google Calendar link
+      // Convert input date/time string to a proper Date object with IST offset
+const startDateTime = new Date(`${date}T${time}:00+05:30`);
+const endDateTime = new Date(startDateTime.getTime() + (metadata.allowed_time * 60 * 1000));
 
-      if (response.ok) {
-        // Alternative: Send email via simple SMTP endpoint
-        const emailData = {
-          to: email,
-          subject: `Quiz Reminder: ${metadata.name}`,
-          html: `
-            <h2>Quiz Reminder</h2>
-            <p>This is a reminder for your upcoming quiz:</p>
-            <ul>
-              <li><strong>Quiz Name:</strong> ${metadata.name}</li>
-              <li><strong>Subject:</strong> ${metadata.subject}</li>
-              <li><strong>Instructor:</strong> ${metadata.instructor}</li>
-              <li><strong>Date:</strong> ${date}</li>
-              <li><strong>Time:</strong> ${time}</li>
-              <li><strong>Duration:</strong> ${metadata.allowed_time} minutes</li>
-            </ul>
-            <p>Please be prepared and ready to take the quiz at the scheduled time.</p>
-            <p>Good luck!</p>
-          `,
-        };
+// Format to Google Calendar's expected format: YYYYMMDDTHHMMSSZ
+const formatDateForGoogle = (date: Date) => {
+  return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+};
 
-        // Using a simple SMTP service call
-        await fetch('/api/send-email', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(emailData),
-        });
+// Simplified Google Calendar link with just title and time
+const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE` +
+  `&text=${encodeURIComponent(`Quiz: ${metadata.name}`)}` +
+  `&dates=${formatDateForGoogle(startDateTime)}/${formatDateForGoogle(endDateTime)}`;
 
+// ✅ Pass just the clean URL (no emoji or \n) so EmailJS template can link it
+const templateParams = {
+  to_email: email,
+  from_name: 'Quiz Builder',
+  from_email: 'quizbuilder86@gmail.com',
+  quiz_name: metadata.name,
+  quiz_date: date,
+  quiz_time: time,
+  subject: metadata.subject,
+  instructor: metadata.instructor,
+  course: metadata.course,
+  allowed_time: metadata.allowed_time,
+  quiz_code: metadata.code,
+  link: calendarUrl, // ✅ just the raw link
+};
+
+      const response = await emailjs.send(
+        'default_service',
+        'template_quiz_reminder',
+        templateParams,
+        'wnSCgvOBG9hB6q1_g'
+      );
+
+      if (response.status === 200) {
         toast({
-          title: "Reminder Set",
-          description: `Quiz reminder email will be sent to ${email} for ${date} at ${time}`,
+          title: "Reminder Set Successfully!",
+          description: `Quiz reminder email has been sent to ${email} for ${date} at ${time}`,
         });
       }
     } catch (error) {
       console.error('Failed to send reminder email:', error);
       toast({
         title: "Reminder Failed",
-        description: "Failed to schedule email reminder, but ZIP file was generated.",
+        description: "Failed to schedule email reminder. Please check your email address and try again.",
         variant: "destructive",
       });
+      throw error; // Re-throw to prevent ZIP generation if email fails
     }
   };
 
@@ -832,13 +826,32 @@ const QuizCreator = () => {
         });
         return;
       }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(reminderEmail)) {
+        toast({
+          title: "Invalid Email",
+          description: "Please enter a valid email address.",
+          variant: "destructive",
+        });
+        return;
+      }
       
-      // Send email reminder
-      await sendReminderEmail(reminderDate, reminderTime, reminderEmail);
+      try {
+        // Send email reminder first
+        await sendReminderEmail(reminderDate, reminderTime, reminderEmail);
+        
+        // Generate ZIP after successful email
+        await generateZip();
+      } catch (error) {
+        // Don't generate ZIP if email fails
+        return;
+      }
+    } else {
+      // Just generate ZIP without reminder
+      await generateZip();
     }
-    
-    // Generate ZIP in both cases
-    await generateZip();
     
     // Close dialog and reset fields
     setShowReminderDialog(false);
@@ -1589,7 +1602,7 @@ const QuizCreator = () => {
                             className="w-full bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
                           >
                             <Mail className="h-4 w-4" />
-                            Yes, Remind Me & Generate ZIP
+                            Yes, Send a Google Calender Link & Generate ZIP
                           </Button>
                           <Button
                             onClick={() => handleReminderSubmit(false)}
