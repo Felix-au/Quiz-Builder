@@ -7,7 +7,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText, Sigma, Superscript, Subscript, Calendar, Mail, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import JSZip from 'jszip';
 import * as FileSaver from 'file-saver';
@@ -65,7 +67,19 @@ const QuizCreator = () => {
   const { toast } = useToast();
   const [currentScreen, setCurrentScreen] = useState(1);
   const [showFlushDialog, setShowFlushDialog] = useState(false);
+  const [showReminderDialog, setShowReminderDialog] = useState(false);
   
+  // Reminder dialog state
+  const [reminderDate, setReminderDate] = useState('');
+  const [reminderTime, setReminderTime] = useState('');
+  const [reminderEmail, setReminderEmail] = useState('');
+  
+  // Formatting state
+  const [activeFormatting, setActiveFormatting] = useState<'none' | 'superscript' | 'subscript'>('none');
+  
+  // Math symbols pagination state
+  const [currentSymbolPage, setCurrentSymbolPage] = useState(1);
+
   const [metadata, setMetadata] = useState<QuizMetadata>({
     id: 1,
     code: '',
@@ -113,6 +127,176 @@ const QuizCreator = () => {
   ];
 
   const sections = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'custom'];
+
+  // Mathematical symbols organized by frequency
+  const mostFrequentSymbols = [
+    // Basic operations and common symbols
+    { symbol: '±', name: 'Plus-minus' },
+    { symbol: '×', name: 'Multiplication' },
+    { symbol: '÷', name: 'Division' },
+    { symbol: '≠', name: 'Not equal' },
+    { symbol: '≈', name: 'Approximately' },
+    { symbol: '≤', name: 'Less than or equal' },
+    { symbol: '≥', name: 'Greater than or equal' },
+    { symbol: '∞', name: 'Infinity' },
+    { symbol: 'π', name: 'Pi' },
+    { symbol: '√', name: 'Square root' },
+    { symbol: '²', name: 'Superscript 2' },
+    { symbol: '³', name: 'Superscript 3' },
+    { symbol: '∑', name: 'Summation' },
+    { symbol: '∫', name: 'Integral' },
+    { symbol: '∂', name: 'Partial derivative' },
+    { symbol: '∆', name: 'Delta/Laplacian' },
+    { symbol: '°', name: 'Degree' },
+    { symbol: '%', name: 'Percent' },
+    // Common Greek letters
+    { symbol: 'α', name: 'Alpha' },
+    { symbol: 'β', name: 'Beta' },
+    { symbol: 'γ', name: 'Gamma' },
+    { symbol: 'δ', name: 'Delta' },
+    { symbol: 'θ', name: 'Theta' },
+    { symbol: 'λ', name: 'Lambda' },
+    { symbol: 'μ', name: 'Mu' },
+    { symbol: 'σ', name: 'Sigma' },
+    { symbol: 'φ', name: 'Phi' },
+    { symbol: 'ω', name: 'Omega' },
+  ];
+
+  const frequentSymbols = [
+    // More operations
+    { symbol: '∓', name: 'Minus-plus' },
+    { symbol: '∙', name: 'Bullet operator' },
+    { symbol: '∘', name: 'Ring operator' },
+    { symbol: '≡', name: 'Identical to' },
+    { symbol: '≪', name: 'Much less than' },
+    { symbol: '≫', name: 'Much greater than' },
+    { symbol: '∝', name: 'Proportional to' },
+    { symbol: 'e', name: 'Euler\'s number' },
+    { symbol: '∛', name: 'Cube root' },
+    { symbol: '∜', name: 'Fourth root' },
+    { symbol: '⁴', name: 'Superscript 4' },
+    { symbol: '⁵', name: 'Superscript 5' },
+    { symbol: '⁻¹', name: 'Superscript -1' },
+    { symbol: '∏', name: 'Product' },
+    { symbol: '∬', name: 'Double integral' },
+    { symbol: '∭', name: 'Triple integral' },
+    { symbol: '∇', name: 'Nabla/Del' },
+    { symbol: '∴', name: 'Therefore' },
+    { symbol: '∵', name: 'Because' },
+    // More Greek letters
+    { symbol: 'ε', name: 'Epsilon' },
+    { symbol: 'ζ', name: 'Zeta' },
+    { symbol: 'η', name: 'Eta' },
+    { symbol: 'ι', name: 'Iota' },
+    { symbol: 'κ', name: 'Kappa' },
+    { symbol: 'ν', name: 'Nu' },
+    { symbol: 'ξ', name: 'Xi' },
+    { symbol: 'ρ', name: 'Rho' },
+    { symbol: 'τ', name: 'Tau' },
+    { symbol: 'υ', name: 'Upsilon' },
+    { symbol: 'χ', name: 'Chi' },
+    { symbol: 'ψ', name: 'Psi' },
+    // Set theory basics
+    { symbol: '∈', name: 'Element of' },
+    { symbol: '∉', name: 'Not an element of' },
+    { symbol: '⊂', name: 'Subset of' },
+    { symbol: '⊃', name: 'Superset of' },
+    { symbol: '∪', name: 'Union' },
+    { symbol: '∩', name: 'Intersection' },
+    { symbol: '∅', name: 'Empty set' },
+  ];
+
+  const rarelyUsedSymbols = [
+    // Advanced symbols
+    { symbol: 'ℏ', name: 'Reduced Planck constant' },
+    { symbol: 'ℓ', name: 'Script l' },
+    { symbol: '∮', name: 'Contour integral' },
+    { symbol: '⊆', name: 'Subset of or equal to' },
+    { symbol: '⊇', name: 'Superset of or equal to' },
+    { symbol: '∀', name: 'For all' },
+    { symbol: '∃', name: 'There exists' },
+    { symbol: '∄', name: 'There does not exist' },
+    { symbol: '∧', name: 'Logical and' },
+    { symbol: '∨', name: 'Logical or' },
+    { symbol: '¬', name: 'Logical not' },
+    { symbol: '⊕', name: 'Exclusive or' },
+    { symbol: '→', name: 'Implies' },
+    { symbol: '↔', name: 'If and only if' },
+    // Capital Greek letters
+    { symbol: 'Α', name: 'Alpha (capital)' },
+    { symbol: 'Β', name: 'Beta (capital)' },
+    { symbol: 'Γ', name: 'Gamma (capital)' },
+    { symbol: 'Δ', name: 'Delta (capital)' },
+    { symbol: 'Ε', name: 'Epsilon (capital)' },
+    { symbol: 'Ζ', name: 'Zeta (capital)' },
+    { symbol: 'Η', name: 'Eta (capital)' },
+    { symbol: 'Θ', name: 'Theta (capital)' },
+    { symbol: 'Ι', name: 'Iota (capital)' },
+    { symbol: 'Κ', name: 'Kappa (capital)' },
+    { symbol: 'Λ', name: 'Lambda (capital)' },
+    { symbol: 'Μ', name: 'Mu (capital)' },
+    { symbol: 'Ν', name: 'Nu (capital)' },
+    { symbol: 'Ξ', name: 'Xi (capital)' },
+    { symbol: 'Ο', name: 'Omicron (capital)' },
+    { symbol: 'Π', name: 'Pi (capital)' },
+    { symbol: 'Ρ', name: 'Rho (capital)' },
+    { symbol: 'Σ', name: 'Sigma (capital)' },
+    { symbol: 'Τ', name: 'Tau (capital)' },
+    { symbol: 'Υ', name: 'Upsilon (capital)' },
+    { symbol: 'Φ', name: 'Phi (capital)' },
+    { symbol: 'Χ', name: 'Chi (capital)' },
+    { symbol: 'Ψ', name: 'Psi (capital)' },
+    { symbol: 'Ω', name: 'Omega (capital)' },
+    // Geometry and arrows
+    { symbol: '∠', name: 'Angle' },
+    { symbol: '⊥', name: 'Perpendicular' },
+    { symbol: '∥', name: 'Parallel' },
+    { symbol: '△', name: 'Triangle' },
+    { symbol: '□', name: 'Square' },
+    { symbol: '◯', name: 'Circle' },
+    { symbol: '↑', name: 'Up arrow' },
+    { symbol: '↓', name: 'Down arrow' },
+    { symbol: '←', name: 'Left arrow' },
+    { symbol: '⇒', name: 'Double right arrow' },
+    { symbol: '⇔', name: 'Double left-right arrow' },
+    // Miscellaneous
+    { symbol: '§', name: 'Section sign' },
+    { symbol: '¶', name: 'Paragraph sign' },
+    { symbol: '†', name: 'Dagger' },
+    { symbol: '‡', name: 'Double dagger' },
+    { symbol: '•', name: 'Bullet' },
+    { symbol: '‰', name: 'Per mille' },
+    { symbol: '℃', name: 'Celsius' },
+    { symbol: '℉', name: 'Fahrenheit' },
+    { symbol: 'Å', name: 'Angstrom' },
+    { symbol: '℧', name: 'Mho' },
+  ];
+
+  const getCurrentSymbols = () => {
+    switch (currentSymbolPage) {
+      case 1:
+        return mostFrequentSymbols;
+      case 2:
+        return frequentSymbols;
+      case 3:
+        return rarelyUsedSymbols;
+      default:
+        return mostFrequentSymbols;
+    }
+  };
+
+  const getPageTitle = () => {
+    switch (currentSymbolPage) {
+      case 1:
+        return 'Most Frequent Symbols';
+      case 2:
+        return 'Frequent Symbols';
+      case 3:
+        return 'Rarely Used Symbols';
+      default:
+        return 'Mathematical Symbols';
+    }
+  };
 
   useEffect(() => {
     const loadSavedData = async () => {
@@ -233,6 +417,75 @@ const QuizCreator = () => {
     }
     
     return options;
+  };
+
+  const sendReminderEmail = async (date: string, time: string, email: string) => {
+    try {
+      const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          service_id: 'default_service',
+          template_id: 'quiz_reminder',
+          user_id: 'zebg hrev zwyt ftiu',
+          template_params: {
+            to_email: email,
+            quiz_name: metadata.name,
+            quiz_date: date,
+            quiz_time: time,
+            subject: metadata.subject,
+            instructor: metadata.instructor,
+            from_name: 'Quiz Builder',
+            from_email: 'quizbuilder86@gmail.com',
+          },
+        }),
+      });
+
+      if (response.ok) {
+        // Alternative: Send email via simple SMTP endpoint
+        const emailData = {
+          to: email,
+          subject: `Quiz Reminder: ${metadata.name}`,
+          html: `
+            <h2>Quiz Reminder</h2>
+            <p>This is a reminder for your upcoming quiz:</p>
+            <ul>
+              <li><strong>Quiz Name:</strong> ${metadata.name}</li>
+              <li><strong>Subject:</strong> ${metadata.subject}</li>
+              <li><strong>Instructor:</strong> ${metadata.instructor}</li>
+              <li><strong>Date:</strong> ${date}</li>
+              <li><strong>Time:</strong> ${time}</li>
+              <li><strong>Duration:</strong> ${metadata.allowed_time} minutes</li>
+            </ul>
+            <p>Please be prepared and ready to take the quiz at the scheduled time.</p>
+            <p>Good luck!</p>
+          `,
+        };
+
+        // Using a simple SMTP service call
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(emailData),
+        });
+
+        toast({
+          title: "Reminder Set",
+          description: `Quiz reminder email will be sent to ${email} for ${date} at ${time}`,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to send reminder email:', error);
+      toast({
+        title: "Reminder Failed",
+        description: "Failed to schedule email reminder, but ZIP file was generated.",
+        variant: "destructive",
+      });
+    }
   };
 
   const saveSession = async () => {
@@ -569,6 +822,31 @@ const QuizCreator = () => {
     }
   };
 
+  const handleReminderSubmit = async (sendReminder: boolean) => {
+    if (sendReminder) {
+      if (!reminderDate || !reminderTime || !reminderEmail) {
+        toast({
+          title: "Missing Information",
+          description: "Please fill in all reminder fields.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Send email reminder
+      await sendReminderEmail(reminderDate, reminderTime, reminderEmail);
+    }
+    
+    // Generate ZIP in both cases
+    await generateZip();
+    
+    // Close dialog and reset fields
+    setShowReminderDialog(false);
+    setReminderDate('');
+    setReminderTime('');
+    setReminderEmail('');
+  };
+
   const validateCurrentQuestion = () => {
     if (currentScreen === 3 && questions[currentQuestionIndex]) {
       const currentQuestion = questions[currentQuestionIndex];
@@ -610,6 +888,62 @@ const QuizCreator = () => {
       metadata.allowed_time > 0 &&
       metadata.num_displayed_questions > 0
     );
+  };
+
+  const insertMathSymbol = (questionId: number, symbol: string) => {
+    const currentQuestion = questions.find(q => q.id === questionId);
+    if (currentQuestion) {
+      let formattedSymbol = symbol;
+      
+      // Apply active formatting
+      if (activeFormatting === 'superscript') {
+        formattedSymbol = `^{${symbol}}`;
+      } else if (activeFormatting === 'subscript') {
+        formattedSymbol = `_{${symbol}}`;
+      }
+      
+      const updatedQuestion = currentQuestion.question + formattedSymbol;
+      updateQuestion(questionId, 'question', updatedQuestion);
+    }
+  };
+
+  const handleQuestionTextChange = (questionId: number, value: string, previousValue: string) => {
+    let formattedValue = value;
+    
+    // If formatting is active and new text was added
+    if (activeFormatting !== 'none' && value.length > previousValue.length) {
+      const newText = value.slice(previousValue.length);
+      const beforeNewText = value.slice(0, previousValue.length);
+      
+      if (activeFormatting === 'superscript') {
+        formattedValue = beforeNewText + `^{${newText}}`;
+      } else if (activeFormatting === 'subscript') {
+        formattedValue = beforeNewText + `_{${newText}}`;
+      }
+    }
+    
+    updateQuestion(questionId, 'question', formattedValue);
+  };
+
+  const toggleFormatting = (format: 'superscript' | 'subscript') => {
+    if (activeFormatting === format) {
+      setActiveFormatting('none');
+    } else {
+      setActiveFormatting(format);
+    }
+  };
+
+  const renderMathPreview = (text: string) => {
+    // Convert ^{...} to <sup>...</sup> and _{...} to <sub>...</sub>
+    let rendered = text;
+    
+    // Handle superscript: ^{content}
+    rendered = rendered.replace(/\^{([^}]*)}/g, '<sup>$1</sup>');
+    
+    // Handle subscript: _{content}
+    rendered = rendered.replace(/_{([^}]*)}/g, '<sub>$1</sub>');
+    
+    return rendered;
   };
 
   const renderScreen1 = () => (
@@ -900,16 +1234,114 @@ const QuizCreator = () => {
                     <Label htmlFor={`question-${currentQuestion.id}`} className="text-sm">
                       Question Text <span className="text-red-500">*</span>
                     </Label>
-                    <Textarea
-                      id={`question-${currentQuestion.id}`}
-                      value={currentQuestion.question}
-                      onChange={(e) => updateQuestion(currentQuestion.id, 'question', e.target.value)}
-                      placeholder="Enter your question..."
-                      className={`min-h-[80px] text-sm ${currentQuestion.question.trim() === '' ? 'border-red-300 focus:border-red-500' : ''}`}
-                      required
-                    />
+                    <div className="relative">
+                      <Textarea
+                        id={`question-${currentQuestion.id}`}
+                        value={currentQuestion.question}
+                        onChange={(e) => handleQuestionTextChange(currentQuestion.id, e.target.value, currentQuestion.question)}
+                        placeholder="Enter your question..."
+                        className={`min-h-[80px] text-sm pr-32 ${currentQuestion.question.trim() === '' ? 'border-red-300 focus:border-red-500' : ''}`}
+                        required
+                      />
+                      <div className="absolute top-2 right-2 flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-6 w-6 p-0 hover:bg-gray-100 ${activeFormatting === 'superscript' ? 'bg-blue-100 text-blue-600' : ''}`}
+                          type="button"
+                          onClick={() => toggleFormatting('superscript')}
+                          title="Toggle superscript mode"
+                        >
+                          <Superscript className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-6 w-6 p-0 hover:bg-gray-100 ${activeFormatting === 'subscript' ? 'bg-blue-100 text-blue-600' : ''}`}
+                          type="button"
+                          onClick={() => toggleFormatting('subscript')}
+                          title="Toggle subscript mode"
+                        >
+                          <Subscript className="h-3 w-3" />
+                        </Button>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 hover:bg-gray-100"
+                              type="button"
+                            >
+                              <Sigma className="h-3 w-3" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-96 max-h-96 overflow-y-auto">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h4 className="font-medium text-sm">{getPageTitle()}</h4>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    onClick={() => setCurrentSymbolPage(Math.max(1, currentSymbolPage - 1))}
+                                    disabled={currentSymbolPage === 1}
+                                  >
+                                    <ChevronLeft className="h-3 w-3" />
+                                  </Button>
+                                  <span className="text-xs text-gray-600">
+                                    {currentSymbolPage}/3
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    onClick={() => setCurrentSymbolPage(Math.min(3, currentSymbolPage + 1))}
+                                    disabled={currentSymbolPage === 3}
+                                  >
+                                    <ChevronRight className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-8 gap-1">
+                                {getCurrentSymbols().map((item, index) => (
+                                  <Button
+                                    key={index}
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-sm hover:bg-blue-50"
+                                    onClick={() => insertMathSymbol(currentQuestion.id, item.symbol)}
+                                    title={item.name}
+                                  >
+                                    {item.symbol}
+                                  </Button>
+                                ))}
+                              </div>
+                              {activeFormatting !== 'none' && (
+                                <div className="pt-2 border-t">
+                                  <p className="text-xs text-blue-600">
+                                    {activeFormatting === 'superscript' ? 'Superscript mode active' : 'Subscript mode active'} - symbols will be formatted automatically
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </div>
                     {currentQuestion.question.trim() === '' && (
                       <p className="text-red-500 text-xs mt-1">Question is required</p>
+                    )}
+                    
+                    {/* Math Preview */}
+                    {currentQuestion.question && (currentQuestion.question.includes('^{') || currentQuestion.question.includes('_{')) && (
+                      <div className="mt-2 p-2 bg-gray-50 border rounded-lg">
+                        <Label className="text-xs text-gray-600">Preview:</Label>
+                        <div 
+                          className="text-sm mt-1"
+                          dangerouslySetInnerHTML={{ __html: renderMathPreview(currentQuestion.question) }}
+                        />
+                      </div>
                     )}
                   </div>
                   
@@ -1059,7 +1491,7 @@ const QuizCreator = () => {
                     className="flex items-center gap-1 text-xs px-3"
                   >
                     <FileText className="h-3 w-3" />
-                    Instructions Screen
+                    Instructions
                   </Button>
                   
                   <Button
@@ -1102,14 +1534,75 @@ const QuizCreator = () => {
                     </AlertDialogContent>
                   </AlertDialog>
                   
-                  <Button
-                    onClick={generateZip}
-                    size="sm"
-                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-xs px-3"
-                  >
-                    <Download className="h-3 w-3 mr-1" />
-                    Generate ZIP
-                  </Button>
+                  <Dialog open={showReminderDialog} onOpenChange={setShowReminderDialog}>
+                    <DialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-xs px-3"
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        Generate ZIP
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <Calendar className="h-5 w-5 text-blue-600" />
+                          Quiz Reminder
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="reminder-date">Date</Label>
+                          <Input
+                            id="reminder-date"
+                            type="date"
+                            value={reminderDate}
+                            onChange={(e) => setReminderDate(e.target.value)}
+                            className="w-full"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="reminder-time">Time</Label>
+                          <Input
+                            id="reminder-time"
+                            type="time"
+                            value={reminderTime}
+                            onChange={(e) => setReminderTime(e.target.value)}
+                            className="w-full"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="reminder-email">Email Address</Label>
+                          <Input
+                            id="reminder-email"
+                            type="email"
+                            value={reminderEmail}
+                            onChange={(e) => setReminderEmail(e.target.value)}
+                            placeholder="Enter email address"
+                            className="w-full"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-2 pt-4">
+                          <Button
+                            onClick={() => handleReminderSubmit(true)}
+                            className="w-full bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
+                          >
+                            <Mail className="h-4 w-4" />
+                            Yes, Remind Me & Generate ZIP
+                          </Button>
+                          <Button
+                            onClick={() => handleReminderSubmit(false)}
+                            variant="outline"
+                            className="w-full flex items-center gap-2"
+                          >
+                            <Download className="h-4 w-4" />
+                            Just Generate ZIP
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </CardContent>
             </Card>
@@ -1130,10 +1623,10 @@ const QuizCreator = () => {
                     id="num-questions"
                     type="number"
                     min="1"
-                    max="500"
+                    max="50"
                     value={numberOfQuestions}
                     onChange={(e) => adjustQuestions(parseInt(e.target.value) || 1)}
-                    className="w-12 h-6 text-xs"
+                    className="w-16 h-6 text-xs"
                   />
                 </div>
                 
