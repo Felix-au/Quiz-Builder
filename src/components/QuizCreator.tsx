@@ -1754,5 +1754,4 @@ const templateParams = {
     </div>
   );
 };
-
 export default QuizCreator;
