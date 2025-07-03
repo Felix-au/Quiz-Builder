@@ -734,9 +734,26 @@ const templateParams = {
             ...q,
             imageFile: file,
             originalImageFileName: file.name,
+            imgbbUrl: undefined, // Clear old imgbb URL when new image is uploaded
             image_path: `quiz_images\\${newFileName}`,
             image_url: `http://192.168.1.194:8080/${newFileName}`,
             image: `images/${newFileName}`,
+          }
+        : q
+    ));
+  };
+
+  const removeImage = (questionId: number) => {
+    setQuestions(questions.map(q => 
+      q.id === questionId 
+        ? {
+            ...q,
+            imageFile: undefined,
+            originalImageFileName: undefined,
+            imgbbUrl: undefined,
+            image_path: '',
+            image_url: '',
+            image: '',
           }
         : q
     ));
@@ -1422,10 +1439,21 @@ const templateParams = {
                       Upload
                     </Label>
                     {currentQuestion.imageFile && (
-                      <div className="flex items-center gap-2 text-green-600">
-                        <Check className="h-3 w-3" />
-                        <span className="text-xs">{currentQuestion.imageFile.name}</span>
-                      </div>
+                      <>
+                        <div className="flex items-center gap-2 text-green-600">
+                          <Check className="h-3 w-3" />
+                          <span className="text-xs">{currentQuestion.imageFile.name}</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeImage(currentQuestion.id)}
+                          className="text-red-600 hover:text-red-800 h-6 w-6 p-0"
+                          title="Remove image"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </>
                     )}
                   </div>
                   {currentQuestion.imageFile && (
