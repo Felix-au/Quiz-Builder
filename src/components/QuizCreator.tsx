@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText, Sigma, Superscript, Subscript, Calendar, Mail, ChevronRight } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText, Sigma, Superscript, Subscript, Calendar, Mail, ChevronRight, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import JSZip from 'jszip';
 import * as FileSaver from 'file-saver';
@@ -1156,12 +1157,26 @@ const templateParams = {
         </div>
 
         <div>
-          <Label htmlFor="num-displayed-questions">Number of Displayed Questions <span className="text-red-500">*</span></Label>
+          <div className="flex items-center gap-2 mb-2">
+            <Label htmlFor="num-displayed-questions">Number of Displayed Questions <span className="text-red-500">*</span></Label>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-4 w-4 text-gray-500 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">
+                    The number of questions a student will attempt when taking the quiz. This allows you to create a larger question pool while only showing a subset to each student.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <Input
             id="num-displayed-questions"
             type="number"
             min="1"
-            max="50"
+            max="500"
             value={metadata.num_displayed_questions || ''}
             onChange={(e) => {
               const value = parseInt(e.target.value) || 1;
@@ -1236,7 +1251,7 @@ const templateParams = {
         <div className="col-span-4">
           {currentQuestion && (
             <Card className="shadow-lg border-0 h-full">
-              <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg py-3">
+              <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-t-lg py-3">
                 <CardTitle className="text-lg">Question {currentQuestionIndex + 1}</CardTitle>
               </CardHeader>
               <CardContent className="p-4 space-y-3 overflow-y-auto">
@@ -1625,7 +1640,7 @@ const templateParams = {
         {/* Questions Navigation - Compact sidebar */}
         <div className="col-span-1">
           <Card className="shadow-lg border-0 sticky top-6">
-            <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg py-2">
+            <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-t-lg py-2">
               <CardTitle className="text-sm">Questions</CardTitle>
             </CardHeader>
             <CardContent className="p-3 space-y-3">
@@ -1636,7 +1651,7 @@ const templateParams = {
                     id="num-questions"
                     type="number"
                     min="1"
-                    max="50"
+                    max="500"
                     value={numberOfQuestions}
                     onChange={(e) => adjustQuestions(parseInt(e.target.value) || 1)}
                     className="w-16 h-6 text-xs"
@@ -1650,7 +1665,7 @@ const templateParams = {
                       variant={currentQuestionIndex === i ? "default" : "outline"}
                       size="sm"
                       onClick={() => setCurrentQuestionIndex(i)}
-                      className="w-6 h-6 rounded text-xs p-0"
+                      className="w-6 h-6 rounded-full text-xs p-0"
                     >
                       {i + 1}
                     </Button>
@@ -1754,4 +1769,5 @@ const templateParams = {
     </div>
   );
 };
+
 export default QuizCreator;
