@@ -783,6 +783,18 @@ const templateParams = {
           questions: questions.map((q, index) => {
             // Clean up the question object, removing imageFile, originalImageFileName, and imgbbUrl
             const { imageFile, originalImageFileName, imgbbUrl, ...cleanQuestion } = q;
+            
+            // Filter out empty options
+            const filteredOptions = cleanQuestion.options
+              .filter(opt => opt.option_text.trim() !== '')
+              .map((opt, optIndex) => ({
+                id: opt.id,
+                question_id: cleanQuestion.id,
+                option_text: opt.option_text,
+                is_correct: opt.is_correct,
+                option_order: optIndex + 1,
+              }));
+
             return {
               id: cleanQuestion.id,
               quiz_id: metadata.id,
@@ -791,16 +803,10 @@ const templateParams = {
               summary: cleanQuestion.summary,
               question_order: index,
               points: cleanQuestion.points,
-              image_path: cleanQuestion.image_path.replace(/\\/g, '/'),
-              image_url: cleanQuestion.image_url,
-              image: cleanQuestion.image,
-              options: cleanQuestion.options.map((opt, optIndex) => ({
-                id: opt.id,
-                question_id: cleanQuestion.id,
-                option_text: opt.option_text,
-                is_correct: opt.is_correct,
-                option_order: optIndex + 1,
-              })),
+              image_path: cleanQuestion.image_path || null,
+              image_url: cleanQuestion.image_url || null,
+              image: cleanQuestion.image || null,
+              options: filteredOptions,
             };
           }),
         }
