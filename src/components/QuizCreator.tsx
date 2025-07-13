@@ -1542,14 +1542,14 @@ const QuizCreator = () => {
     const currentQuestion = questions[currentQuestionIndex];
     
     return (
-      <div className="grid grid-cols-5 gap-4 h-[calc(100vh-12rem)]">
+      <div className="grid grid-cols-5 gap-4 h-[calc(100vh-14rem)]">
         <div className="col-span-4">
           {currentQuestion && (
             <Card className="shadow-lg border-0 h-full">
-              <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-t-lg py-3">
+              <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-t-lg py-2">
                 <CardTitle className="text-lg">Question {currentQuestionIndex + 1}</CardTitle>
               </CardHeader>
-              <CardContent className="p-4 space-y-3 overflow-y-auto">
+              <CardContent className="p-3 space-y-2 overflow-y-auto">
                 <div className="grid grid-cols-3 gap-3">
                   <div className="col-span-2">
                     <Label htmlFor={`question-${currentQuestion.id}`} className="text-sm">
@@ -1689,7 +1689,7 @@ const QuizCreator = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label className="text-sm">Question Image</Label>
                   <div className="flex items-center gap-3">
                     <Input
@@ -1738,7 +1738,7 @@ const QuizCreator = () => {
                   )}
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <div className="flex justify-between items-center">
                     <Label className="text-sm">Answer Options</Label>
                     <Button
@@ -1780,7 +1780,7 @@ const QuizCreator = () => {
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center pt-2 border-t">
+                <div className="flex justify-between items-center pt-1 border-t">
                   <Button
                     onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
                     disabled={currentQuestionIndex === 0}
@@ -1808,7 +1808,7 @@ const QuizCreator = () => {
                   </Button>
                 </div>
 
-                <div className="flex justify-center gap-2 pt-2 border-t">
+                <div className="flex justify-center gap-2 pt-1 border-t">
                   <Button
                     onClick={() => setCurrentScreen(2)}
                     variant="outline"
