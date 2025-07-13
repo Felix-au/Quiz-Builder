@@ -1477,7 +1477,7 @@ const QuizCreator = () => {
             max="500"
             value={metadata.num_displayed_questions || ''}
             onChange={(e) => {
-              const value = parseInt(e.target.value) || 1;
+              const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
               setMetadata(prev => ({ ...prev, num_displayed_questions: value }));
               if (numberOfQuestions < value) {
                 setNumberOfQuestions(value);
