@@ -124,7 +124,7 @@ const LoginScreen = () => {
                   required
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white" disabled={loading}>
                 <KeyRound className="w-4 h-4 mr-2" />
                 {loading ? 'Sending...' : 'Send Reset Email'}
               </Button>
@@ -162,7 +162,7 @@ const LoginScreen = () => {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white" disabled={loading}>
                   {isSignUp ? <UserPlus className="w-4 h-4 mr-2" /> : <LogIn className="w-4 h-4 mr-2" />}
                   {loading ? 'Please wait...' : isSignUp ? 'Create Account' : 'Sign In'}
                 </Button>
