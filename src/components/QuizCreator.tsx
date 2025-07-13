@@ -10,8 +10,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText, Sigma, Superscript, Subscript, Calendar, Mail, ChevronRight, HelpCircle, FileUp, PlayCircle, RefreshCw } from 'lucide-react';
+import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText, Sigma, Superscript, Subscript, Calendar, Mail, ChevronRight, HelpCircle, FileUp, PlayCircle, RefreshCw, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import JSZip from 'jszip';
 import * as FileSaver from 'file-saver';
 import { uploadImageToImgBB, downloadImageAsFile } from '@/utils/imageUpload';
@@ -67,6 +68,7 @@ interface QuizMetadata {
 
 const QuizCreator = () => {
   const { toast } = useToast();
+  const { logout, user } = useAuth();
   const [currentScreen, setCurrentScreen] = useState(0);
   const [showFlushDialog, setShowFlushDialog] = useState(false);
   const [showReminderDialog, setShowReminderDialog] = useState(false);
@@ -110,6 +112,7 @@ const QuizCreator = () => {
   const [customProgram, setCustomProgram] = useState('');
   const [customDepartment, setCustomDepartment] = useState('');
   const [customSections, setCustomSections] = useState('');
+  const [skipLoadSavedData, setSkipLoadSavedData] = useState(false);
 
   const programs = [
     { value: 'BTech', label: 'BTech', years: 4 },
@@ -292,54 +295,16 @@ const QuizCreator = () => {
 
   useEffect(() => {
     const loadSavedData = async () => {
+      // Skip loading saved data if user explicitly wants to start new quiz
+      if (skipLoadSavedData) {
+        setSkipLoadSavedData(false); // Reset the flag
+        return;
+      }
+      
       const savedData = localStorage.getItem('quizCreatorData');
       if (savedData) {
-        const parsed = JSON.parse(savedData);
-        setMetadata(parsed.metadata || metadata);
-        
-        if (parsed.instructions && parsed.instructions.length > 0) {
-          setInstructions(parsed.instructions);
-        } else {
-          const defaultInstruction: Instruction = {
-            id: 1,
-            instruction_text: 'Once the quiz starts, full screen will trigger automatically, everytime window goes out of focus or is switched, one fault is counted. Faculty may terminate quiz or negative marks may be given based on it.',
-            instruction_order: 1,
-          };
-          setInstructions([defaultInstruction]);
-        }
-        
-        const loadedQuestions = parsed.questions || [];
-        
-        const questionsWithImages = await Promise.all(
-          loadedQuestions.map(async (q: Question) => {
-            if (q.imgbbUrl && q.originalImageFileName) {
-              try {
-                const imageFile = await downloadImageAsFile(q.imgbbUrl, q.originalImageFileName);
-                return { ...q, imageFile };
-              } catch (error) {
-                console.error('Failed to download image for question', q.id, error);
-                toast({
-                  title: "Image Download Failed",
-                  description: `Failed to restore image for question ${q.id}`,
-                  variant: "destructive",
-                });
-                return { ...q, imageFile: undefined };
-              }
-            }
-            return { ...q, imageFile: undefined };
-          })
-        );
-        
-        setQuestions(questionsWithImages);
-        setCurrentScreen(parsed.currentScreen || 0);
-        
-        const displayedQuestions = parsed.metadata?.num_displayed_questions || 1;
-        const totalQuestions = Math.max(displayedQuestions, parsed.numberOfQuestions || 1);
-        setNumberOfQuestions(totalQuestions);
-        
-        setSelectedProgram(parsed.selectedProgram || '');
-        setSelectedDepartment(parsed.selectedDepartment || '');
-        setSelectedSections(parsed.selectedSections || []);
+        await loadSavedDataFromStorage();
+        setCurrentScreen(0);
       } else {
         const defaultInstruction: Instruction = {
           id: 1,
@@ -404,13 +369,125 @@ const QuizCreator = () => {
     return options;
   };
 
-  const loadFromSavedSession = () => {
+  const loadSavedDataFromStorage = async () => {
+    const savedData = localStorage.getItem('quizCreatorData');
+    if (savedData) {
+      const parsed = JSON.parse(savedData);
+      setMetadata(parsed.metadata || metadata);
+      
+      if (parsed.instructions && parsed.instructions.length > 0) {
+        setInstructions(parsed.instructions);
+      } else {
+        const defaultInstruction: Instruction = {
+          id: 1,
+          instruction_text: 'Once the quiz starts, full screen will trigger automatically, everytime window goes out of focus or is switched, one fault is counted. Faculty may terminate quiz or negative marks may be given based on it.',
+          instruction_order: 1,
+        };
+        setInstructions([defaultInstruction]);
+      }
+      
+      const loadedQuestions = parsed.questions || [];
+      
+      const questionsWithImages = await Promise.all(
+        loadedQuestions.map(async (q: Question) => {
+          if (q.imgbbUrl && q.originalImageFileName) {
+            try {
+              const imageFile = await downloadImageAsFile(q.imgbbUrl, q.originalImageFileName);
+              return { ...q, imageFile };
+            } catch (error) {
+              console.error('Failed to download image for question', q.id, error);
+              toast({
+                title: "Image Download Failed",
+                description: `Failed to restore image for question ${q.id}`,
+                variant: "destructive",
+              });
+              return { ...q, imageFile: undefined };
+            }
+          }
+          return { ...q, imageFile: undefined };
+        })
+      );
+      
+      setQuestions(questionsWithImages);
+      
+      const displayedQuestions = parsed.metadata?.num_displayed_questions || 1;
+      const totalQuestions = Math.max(displayedQuestions, parsed.numberOfQuestions || 1);
+      setNumberOfQuestions(totalQuestions);
+      
+      setSelectedProgram(parsed.selectedProgram || '');
+      setSelectedDepartment(parsed.selectedDepartment || '');
+      setSelectedSections(parsed.selectedSections || []);
+      setCustomProgram(parsed.customProgram || '');
+      setCustomDepartment(parsed.customDepartment || '');
+      setCustomSections(parsed.customSections || '');
+      
+      toast({
+        title: "Session Loaded",
+        description: "Your saved session has been restored successfully.",
+      });
+    } else {
+      toast({
+        title: "No Saved Session",
+        description: "No saved session found. Start creating a new quiz.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const loadFromSavedSession = async () => {
+    await loadSavedDataFromStorage();
     setCurrentScreen(1);
   };
 
-  const startCleanSheet = () => {
-    flushData();
+  const startNewQuiz = () => {
+    // Set flag to skip loading saved data
+    setSkipLoadSavedData(true);
+    
+    // Reset metadata to default values (don't clear localStorage)
+    setMetadata({
+      id: 1,
+      code: '',
+      name: '',
+      instructor: '',
+      course: '',
+      year: '',
+      academic_year: new Date().getFullYear().toString(),
+      subject: '',
+      subject_code: '',
+      allowed_time: 0,
+      visible: true,
+      total_points: 0,
+      num_displayed_questions: 1,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      created_by: null,
+    });
+    
+    // Reset instructions to default
+    const defaultInstruction: Instruction = {
+      id: 1,
+      instruction_text: 'Once the quiz starts, full screen will trigger automatically, everytime window goes out of focus or is switched, one fault is counted. Faculty may terminate quiz or negative marks may be given based on it.',
+      instruction_order: 1,
+    };
+    setInstructions([defaultInstruction]);
+    
+    // Reset questions to default
+    initializeDefaultQuestion();
+    
+    // Reset form state variables
     setCurrentScreen(1);
+    setNumberOfQuestions(1);
+    setSelectedProgram('');
+    setSelectedDepartment('');
+    setSelectedSections([]);
+    setCustomProgram('');
+    setCustomDepartment('');
+    setCustomSections('');
+    
+    toast({
+      title: "New Quiz Started",
+      description: "Form has been reset. Your previous saved session is still available.",
+    });
   };
 
   const importFromZip = async (file: File) => {
@@ -564,7 +641,7 @@ const QuizCreator = () => {
 
       const templateParams = {
         to_email: email,
-        from_name: 'Quiz Builder',
+        from_name: 'PrashnaSetu',
         from_email: 'quizbuilder86@gmail.com',
         quiz_name: metadata.name,
         quiz_date: date,
@@ -1111,7 +1188,7 @@ const QuizCreator = () => {
   const renderScreen0 = () => (
     <Card className="shadow-lg border-0 max-w-2xl mx-auto">
       <CardHeader className="bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-t-lg">
-        <CardTitle className="text-2xl text-center">Welcome to Quiz Builder</CardTitle>
+        <CardTitle className="text-2xl text-center">Welcome to PrashnaSetu</CardTitle>
       </CardHeader>
       <CardContent className="p-8 space-y-6">
         <div className="text-center mb-8">
@@ -1132,13 +1209,13 @@ const QuizCreator = () => {
           </Button>
           
           <Button
-            onClick={startCleanSheet}
+            onClick={startNewQuiz}
             className="w-full h-16 text-left flex items-center gap-4 bg-blue-600 hover:bg-blue-700 text-white justify-start"
             size="lg"
           >
             <RefreshCw className="h-6 w-6" />
             <div>
-              <div className="font-semibold">Start Clean Sheet</div>
+              <div className="font-semibold">Start New Quiz</div>
               <div className="text-sm opacity-90">Begin with a fresh new quiz</div>
             </div>
           </Button>
@@ -1742,6 +1819,16 @@ const QuizCreator = () => {
                     <FileText className="h-3 w-3" />
                     Instructions
                   </Button>
+
+
+                  <Button
+                onClick={() => setCurrentScreen(0)}
+                variant="outline"
+                className="flex items-center gap-1 text-xs px-3"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Back to Home
+              </Button>
                   
                   <Button
                     onClick={saveSession}
@@ -1900,11 +1987,35 @@ const QuizCreator = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">PrashnaSetu: Think. Compete. Conquer.</h1>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Welcome Header */}
+      <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+        <div className="container flex h-14 items-center justify-between px-4">
+          <div className="flex items-center space-x-2">
+            <h1 className="text-lg font-semibold">PrashnaSetu</h1>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-muted-foreground">
+              Welcome, {user?.displayName || user?.email}
+            </span>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={logout}
+              className="flex items-center space-x-2"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Logout</span>
+            </Button>
+          </div>
         </div>
+      </div>
+      
+      <div className="p-4">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">PrashnaSetu: Think. Compete. Conquer.</h1>
+          </div>
 
         {currentScreen === 0 && renderScreen0()}
         {currentScreen === 1 && renderScreen1()}
@@ -1994,6 +2105,7 @@ const QuizCreator = () => {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
