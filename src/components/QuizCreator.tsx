@@ -1264,7 +1264,7 @@ const QuizCreator = () => {
         <CardTitle className="text-2xl">Quiz Information</CardTitle>
       </CardHeader>
       <CardContent className="p-6 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <Label htmlFor="subject-code">Subject Code <span className="text-red-500">*</span></Label>
             <Input
@@ -1298,6 +1298,83 @@ const QuizCreator = () => {
               id="quiz-name"
               value={metadata.name}
               onChange={(e) => setMetadata(prev => ({ ...prev, name: e.target.value }))}
+              required
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <Label htmlFor="year">Session <span className="text-red-500">*</span></Label>
+            <Select value={metadata.year} onValueChange={(value) => setMetadata(prev => ({ ...prev, year: value }))} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Select session" />
+              </SelectTrigger>
+              <SelectContent>
+                {generateYearOptions().map(year => (
+                  <SelectItem key={year} value={year}>{year}</SelectItem>
+                ))}
+                <SelectItem value="custom">Other (Type your own)</SelectItem>
+              </SelectContent>
+            </Select>
+            {metadata.year === 'custom' && (
+              <Input
+                className="mt-2"
+                placeholder="Enter custom session"
+                onChange={(e) => setMetadata(prev => ({ ...prev, year: e.target.value }))}
+                required
+              />
+            )}
+          </div>
+          <div>
+            <Label htmlFor="instructor">Instructor Name <span className="text-red-500">*</span></Label>
+            <Input
+              id="instructor"
+              value={metadata.instructor}
+              onChange={(e) => setMetadata(prev => ({ ...prev, instructor: e.target.value }))}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="allowed-time">Allowed Time (minutes) <span className="text-red-500">*</span></Label>
+            <Input
+              id="allowed-time"
+              type="number"
+              value={metadata.allowed_time || ''}
+              onChange={(e) => setMetadata(prev => ({ ...prev, allowed_time: parseInt(e.target.value) || 0 }))}
+              required
+            />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Label htmlFor="num-displayed-questions">Number of Displayed Questions <span className="text-red-500">*</span></Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-4 w-4 text-gray-500 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs">
+                      The number of questions a student will attempt when taking the quiz. This allows you to create a larger question pool while only showing a subset to each student.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <Input
+              id="num-displayed-questions"
+              type="number"
+              min="1"
+              max="500"
+              value={metadata.num_displayed_questions || ''}
+              onChange={(e) => {
+                const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                setMetadata(prev => ({ ...prev, num_displayed_questions: value }));
+                if (numberOfQuestions < value) {
+                  setNumberOfQuestions(value);
+                  adjustQuestions(value);
+                }
+              }}
               required
             />
           </div>
@@ -1408,84 +1485,6 @@ const QuizCreator = () => {
               )}
             </div>
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <Label htmlFor="year">Session <span className="text-red-500">*</span></Label>
-            <Select value={metadata.year} onValueChange={(value) => setMetadata(prev => ({ ...prev, year: value }))} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Select session" />
-              </SelectTrigger>
-              <SelectContent>
-                {generateYearOptions().map(year => (
-                  <SelectItem key={year} value={year}>{year}</SelectItem>
-                ))}
-                <SelectItem value="custom">Other (Type your own)</SelectItem>
-              </SelectContent>
-            </Select>
-            {metadata.year === 'custom' && (
-              <Input
-                className="mt-2"
-                placeholder="Enter custom session"
-                onChange={(e) => setMetadata(prev => ({ ...prev, year: e.target.value }))}
-                required
-              />
-            )}
-          </div>
-          <div>
-            <Label htmlFor="instructor">Instructor Name <span className="text-red-500">*</span></Label>
-            <Input
-              id="instructor"
-              value={metadata.instructor}
-              onChange={(e) => setMetadata(prev => ({ ...prev, instructor: e.target.value }))}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="allowed-time">Allowed Time (minutes) <span className="text-red-500">*</span></Label>
-            <Input
-              id="allowed-time"
-              type="number"
-              value={metadata.allowed_time || ''}
-              onChange={(e) => setMetadata(prev => ({ ...prev, allowed_time: parseInt(e.target.value) || 0 }))}
-              required
-            />
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Label htmlFor="num-displayed-questions">Number of Displayed Questions <span className="text-red-500">*</span></Label>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <HelpCircle className="h-4 w-4 text-gray-500 cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="max-w-xs">
-                    The number of questions a student will attempt when taking the quiz. This allows you to create a larger question pool while only showing a subset to each student.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-          <Input
-            id="num-displayed-questions"
-            type="number"
-            min="1"
-            max="500"
-            value={metadata.num_displayed_questions || ''}
-            onChange={(e) => {
-              const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
-              setMetadata(prev => ({ ...prev, num_displayed_questions: value }));
-              if (numberOfQuestions < value) {
-                setNumberOfQuestions(value);
-                adjustQuestions(value);
-              }
-            }}
-            required
-          />
         </div>
         
         {!checkAllRequiredFieldsFilled() && (
