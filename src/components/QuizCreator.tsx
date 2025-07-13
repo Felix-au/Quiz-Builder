@@ -1903,8 +1903,7 @@ const QuizCreator = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Smart Quiz: Quiz Builder</h1>
-          <p className="text-gray-600">Create interactive quizzes with images and export them easily</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">PrashnaSetu: Think. Compete. Conquer.</h1>
         </div>
 
         {currentScreen === 0 && renderScreen0()}

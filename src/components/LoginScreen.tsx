@@ -27,13 +27,13 @@ const LoginScreen = () => {
         await createUserWithEmailAndPassword(auth, email, password);
         toast({
           title: "Account created successfully!",
-          description: "Welcome to Quiz Builder",
+          description: "Welcome to PrashnaSetu",
         });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
         toast({
           title: "Signed in successfully!",
-          description: "Welcome back to Quiz Builder",
+          description: "Welcome back to PrashnaSetu",
         });
       }
     } catch (error: any) {
@@ -83,7 +83,7 @@ const LoginScreen = () => {
       await signInWithPopup(auth, googleProvider);
       toast({
         title: "Signed in with Google",
-        description: "Welcome to Quiz Builder",
+        description: "Welcome to PrashnaSetu",
       });
     } catch (error: any) {
       toast({
@@ -100,7 +100,7 @@ const LoginScreen = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Quiz Builder</CardTitle>
+          <CardTitle className="text-2xl font-bold">PrashnaSetu</CardTitle>
           <CardDescription>
             {showForgotPassword 
               ? 'Reset your password' 
