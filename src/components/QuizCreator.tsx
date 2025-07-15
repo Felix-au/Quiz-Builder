@@ -1188,12 +1188,10 @@ const QuizCreator = () => {
   const renderScreen0 = () => (
     <Card className="shadow-lg border-0 max-w-2xl mx-auto">
       <CardHeader className="bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-t-lg">
-        <CardTitle className="text-2xl text-center">Welcome to PrashnaSetu</CardTitle>
+        <CardTitle className="text-2xl text-center">Choose how you'd like to start creating your quiz</CardTitle>
       </CardHeader>
       <CardContent className="p-8 space-y-6">
-        <div className="text-center mb-8">
-          <p className="text-gray-600 text-lg">Choose how you'd like to start creating your quiz</p>
-        </div>
+    
         
         <div className="space-y-4">
           <Button
@@ -1989,23 +1987,29 @@ const QuizCreator = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Welcome Header */}
       <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="container flex h-14 items-center justify-between px-4">
-          <div className="flex items-center space-x-2">
-            <h1 className="text-lg font-semibold">PrashnaSetu</h1>
-          </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-muted-foreground">
-              Welcome, {user?.displayName || user?.email}
-            </span>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={logout}
-              className="flex items-center space-x-2"
-            >
-              <LogOut className="h-4 w-4" />
-              <span>Logout</span>
-            </Button>
+        <div className="container flex flex-col justify-center px-4">
+          <div className="flex items-center justify-between h-20">
+            <div className="flex items-center gap-3">
+              <img src="/logo2.png" alt="PrashnaSetu Logo" className="h-12 w-12 object-contain" />
+              <div className="flex flex-col justify-center">
+                <h1 className="text-lg font-semibold leading-tight">PrashnaSetu</h1>
+                <span className="text-xs text-muted-foreground leading-tight">Think. Compete. Conquer.</span>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-muted-foreground">
+                Welcome, {user?.displayName || user?.email}
+              </span>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={logout}
+                className="flex items-center space-x-2"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Logout</span>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -2013,8 +2017,8 @@ const QuizCreator = () => {
       <div className="p-4">
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">PrashnaSetu</h1>
-            <p className="text-lg text-gray-700">Think. Compete. Conquer.</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2"></h1>
+            <p className="text-lg text-gray-700"></p>
           </div>
 
         {currentScreen === 0 && renderScreen0()}

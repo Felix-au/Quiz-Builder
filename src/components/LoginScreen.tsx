@@ -102,17 +102,15 @@ const LoginScreen = () => {
         {/* Left Branding Section */}
         <div className="hidden md:flex flex-col items-center justify-center bg-gradient-to-br from-gray-200 to-gray-400 text-gray-900 p-8 h-full min-h-screen w-full">
           <div className="text-center max-w-xs mx-auto">
-            <h1 className="text-4xl font-bold mb-4">PrashnaSetu</h1>
-            <p className="text-xl font-medium opacity-90 mb-2">Think. Compete. Conquer.</p>
-            <p className="text-base opacity-80 mt-2">PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
+            <img src="/logo23.png" alt="PrashnaSetu Logo" className="mx-auto h-56 w-56 object-contain" />
+            <p className="text-base opacity-80 -mt-2 leading-tight">PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
           </div>
         </div>
         {/* Mobile Branding Section */}
         <div className="flex md:hidden flex-col items-center justify-center bg-gradient-to-br from-gray-200 to-gray-400 text-gray-900 p-8 min-h-screen h-full w-full">
           <div className="text-center max-w-xs mx-auto">
-            <h1 className="text-3xl font-bold mb-2">PrashnaSetu</h1>
-            <p className="text-lg font-medium opacity-90 mb-1">Think. Compete. Conquer.</p>
-            <p className="text-sm opacity-80 mt-2">PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
+            <img src="/logo23.png" alt="PrashnaSetu Logo" className="mx-auto h-48 w-48 object-contain" />
+            <p className="text-sm opacity-80 -mt-2 leading-tight">PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
           </div>
         </div>
         {/* Right Form Section */}
