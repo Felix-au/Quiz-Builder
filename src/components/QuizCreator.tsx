@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -85,6 +85,10 @@ const QuizCreator = () => {
   const [activeFormatting, setActiveFormatting] = useState<'none' | 'superscript' | 'subscript'>('none');
   
   const [currentSymbolPage, setCurrentSymbolPage] = useState(1);
+  const [showMultiImportDialog, setShowMultiImportDialog] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importingFiles, setImportingFiles] = useState<string[]>([]);
+  const [currentImportFile, setCurrentImportFile] = useState('');
 
   const [metadata, setMetadata] = useState<QuizMetadata>({
     id: 1,
@@ -114,6 +118,16 @@ const QuizCreator = () => {
   const [newInstruction, setNewInstruction] = useState('');
   const [numberOfQuestions, setNumberOfQuestions] = useState(1);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [questionAdjustTimeout, setQuestionAdjustTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (questionAdjustTimeout) {
+        clearTimeout(questionAdjustTimeout);
+      }
+    };
+  }, [questionAdjustTimeout]);
 
   const [selectedProgram, setSelectedProgram] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
@@ -583,7 +597,25 @@ const QuizCreator = () => {
         instruction_text: inst.instruction_text,
         instruction_order: inst.instruction_order,
       })) || [];
-      setInstructions(importedInstructions);
+      
+      // Check if full screen instruction exists, if not add it
+      const fullScreenInstructionText = 'Once the quiz starts, full screen will trigger automatically, everytime window goes out of focus or is switched, one fault is counted. Faculty may terminate quiz or negative marks may be given based on it.';
+      const hasFullScreenInstruction = importedInstructions.some(inst => 
+        inst.instruction_text.includes('full screen') || 
+        inst.instruction_text.includes('window goes out of focus')
+      );
+      
+      let finalInstructions = importedInstructions;
+      if (!hasFullScreenInstruction) {
+        const fullScreenInstruction: Instruction = {
+          id: Math.max(...importedInstructions.map(inst => inst.id), 0) + 1,
+          instruction_text: fullScreenInstructionText,
+          instruction_order: Math.max(...importedInstructions.map(inst => inst.instruction_order), 0) + 1,
+        };
+        finalInstructions = [fullScreenInstruction, ...importedInstructions];
+      }
+      
+      setInstructions(finalInstructions);
 
       // Load questions with images
       const questionsWithImages = await Promise.all(
@@ -1001,6 +1033,204 @@ const QuizCreator = () => {
       title: "Question Deleted",
       description: "The question has been successfully deleted.",
     });
+  };
+
+  const importFromMultipleZips = async (files: FileList) => {
+    if (files.length === 0) return;
+
+    setShowMultiImportDialog(true);
+    setImportProgress(0);
+    setImportingFiles(Array.from(files).map(f => f.name));
+    setCurrentImportFile('');
+
+    let allQuestions: Question[] = [];
+    let firstMetadata: QuizMetadata | null = null;
+    let firstInstructions: Instruction[] = [];
+    let questionIdCounter = 1;
+
+    try {
+      // Show initial toast
+      toast({
+        title: "Multi-ZIP Import Started",
+        description: `Questions will be combined. Quiz metadata and instructions will be from the first ZIP file.`,
+      });
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setCurrentImportFile(file.name);
+        setImportProgress(((i + 1) / files.length) * 100);
+
+        const zip = new JSZip();
+        const zipContent = await zip.loadAsync(file);
+        
+        const quizJsonFile = zipContent.file('quiz.json');
+        if (!quizJsonFile) {
+          toast({
+            title: "Invalid ZIP file",
+            description: `No quiz.json file found in ${file.name}`,
+            variant: "destructive",
+          });
+          continue;
+        }
+
+        const quizJsonContent = await quizJsonFile.async('text');
+        const quizData = JSON.parse(quizJsonContent);
+        
+        if (!quizData.quiz) {
+          toast({
+            title: "Invalid quiz format",
+            description: `The quiz.json file in ${file.name} does not contain valid quiz data.`,
+            variant: "destructive",
+          });
+          continue;
+        }
+
+        const quiz = quizData.quiz;
+
+        // Use metadata and instructions from first ZIP only
+        if (i === 0) {
+          firstMetadata = {
+            id: quiz.id || 1,
+            code: quiz.code || '',
+            name: quiz.name || '',
+            instructor: quiz.instructor || '',
+            course: quiz.course || '',
+            year: quiz.year || '',
+            academic_year: quiz.academic_year || new Date().getFullYear().toString(),
+            subject: quiz.subject || '',
+            subject_code: quiz.subject_code || '',
+            allowed_time: quiz.allowed_time || 0,
+            visible: quiz.visible !== undefined ? quiz.visible : true,
+            total_points: quiz.total_points || 0,
+            num_displayed_questions: quiz.num_displayed_questions || 1,
+            num_easy_questions: quiz.num_easy_questions || 0,
+            num_medium_questions: quiz.num_medium_questions || 0,
+            num_high_questions: quiz.num_high_questions || 0,
+            allow_resume: quiz.allow_resume !== undefined ? quiz.allow_resume : false,
+            created_at: quiz.created_at || new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            created_by: quiz.created_by || null,
+          };
+
+          firstInstructions = quiz.instructions?.map((inst: any) => ({
+            id: inst.id,
+            instruction_text: inst.instruction_text,
+            instruction_order: inst.instruction_order,
+          })) || [];
+          
+          // Check if full screen instruction exists, if not add it
+          const fullScreenInstructionText = 'Once the quiz starts, full screen will trigger automatically, everytime window goes out of focus or is switched, one fault is counted. Faculty may terminate quiz or negative marks may be given based on it.';
+          const hasFullScreenInstruction = firstInstructions.some(inst => 
+            inst.instruction_text.includes('full screen') || 
+            inst.instruction_text.includes('window goes out of focus')
+          );
+          
+          if (!hasFullScreenInstruction) {
+            const fullScreenInstruction: Instruction = {
+              id: Math.max(...firstInstructions.map(inst => inst.id), 0) + 1,
+              instruction_text: fullScreenInstructionText,
+              instruction_order: Math.max(...firstInstructions.map(inst => inst.instruction_order), 0) + 1,
+            };
+            firstInstructions = [fullScreenInstruction, ...firstInstructions];
+          }
+        }
+
+        // Load questions with images from all ZIPs
+        const questionsWithImages = await Promise.all(
+          quiz.questions?.map(async (q: any) => {
+            let imageFile: File | undefined;
+            
+            if (q.image && zipContent.folder('images')) {
+              const imageFileName = q.image.split('/').pop();
+              const imageFileInZip = zipContent.file(`images/${imageFileName}`);
+              
+              if (imageFileInZip) {
+                try {
+                  const imageBlob = await imageFileInZip.async('blob');
+                  imageFile = new File([imageBlob], imageFileName || 'image.png', { type: imageBlob.type });
+                } catch (error) {
+                  console.error('Failed to load image:', error);
+                }
+              }
+            }
+
+            return {
+              id: questionIdCounter++,
+              question: q.question || '',
+              topic: q.topic || 'NA',
+              summary: q.summary || 'NA',
+              question_order: allQuestions.length,
+              points: q.points || 1,
+              image_path: q.image_path || '',
+              image_url: q.image_url || '',
+              image: q.image || '',
+              difficulty: q.difficulty || 'MEDIUM',
+              imageFile,
+              originalImageFileName: imageFile?.name,
+              options: q.options?.map((opt: any) => ({
+                id: opt.id,
+                option_text: opt.option_text || '',
+                is_correct: opt.is_correct || false,
+                option_order: opt.option_order || 0,
+              })) || [],
+            };
+          }) || []
+        );
+
+        allQuestions = [...allQuestions, ...questionsWithImages];
+      }
+
+      // Set the combined data
+      if (firstMetadata) {
+        setMetadata(firstMetadata);
+        
+        // Parse course field to set program/department/sections
+        if (firstMetadata.course) {
+          const courseParts = firstMetadata.course.split(' ').filter(part => part.trim() !== '');
+          if (courseParts.length > 0) {
+            setSelectedProgram('custom');
+            setCustomProgram(courseParts[0] || '');
+            
+            if (courseParts.length > 1) {
+              setSelectedDepartment('custom');
+              setCustomDepartment(courseParts[1] || '');
+            }
+            
+            if (courseParts.length > 2) {
+              setSelectedSections(['custom']);
+              setCustomSections(courseParts.slice(2).join(' '));
+            }
+          }
+        }
+      }
+
+      setInstructions(firstInstructions);
+      setQuestions(allQuestions);
+      setNumberOfQuestions(allQuestions.length);
+      setCurrentScreen(1);
+      
+      setShowMultiImportDialog(false);
+      setImportProgress(0);
+      setImportingFiles([]);
+      setCurrentImportFile('');
+
+      toast({
+        title: "Multi-ZIP Import Successful",
+        description: `Successfully imported ${allQuestions.length} questions from ${files.length} ZIP files.`,
+      });
+
+    } catch (error) {
+      console.error('Multi-import error:', error);
+      toast({
+        title: "Multi-ZIP Import Failed",
+        description: "Failed to import one or more ZIP files. Please check the file formats.",
+        variant: "destructive",
+      });
+      setShowMultiImportDialog(false);
+      setImportProgress(0);
+      setImportingFiles([]);
+      setCurrentImportFile('');
+    }
   };
 
   const logToGoogleForm = (metadata: QuizMetadata) => {
@@ -1445,25 +1675,25 @@ const QuizCreator = () => {
         <div className="space-y-4">
           <Button
             onClick={loadFromSavedSession}
-            className="w-full h-16 text-left flex items-center gap-4 bg-green-600 hover:bg-green-700 text-white justify-start"
+            className="w-full h-16 md:h-16 min-h-[96px] md:min-h-[64px] text-left flex items-center gap-4 bg-green-600 hover:bg-green-700 text-white justify-start py-4"
             size="lg"
           >
-            <PlayCircle className="h-6 w-6" />
-            <div>
+            <PlayCircle className="h-6 w-6 flex-shrink-0" />
+            <div className="flex flex-col justify-center">
               <div className="font-semibold">Load Last Saved Session</div>
-              <div className="text-sm opacity-90">Continue from where you left off</div>
+              <div className="text-sm opacity-90 leading-tight break-words whitespace-normal">Continue from where you left off</div>
             </div>
           </Button>
           
           <Button
             onClick={startNewQuiz}
-            className="w-full h-16 text-left flex items-center gap-4 bg-blue-600 hover:bg-blue-700 text-white justify-start"
+            className="w-full h-16 md:h-16 min-h-[96px] md:min-h-[64px] text-left flex items-center gap-4 bg-blue-600 hover:bg-blue-700 text-white justify-start py-4"
             size="lg"
           >
-            <RefreshCw className="h-6 w-6" />
-            <div>
+            <RefreshCw className="h-6 w-6 flex-shrink-0" />
+            <div className="flex flex-col justify-center">
               <div className="font-semibold">Start New Quiz</div>
-              <div className="text-sm opacity-90">Begin with a fresh new quiz</div>
+              <div className="text-sm opacity-90 leading-tight break-words whitespace-normal">Begin with a fresh new quiz</div>
             </div>
           </Button>
           
@@ -1471,10 +1701,15 @@ const QuizCreator = () => {
             <Input
               type="file"
               accept=".zip"
+              multiple
               onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  importFromZip(file);
+                const files = e.target.files;
+                if (files && files.length > 0) {
+                  if (files.length === 1) {
+                    importFromZip(files[0]);
+                  } else {
+                    importFromMultipleZips(files);
+                  }
                 }
               }}
               className="hidden"
@@ -1483,14 +1718,14 @@ const QuizCreator = () => {
             <Label htmlFor="import-zip" className="cursor-pointer">
               <Button
                 asChild
-                className="w-full h-16 text-left flex items-center gap-4 bg-orange-600 hover:bg-orange-700 text-white justify-start"
+                className="w-full h-16 md:h-16 min-h-[96px] md:min-h-[64px] text-left flex items-center gap-4 bg-orange-600 hover:bg-orange-700 text-white justify-start py-4"
                 size="lg"
               >
                 <div>
-                  <FileUp className="h-6 w-6" />
-                  <div>
+                  <FileUp className="h-6 w-6 flex-shrink-0" />
+                  <div className="flex flex-col justify-center">
                     <div className="font-semibold">Import from ZIP</div>
-                    <div className="text-sm opacity-90">Load a previously exported quiz</div>
+                    <div className="text-sm opacity-90 leading-tight break-words whitespace-normal">Load one or multiple exported quizzes</div>
                   </div>
                 </div>
               </Button>
@@ -1842,26 +2077,131 @@ const QuizCreator = () => {
     const currentQuestion = questions[currentQuestionIndex];
     
     return (
-      <div className="grid grid-cols-5 gap-4 h-[calc(100vh-14rem)]">
-        <div className="col-span-4">
-          {currentQuestion && (
-            <Card className="shadow-lg border-0 h-full">
-              <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-t-lg py-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Question {currentQuestionIndex + 1}</CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => deleteQuestion(currentQuestion.id)}
-                    className="text-white hover:text-red-200 hover:bg-red-600/20 h-8 w-8 p-0"
-                    title="Delete this question"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 h-[calc(100vh-14rem)]">
+        {/* Mobile: Question circles on top */}
+        <div className="md:hidden col-span-1">
+          <Card className="shadow-lg border-0 mb-4">
+            <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-t-lg py-2">
+              <CardTitle className="text-sm">Questions</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 space-y-3">
+              <div className="space-y-2">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="num-questions" className="text-xs">Total:</Label>
+                    <Input
+                      id="num-questions"
+                      type="number"
+                      min="1"
+                      max="500"
+                      value={numberOfQuestions}
+                      onChange={(e) => {
+                        const newValue = parseInt(e.target.value) || 1;
+                        setNumberOfQuestions(newValue);
+                        // Debounce the actual adjustment
+                        if (questionAdjustTimeout) {
+                          clearTimeout(questionAdjustTimeout);
+                        }
+                        const timeout = setTimeout(() => {
+                          adjustQuestions(newValue);
+                        }, 500);
+                        setQuestionAdjustTimeout(timeout);
+                      }}
+                      className="w-16 h-6 text-xs"
+                    />
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newValue = Math.max(1, numberOfQuestions - 1);
+                          setNumberOfQuestions(newValue);
+                          adjustQuestions(newValue);
+                        }}
+                        className="h-6 w-6 p-0 text-xs"
+                      >
+                        -
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newValue = Math.min(500, numberOfQuestions + 1);
+                          setNumberOfQuestions(newValue);
+                          adjustQuestions(newValue);
+                        }}
+                        className="h-6 w-6 p-0 text-xs"
+                      >
+                        +
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-600">1</span>
+                    <input
+                      type="range"
+                      min="1"
+                      max="500"
+                      value={numberOfQuestions}
+                      onChange={(e) => {
+                        const newValue = parseInt(e.target.value);
+                        setNumberOfQuestions(newValue);
+                        adjustQuestions(newValue);
+                      }}
+                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                    />
+                    <span className="text-xs text-gray-600">500</span>
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent className="p-3 space-y-2 overflow-y-auto">
-                <div className="grid grid-cols-3 gap-3">
+                
+                <div className="grid grid-cols-4 md:grid-cols-4 gap-1">
+                  {Array.from({ length: numberOfQuestions }, (_, i) => {
+                    const question = questions[i];
+                    const difficulty = question?.difficulty || 'MEDIUM';
+                    const difficultyLabel = difficulty === 'LOW' ? 'E' : difficulty === 'MEDIUM' ? 'M' : 'H';
+                    
+                    return (
+                      <div key={i} className="relative">
+                        <Button
+                          variant={currentQuestionIndex === i ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentQuestionIndex(i)}
+                          className="w-8 h-8 md:w-7 md:h-7 rounded-full text-xs p-0 relative"
+                        >
+                          {i + 1}
+                        </Button>
+                        <span className="absolute top-0 left-0 md:-top-1 md:-right-1 text-[8px] font-bold bg-gray-200 text-gray-700 rounded-full w-3 h-3 flex items-center justify-center">
+                          {difficultyLabel}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="col-span-1 md:col-span-4">
+            {currentQuestion && (
+              <Card className="shadow-lg border-0 h-full">
+                <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-t-lg py-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Question {currentQuestionIndex + 1}</CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteQuestion(currentQuestion.id)}
+                      className="text-white hover:text-red-200 hover:bg-red-600/20 h-8 w-8 p-0"
+                      title="Delete this question"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 space-y-2 overflow-y-auto">
+                                  {/* Desktop Layout */}
+                <div className="hidden md:grid grid-cols-3 gap-3">
                   <div className="col-span-2">
                     <Label htmlFor={`question-${currentQuestion.id}`} className="text-sm">
                       Question Text <span className="text-red-500">*</span>
@@ -2016,6 +2356,162 @@ const QuizCreator = () => {
                   </div>
                 </div>
 
+                {/* Mobile Layout */}
+                <div className="md:hidden space-y-4">
+                  <div>
+                    <Label htmlFor={`question-mobile-${currentQuestion.id}`} className="text-sm">
+                      Question Text <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Textarea
+                        id={`question-mobile-${currentQuestion.id}`}
+                        value={currentQuestion.question}
+                        onChange={(e) => handleQuestionTextChange(currentQuestion.id, e.target.value, currentQuestion.question)}
+                        placeholder="Enter your question..."
+                        className={`min-h-[120px] text-sm pr-24 ${currentQuestion.question.trim() === '' ? 'border-red-300 focus:border-red-500' : ''}`}
+                        required
+                      />
+                      <div className="absolute top-2 right-2 flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-8 w-8 p-0 hover:bg-gray-100 ${activeFormatting === 'superscript' ? 'bg-blue-100 text-blue-600' : ''}`}
+                          type="button"
+                          onClick={() => toggleFormatting('superscript')}
+                          title="Toggle superscript mode"
+                        >
+                          <Superscript className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-8 w-8 p-0 hover:bg-gray-100 ${activeFormatting === 'subscript' ? 'bg-blue-100 text-blue-600' : ''}`}
+                          type="button"
+                          onClick={() => toggleFormatting('subscript')}
+                          title="Toggle subscript mode"
+                        >
+                          <Subscript className="h-4 w-4" />
+                        </Button>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 hover:bg-gray-100"
+                              type="button"
+                            >
+                              <Sigma className="h-4 w-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-96 max-h-96 overflow-y-auto">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h4 className="font-medium text-sm">{getPageTitle()}</h4>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    onClick={() => setCurrentSymbolPage(Math.max(1, currentSymbolPage - 1))}
+                                    disabled={currentSymbolPage === 1}
+                                  >
+                                    <ChevronLeft className="h-3 w-3" />
+                                  </Button>
+                                  <span className="text-xs text-gray-600">
+                                    {currentSymbolPage}/3
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    onClick={() => setCurrentSymbolPage(Math.min(3, currentSymbolPage + 1))}
+                                    disabled={currentSymbolPage === 3}
+                                  >
+                                    <ChevronRight className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-8 gap-1">
+                                {getCurrentSymbols().map((item, index) => (
+                                  <Button
+                                    key={index}
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-sm hover:bg-blue-50"
+                                    onClick={() => insertMathSymbol(currentQuestion.id, item.symbol)}
+                                    title={item.name}
+                                  >
+                                    {item.symbol}
+                                  </Button>
+                                ))}
+                              </div>
+                              {activeFormatting !== 'none' && (
+                                <div className="pt-2 border-t">
+                                  <p className="text-xs text-blue-600">
+                                    {activeFormatting === 'superscript' ? 'Superscript mode active' : 'Subscript mode active'} - symbols will be formatted automatically
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </div>
+                    {currentQuestion.question.trim() === '' && (
+                      <p className="text-red-500 text-xs mt-1">Question is required</p>
+                    )}
+                    
+                    {currentQuestion.question && (currentQuestion.question.includes('^{') || currentQuestion.question.includes('_{')) && (
+                      <div className="mt-2 p-2 bg-gray-50 border rounded-lg">
+                        <Label className="text-xs text-gray-600">Preview:</Label>
+                        <div 
+                          className="text-sm mt-1"
+                          dangerouslySetInnerHTML={{ __html: renderMathPreview(currentQuestion.question) }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-3">
+                    <div>
+                      <Label htmlFor={`difficulty-mobile-${currentQuestion.id}`} className="text-sm">Difficulty</Label>
+                      <Select 
+                        value={currentQuestion.difficulty} 
+                        onValueChange={(value) => updateQuestion(currentQuestion.id, 'difficulty', value)}
+                      >
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="LOW">Easy</SelectItem>
+                          <SelectItem value="MEDIUM">Medium</SelectItem>
+                          <SelectItem value="HIGH">High</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor={`topic-mobile-${currentQuestion.id}`} className="text-sm">Topic (Visible only after submission)</Label>
+                      <Input
+                        id={`topic-mobile-${currentQuestion.id}`}
+                        value={currentQuestion.topic}
+                        onChange={(e) => updateQuestion(currentQuestion.id, 'topic', e.target.value)}
+                        className="text-sm h-9"
+                        placeholder="Topic"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`summary-mobile-${currentQuestion.id}`} className="text-sm">Summary (Visible only after submission)</Label>
+                      <Input
+                        id={`summary-mobile-${currentQuestion.id}`}
+                        value={currentQuestion.summary}
+                        onChange={(e) => updateQuestion(currentQuestion.id, 'summary', e.target.value)}
+                        className="text-sm h-9"
+                        placeholder="Summary"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-1">
                   <Label className="text-sm">Question Image</Label>
                   <div className="flex items-center gap-3">
@@ -2135,32 +2631,31 @@ const QuizCreator = () => {
                   </Button>
                 </div>
 
-                <div className="flex justify-center gap-2 pt-1 border-t">
+                <div className="flex flex-wrap justify-center gap-2 pt-1 border-t">
                   <Button
                     onClick={() => setCurrentScreen(2)}
                     variant="outline"
                     size="sm"
-                    className="flex items-center gap-1 text-xs px-3"
+                    className="flex items-center gap-1 text-xs px-3 h-8 md:h-7"
                   >
                     <FileText className="h-3 w-3" />
                     Instructions
                   </Button>
 
-
                   <Button
-                onClick={() => setCurrentScreen(0)}
-                variant="outline"
-                className="flex items-center gap-1 text-xs px-3"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Back to Home
-              </Button>
+                    onClick={() => setCurrentScreen(0)}
+                    variant="outline"
+                    className="flex items-center gap-1 text-xs px-3 h-8 md:h-7"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Back to Home
+                  </Button>
                   
                   <Button
                     onClick={saveSession}
                     variant="outline"
                     size="sm"
-                    className="flex items-center gap-1 text-xs px-3"
+                    className="flex items-center gap-1 text-xs px-3 h-8 md:h-7"
                   >
                     <Save className="h-3 w-3" />
                     Save Session
@@ -2171,7 +2666,7 @@ const QuizCreator = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex items-center gap-1 text-red-600 border-red-600 hover:bg-red-50 text-xs px-3"
+                        className="flex items-center gap-1 text-red-600 border-red-600 hover:bg-red-50 text-xs px-3 h-8 md:h-7"
                       >
                         <Trash2 className="h-3 w-3" />
                         Flush Data
@@ -2198,7 +2693,7 @@ const QuizCreator = () => {
                   
                   <Button
                     size="sm"
-                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-xs px-3"
+                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-xs px-3 h-8 md:h-7"
                     onClick={() => {
                       // Validate difficulty distribution first
                       const easyQuestions = questions.filter(q => q.difficulty === 'LOW').length;
@@ -2306,7 +2801,8 @@ const QuizCreator = () => {
           )}
         </div>
 
-        <div className="col-span-1">
+        {/* Desktop: Question circles on right sidebar */}
+        <div className="hidden md:block col-span-1">
           <Card className="shadow-lg border-0 sticky top-6">
             <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-t-lg py-2">
               <CardTitle className="text-sm">Questions</CardTitle>
@@ -2314,14 +2810,25 @@ const QuizCreator = () => {
             <CardContent className="p-3 space-y-3">
               <div className="space-y-2">
                 <div className="flex items-center gap-1">
-                  <Label htmlFor="num-questions" className="text-xs">Total:</Label>
+                  <Label htmlFor="num-questions-desktop" className="text-xs">Total:</Label>
                   <Input
-                    id="num-questions"
+                    id="num-questions-desktop"
                     type="number"
                     min="1"
                     max="500"
                     value={numberOfQuestions}
-                    onChange={(e) => adjustQuestions(parseInt(e.target.value) || 1)}
+                    onChange={(e) => {
+                      const newValue = parseInt(e.target.value) || 1;
+                      setNumberOfQuestions(newValue);
+                      // Debounce the actual adjustment
+                      if (questionAdjustTimeout) {
+                        clearTimeout(questionAdjustTimeout);
+                      }
+                      const timeout = setTimeout(() => {
+                        adjustQuestions(newValue);
+                      }, 500);
+                      setQuestionAdjustTimeout(timeout);
+                    }}
                     className="w-16 h-6 text-xs"
                   />
                 </div>
@@ -2362,7 +2869,8 @@ const QuizCreator = () => {
       {/* Welcome Header */}
       <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="container flex flex-col justify-center px-4">
-          <div className="flex items-center justify-between h-20">
+          {/* Desktop Header */}
+          <div className="hidden md:flex items-center justify-between h-20">
             <div className="flex items-center gap-3">
               <img src="/logo2.png" alt="PrashnaSetu Logo" className="h-12 w-12 object-contain" />
               <div className="flex flex-col justify-center">
@@ -2385,6 +2893,31 @@ const QuizCreator = () => {
               </Button>
             </div>
           </div>
+
+          {/* Mobile Header */}
+          <div className="md:hidden py-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <img src="/logo2.png" alt="PrashnaSetu Logo" className="h-8 w-8 object-contain" />
+                <div className="flex flex-col">
+                  <h1 className="text-sm font-semibold leading-tight">PrashnaSetu</h1>
+                  <span className="text-xs text-muted-foreground leading-tight">Think. Compete. Conquer.</span>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={logout}
+                className="flex items-center space-x-1 h-8 px-2"
+              >
+                <LogOut className="h-3 w-3" />
+                <span className="text-xs">Logout</span>
+              </Button>
+            </div>
+            <div className="text-sm text-muted-foreground">
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Welcome, {user?.displayName || user?.email}
+            </div>
+          </div>
         </div>
       </div>
       
@@ -2401,88 +2934,239 @@ const QuizCreator = () => {
         {currentScreen === 3 && renderScreen3()}
 
         {currentScreen > 0 && currentScreen < 3 && (
-          <div className="flex justify-between items-center">
-            <div className="flex gap-4">
-              {currentScreen > 1 && (
+          <>
+            {/* Desktop Layout */}
+            <div className="hidden md:flex justify-between items-center">
+              <div className="flex gap-4">
+                {currentScreen > 1 && (
+                  <Button
+                    onClick={() => setCurrentScreen(currentScreen - 1)}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                )}
+                
                 <Button
-                  onClick={() => setCurrentScreen(currentScreen - 1)}
+                  onClick={() => setCurrentScreen(0)}
                   variant="outline"
                   className="flex items-center gap-2"
                 >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
+                  <RefreshCw className="h-4 w-4" />
+                  Back to Home
                 </Button>
-              )}
+              </div>
               
-              <Button
-                onClick={() => setCurrentScreen(0)}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Back to Home
-              </Button>
-            </div>
-            
-            <div className="flex gap-4">
-              <Button
-                onClick={saveSession}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Save className="h-4 w-4" />
-                Save Session
-              </Button>
-              
-              <AlertDialog open={showFlushDialog} onOpenChange={setShowFlushDialog}>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Flush Data
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-red-500" />
-                      Confirm Data Flush
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action will permanently delete all quiz data including:
-                      <ul className="list-disc list-inside mt-2 space-y-1">
-                        <li>Quiz information and metadata</li>
-                        <li>All instructions</li>
-                        <li>All questions and their options</li>
-                        <li>Uploaded images</li>
-                        <li>Saved session data</li>
-                      </ul>
-                      This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={flushData} className="bg-red-600 hover:bg-red-700">
-                      Yes, Clear All Data
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <div className="flex gap-4">
+                <Button
+                  onClick={saveSession}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <Save className="h-4 w-4" />
+                  Save Session
+                </Button>
+                
+                <AlertDialog open={showFlushDialog} onOpenChange={setShowFlushDialog}>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Flush Data
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-red-500" />
+                        Confirm Data Flush
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action will permanently delete all quiz data including:
+                        <ul className="list-disc list-inside mt-2 space-y-1">
+                          <li>Quiz information and metadata</li>
+                          <li>All instructions</li>
+                          <li>All questions and their options</li>
+                          <li>Uploaded images</li>
+                          <li>Saved session data</li>
+                        </ul>
+                        This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={flushData} className="bg-red-600 hover:bg-red-700">
+                        Yes, Clear All Data
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+
+              <div>
+                <Button
+                  onClick={handleNext}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                  disabled={currentScreen === 1 && !checkAllRequiredFieldsFilled()}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
 
-            <div>
-              <Button
-                onClick={handleNext}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                disabled={currentScreen === 1 && !checkAllRequiredFieldsFilled()}
-              >
-                Next
-              </Button>
+            {/* Mobile Layout - Dynamic Grid */}
+            <div className="md:hidden space-y-3">
+              {/* Row 1: Save Session | Flush Data */}
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  onClick={saveSession}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <Save className="h-4 w-4" />
+                  Save Session
+                </Button>
+                
+                <AlertDialog open={showFlushDialog} onOpenChange={setShowFlushDialog}>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Flush Data
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-red-500" />
+                        Confirm Data Flush
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action will permanently delete all quiz data including:
+                        <ul className="list-disc list-inside mt-2 space-y-1">
+                          <li>Quiz information and metadata</li>
+                          <li>All instructions</li>
+                          <li>All questions and their options</li>
+                          <li>Uploaded images</li>
+                          <li>Saved session data</li>
+                        </ul>
+                        This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={flushData} className="bg-red-600 hover:bg-red-700">
+                        Yes, Clear All Data
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+
+              {/* Row 2: Previous | Next (for screen 2+) or Back to Home | Next (for screen 1) */}
+              <div className="grid grid-cols-2 gap-3">
+                {currentScreen > 1 ? (
+                  <Button
+                    onClick={() => setCurrentScreen(currentScreen - 1)}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => setCurrentScreen(0)}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Back to Home
+                  </Button>
+                )}
+
+                <Button
+                  onClick={handleNext}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                  disabled={currentScreen === 1 && !checkAllRequiredFieldsFilled()}
+                >
+                  Next
+                </Button>
+              </div>
+
+              {/* Row 3: Back to Home (only for screen 2+) */}
+              {currentScreen > 1 && (
+                <div className="flex justify-center">
+                  <Button
+                    onClick={() => setCurrentScreen(0)}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Back to Home
+                  </Button>
+                </div>
+              )}
             </div>
-          </div>
+          </>
         )}
+
+        {/* Multi-ZIP Import Progress Dialog */}
+        <Dialog open={showMultiImportDialog} onOpenChange={setShowMultiImportDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileUp className="h-5 w-5" />
+                Importing ZIP Files
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Progress:</span>
+                  <span>{Math.round(importProgress)}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${importProgress}%` }}
+                  ></div>
+                </div>
+              </div>
+              
+              {currentImportFile && (
+                <div className="text-sm text-gray-600">
+                  <span className="font-medium">Currently processing:</span>
+                  <div className="mt-1 p-2 bg-gray-50 rounded text-xs font-mono break-all">
+                    {currentImportFile}
+                  </div>
+                </div>
+              )}
+              
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Files to import:</span>
+                <div className="mt-1 max-h-32 overflow-y-auto space-y-1">
+                  {importingFiles.map((fileName, index) => (
+                    <div key={index} className="text-xs p-1 bg-gray-50 rounded">
+                      {fileName}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                <strong>Note:</strong> Questions will be combined from all ZIP files. 
+                Quiz metadata and instructions will be taken from the first ZIP file.
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
         </div>
       </div>
     </div>
