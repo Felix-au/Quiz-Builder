@@ -35,6 +35,7 @@ interface Question {
   image_path: string;
   image_url: string;
   image: string;
+  difficulty: 'LOW' | 'MEDIUM' | 'HIGH';
   options: Option[];
   imageFile?: File;
   originalImageFileName?: string;
@@ -61,6 +62,10 @@ interface QuizMetadata {
   visible: boolean;
   total_points: number;
   num_displayed_questions: number;
+  num_easy_questions: number;
+  num_medium_questions: number;
+  num_high_questions: number;
+  allow_resume: boolean;
   created_at: string;
   updated_at: string;
   created_by: null;
@@ -94,7 +99,11 @@ const QuizCreator = () => {
     allowed_time: 0,
     visible: true,
     total_points: 0,
-    num_displayed_questions: 1,
+    num_displayed_questions: 0,
+    num_easy_questions: 0,
+    num_medium_questions: 0,
+    num_high_questions: 0,
+    allow_resume: false,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     created_by: null,
@@ -331,6 +340,7 @@ const QuizCreator = () => {
       image_path: '',
       image_url: '',
       image: '',
+      difficulty: 'MEDIUM',
       options: [
         { id: 1, option_text: '', is_correct: false, option_order: 0 },
         { id: 2, option_text: '', is_correct: false, option_order: 0 },
@@ -457,7 +467,11 @@ const QuizCreator = () => {
       allowed_time: 0,
       visible: true,
       total_points: 0,
-      num_displayed_questions: 1,
+      num_displayed_questions: 0,
+      num_easy_questions: 0,
+      num_medium_questions: 0,
+      num_high_questions: 0,
+      allow_resume: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       created_by: null,
@@ -534,6 +548,10 @@ const QuizCreator = () => {
         visible: quiz.visible !== undefined ? quiz.visible : true,
         total_points: quiz.total_points || 0,
         num_displayed_questions: quiz.num_displayed_questions || 1,
+        num_easy_questions: quiz.num_easy_questions || 0,
+        num_medium_questions: quiz.num_medium_questions || 0,
+        num_high_questions: quiz.num_high_questions || 0,
+        allow_resume: quiz.allow_resume !== undefined ? quiz.allow_resume : false,
         created_at: quiz.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString(),
         created_by: quiz.created_by || null,
@@ -596,6 +614,7 @@ const QuizCreator = () => {
             image_path: q.image_path || '',
             image_url: q.image_url || '',
             image: q.image || '',
+            difficulty: q.difficulty || 'MEDIUM',
             imageFile,
             originalImageFileName: imageFile?.name,
             options: q.options?.map((opt: any) => ({
@@ -755,7 +774,11 @@ const QuizCreator = () => {
       allowed_time: 0,
       visible: true,
       total_points: 0,
-      num_displayed_questions: 1,
+      num_displayed_questions: 0,
+      num_easy_questions: 0,
+      num_medium_questions: 0,
+      num_high_questions: 0,
+      allow_resume: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       created_by: null,
@@ -810,6 +833,7 @@ const QuizCreator = () => {
           image_path: '',
           image_url: '',
           image: '',
+          difficulty: 'MEDIUM',
           options: [
             { id: 1, option_text: '', is_correct: false, option_order: 0 },
             { id: 2, option_text: '', is_correct: false, option_order: 0 },
@@ -837,6 +861,7 @@ const QuizCreator = () => {
           image_path: '',
           image_url: '',
           image: '',
+          difficulty: 'MEDIUM',
           options: [
             { id: 1, option_text: '', is_correct: false, option_order: 0 },
             { id: 2, option_text: '', is_correct: false, option_order: 0 },
@@ -947,6 +972,37 @@ const QuizCreator = () => {
     ));
   };
 
+  const deleteQuestion = (questionId: number) => {
+    const questionIndex = questions.findIndex(q => q.id === questionId);
+    if (questionIndex === -1) return;
+
+    // Remove the question
+    const updatedQuestions = questions.filter(q => q.id !== questionId);
+    
+    // Update question_order for remaining questions
+    const reorderedQuestions = updatedQuestions.map((q, index) => ({
+      ...q,
+      question_order: index
+    }));
+    
+    setQuestions(reorderedQuestions);
+    setNumberOfQuestions(reorderedQuestions.length);
+    
+    // Adjust current question index if needed
+    if (reorderedQuestions.length === 0) {
+      setCurrentQuestionIndex(0);
+    } else if (currentQuestionIndex >= reorderedQuestions.length) {
+      setCurrentQuestionIndex(reorderedQuestions.length - 1);
+    } else if (currentQuestionIndex >= questionIndex) {
+      setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1));
+    }
+    
+    toast({
+      title: "Question Deleted",
+      description: "The question has been successfully deleted.",
+    });
+  };
+
   const logToGoogleForm = (metadata: QuizMetadata) => {
     try {
       const formUrl = "https://docs.google.com/forms/u/0/d/e/1FAIpQLSftIXPhGzEGDsyCtApgXxpsS48Na74HnL6zcZV-fR37WROuuQ/formResponse";
@@ -1021,6 +1077,7 @@ const QuizCreator = () => {
               image_path: cleanQuestion.image_path || null,
               image_url: cleanQuestion.image_url || null,
               image: cleanQuestion.image || null,
+              difficulty: cleanQuestion.difficulty,
               options: filteredOptions,
             };
           }),
@@ -1100,6 +1157,89 @@ const QuizCreator = () => {
     return true;
   };
 
+  const preloadQuestionsWithDifficulty = () => {
+    const totalQuestions = metadata.num_displayed_questions;
+    const easyCount = metadata.num_easy_questions;
+    const mediumCount = metadata.num_medium_questions;
+    const highCount = metadata.num_high_questions;
+    
+
+    
+    const newQuestions = [];
+    let questionId = 1;
+    
+    // Create easy questions
+    for (let i = 0; i < easyCount; i++) {
+      newQuestions.push({
+        id: questionId++,
+        question: '',
+        topic: 'NA',
+        summary: 'NA',
+        question_order: i,
+        points: 1,
+        image_path: '',
+        image_url: '',
+        image: '',
+        difficulty: 'LOW',
+        options: [
+          { id: 1, option_text: '', is_correct: false, option_order: 0 },
+          { id: 2, option_text: '', is_correct: false, option_order: 0 },
+          { id: 3, option_text: '', is_correct: false, option_order: 0 },
+          { id: 4, option_text: '', is_correct: false, option_order: 0 },
+        ],
+      });
+    }
+    
+    // Create medium questions
+    for (let i = 0; i < mediumCount; i++) {
+      newQuestions.push({
+        id: questionId++,
+        question: '',
+        topic: 'NA',
+        summary: 'NA',
+        question_order: easyCount + i,
+        points: 1,
+        image_path: '',
+        image_url: '',
+        image: '',
+        difficulty: 'MEDIUM',
+        options: [
+          { id: 1, option_text: '', is_correct: false, option_order: 0 },
+          { id: 2, option_text: '', is_correct: false, option_order: 0 },
+          { id: 3, option_text: '', is_correct: false, option_order: 0 },
+          { id: 4, option_text: '', is_correct: false, option_order: 0 },
+        ],
+      });
+    }
+    
+    // Create high questions
+    for (let i = 0; i < highCount; i++) {
+      newQuestions.push({
+        id: questionId++,
+        question: '',
+        topic: 'NA',
+        summary: 'NA',
+        question_order: easyCount + mediumCount + i,
+        points: 1,
+        image_path: '',
+        image_url: '',
+        image: '',
+        difficulty: 'HIGH',
+        options: [
+          { id: 1, option_text: '', is_correct: false, option_order: 0 },
+          { id: 2, option_text: '', is_correct: false, option_order: 0 },
+          { id: 3, option_text: '', is_correct: false, option_order: 0 },
+          { id: 4, option_text: '', is_correct: false, option_order: 0 },
+        ],
+      });
+    }
+    
+
+    
+    setQuestions(newQuestions);
+    setNumberOfQuestions(totalQuestions);
+  };
+
   const handleNext = () => {
     if (currentScreen === 3 && !validateCurrentQuestion()) {
       toast({
@@ -1108,6 +1248,108 @@ const QuizCreator = () => {
         variant: "destructive",
       });
       return;
+    }
+    
+    if (currentScreen === 1) {
+      // Simple approach: Always ensure we have the exact number of questions needed
+      const totalNeeded = metadata.num_easy_questions + metadata.num_medium_questions + metadata.num_high_questions;
+      
+      if (questions.length === 0) {
+        // No existing questions, create all needed questions
+        preloadQuestionsWithDifficulty();
+      } else {
+        // We have existing questions, preserve them and add only what's missing
+        const existingQuestions = [...questions];
+        
+        // Count existing questions by difficulty
+        const existingEasy = existingQuestions.filter(q => q.difficulty === 'LOW').length;
+        const existingMedium = existingQuestions.filter(q => q.difficulty === 'MEDIUM').length;
+        const existingHigh = existingQuestions.filter(q => q.difficulty === 'HIGH').length;
+        
+        // Calculate what we need to add
+        const needEasy = Math.max(0, metadata.num_easy_questions - existingEasy);
+        const needMedium = Math.max(0, metadata.num_medium_questions - existingMedium);
+        const needHigh = Math.max(0, metadata.num_high_questions - existingHigh);
+        
+
+        
+        // Only add questions if we actually need them
+        if (needEasy > 0 || needMedium > 0 || needHigh > 0) {
+          let nextId = Math.max(...existingQuestions.map(q => q.id), 0) + 1;
+          let nextOrder = existingQuestions.length;
+          
+          // Add easy questions
+          for (let i = 0; i < needEasy; i++) {
+            existingQuestions.push({
+              id: nextId++,
+              question: '',
+              topic: 'NA',
+              summary: 'NA',
+              question_order: nextOrder++,
+              points: 1,
+              image_path: '',
+              image_url: '',
+              image: '',
+              difficulty: 'LOW',
+              options: [
+                { id: 1, option_text: '', is_correct: false, option_order: 0 },
+                { id: 2, option_text: '', is_correct: false, option_order: 0 },
+                { id: 3, option_text: '', is_correct: false, option_order: 0 },
+                { id: 4, option_text: '', is_correct: false, option_order: 0 },
+              ],
+            });
+          }
+          
+          // Add medium questions
+          for (let i = 0; i < needMedium; i++) {
+            existingQuestions.push({
+              id: nextId++,
+              question: '',
+              topic: 'NA',
+              summary: 'NA',
+              question_order: nextOrder++,
+              points: 1,
+              image_path: '',
+              image_url: '',
+              image: '',
+              difficulty: 'MEDIUM',
+              options: [
+                { id: 1, option_text: '', is_correct: false, option_order: 0 },
+                { id: 2, option_text: '', is_correct: false, option_order: 0 },
+                { id: 3, option_text: '', is_correct: false, option_order: 0 },
+                { id: 4, option_text: '', is_correct: false, option_order: 0 },
+              ],
+            });
+          }
+          
+          // Add high questions
+          for (let i = 0; i < needHigh; i++) {
+            existingQuestions.push({
+              id: nextId++,
+              question: '',
+              topic: 'NA',
+              summary: 'NA',
+              question_order: nextOrder++,
+              points: 1,
+              image_path: '',
+              image_url: '',
+              image: '',
+              difficulty: 'HIGH',
+              options: [
+                { id: 1, option_text: '', is_correct: false, option_order: 0 },
+                { id: 2, option_text: '', is_correct: false, option_order: 0 },
+                { id: 3, option_text: '', is_correct: false, option_order: 0 },
+                { id: 4, option_text: '', is_correct: false, option_order: 0 },
+              ],
+            });
+          }
+          
+
+          
+          setQuestions(existingQuestions);
+          setNumberOfQuestions(existingQuestions.length);
+        }
+      }
     }
     
     if (currentScreen < 3) {
@@ -1120,6 +1362,9 @@ const QuizCreator = () => {
     const department = selectedDepartment === 'custom' ? customDepartment : selectedDepartment;
     const sectionStr = selectedSections.includes('custom') ? customSections : selectedSections.join(', ');
     
+    const totalDifficultyQuestions = metadata.num_easy_questions + metadata.num_medium_questions + metadata.num_high_questions;
+    const difficultySumMatches = totalDifficultyQuestions === metadata.num_displayed_questions;
+    
     return (
       metadata.subject_code.trim() !== '' &&
       metadata.subject.trim() !== '' &&
@@ -1131,7 +1376,11 @@ const QuizCreator = () => {
       metadata.year.trim() !== '' &&
       metadata.instructor.trim() !== '' &&
       metadata.allowed_time > 0 &&
-      metadata.num_displayed_questions > 0
+      metadata.num_displayed_questions >= 0 &&
+      metadata.num_easy_questions >= 0 &&
+      metadata.num_medium_questions >= 0 &&
+      metadata.num_high_questions >= 0 &&
+      difficultySumMatches
     );
   };
 
@@ -1301,7 +1550,7 @@ const QuizCreator = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label htmlFor="year">Session <span className="text-red-500">*</span></Label>
             <Select value={metadata.year} onValueChange={(value) => setMetadata(prev => ({ ...prev, year: value }))} required>
@@ -1343,6 +1592,66 @@ const QuizCreator = () => {
               required
             />
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <Label htmlFor="num-easy-questions">Number of Easy Questions</Label>
+            <Input
+              id="num-easy-questions"
+              type="number"
+              min="0"
+              max="500"
+              value={metadata.num_easy_questions}
+              onChange={(e) => {
+                const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                const total = value + metadata.num_medium_questions + metadata.num_high_questions;
+                setMetadata(prev => ({ 
+                  ...prev, 
+                  num_easy_questions: value,
+                  num_displayed_questions: total
+                }));
+              }}
+            />
+          </div>
+          <div>
+            <Label htmlFor="num-medium-questions">Number of Medium Questions</Label>
+            <Input
+              id="num-medium-questions"
+              type="number"
+              min="0"
+              max="500"
+              value={metadata.num_medium_questions}
+              onChange={(e) => {
+                const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                const total = metadata.num_easy_questions + value + metadata.num_high_questions;
+                setMetadata(prev => ({ 
+                  ...prev, 
+                  num_medium_questions: value,
+                  num_displayed_questions: total
+                }));
+              }}
+            />
+          </div>
+          <div>
+            <Label htmlFor="num-high-questions">Number of High Questions</Label>
+            <Input
+              id="num-high-questions"
+              type="number"
+              min="0"
+              max="500"
+              value={metadata.num_high_questions}
+              onChange={(e) => {
+                const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
+                const total = metadata.num_easy_questions + metadata.num_medium_questions + value;
+                setMetadata(prev => ({ 
+                  ...prev, 
+                  num_high_questions: value,
+                  num_displayed_questions: total
+                }));
+              }}
+            />
+          </div>
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Label htmlFor="num-displayed-questions">Number of Displayed Questions <span className="text-red-500">*</span></Label>
@@ -1353,7 +1662,7 @@ const QuizCreator = () => {
                   </TooltipTrigger>
                   <TooltipContent>
                     <p className="max-w-xs">
-                      The number of questions a student will attempt when taking the quiz. This allows you to create a larger question pool while only showing a subset to each student.
+                      The number of questions a student will attempt when taking the quiz. This is automatically calculated as the sum of Easy + Medium + High questions.
                     </p>
                   </TooltipContent>
                 </Tooltip>
@@ -1362,18 +1671,11 @@ const QuizCreator = () => {
             <Input
               id="num-displayed-questions"
               type="number"
-              min="1"
+              min="0"
               max="500"
-              value={metadata.num_displayed_questions || ''}
-              onChange={(e) => {
-                const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0;
-                setMetadata(prev => ({ ...prev, num_displayed_questions: value }));
-                if (numberOfQuestions < value) {
-                  setNumberOfQuestions(value);
-                  adjustQuestions(value);
-                }
-              }}
-              required
+              value={metadata.num_displayed_questions}
+              readOnly
+              className="bg-gray-50 cursor-not-allowed"
             />
           </div>
         </div>
@@ -1488,7 +1790,7 @@ const QuizCreator = () => {
         {!checkAllRequiredFieldsFilled() && (
           <div className="mt-6 p-3 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-red-600 text-sm">
-              Fields marked with * are required
+              Fields marked with * are required.
             </p>
           </div>
         )}
@@ -1545,7 +1847,18 @@ const QuizCreator = () => {
           {currentQuestion && (
             <Card className="shadow-lg border-0 h-full">
               <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-t-lg py-2">
-                <CardTitle className="text-lg">Question {currentQuestionIndex + 1}</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Question {currentQuestionIndex + 1}</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteQuestion(currentQuestion.id)}
+                    className="text-white hover:text-red-200 hover:bg-red-600/20 h-8 w-8 p-0"
+                    title="Delete this question"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="p-3 space-y-2 overflow-y-auto">
                 <div className="grid grid-cols-3 gap-3">
@@ -1559,7 +1872,7 @@ const QuizCreator = () => {
                         value={currentQuestion.question}
                         onChange={(e) => handleQuestionTextChange(currentQuestion.id, e.target.value, currentQuestion.question)}
                         placeholder="Enter your question..."
-                        className={`min-h-[80px] text-sm pr-32 ${currentQuestion.question.trim() === '' ? 'border-red-300 focus:border-red-500' : ''}`}
+                        className={`min-h-[120px] text-sm pr-32 ${currentQuestion.question.trim() === '' ? 'border-red-300 focus:border-red-500' : ''}`}
                         required
                       />
                       <div className="absolute top-2 right-2 flex gap-1">
@@ -1663,24 +1976,40 @@ const QuizCreator = () => {
                     )}
                   </div>
                   
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     <div>
-                      <Label htmlFor={`topic-${currentQuestion.id}`} className="text-sm">Topic (Visible only after submission)</Label>
+                      <Label htmlFor={`difficulty-${currentQuestion.id}`} className="text-xs">Difficulty</Label>
+                      <Select 
+                        value={currentQuestion.difficulty} 
+                        onValueChange={(value) => updateQuestion(currentQuestion.id, 'difficulty', value)}
+                      >
+                        <SelectTrigger className="h-5 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="LOW">Easy</SelectItem>
+                          <SelectItem value="MEDIUM">Medium</SelectItem>
+                          <SelectItem value="HIGH">High</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor={`topic-${currentQuestion.id}`} className="text-xs">Topic (Visible only after submission)</Label>
                       <Input
                         id={`topic-${currentQuestion.id}`}
                         value={currentQuestion.topic}
                         onChange={(e) => updateQuestion(currentQuestion.id, 'topic', e.target.value)}
-                        className="text-sm h-8"
+                        className="text-xs h-5"
                         placeholder="Topic"
                       />
                     </div>
                     <div>
-                      <Label htmlFor={`summary-${currentQuestion.id}`} className="text-sm">Summary (Visible only after submission)</Label>
+                      <Label htmlFor={`summary-${currentQuestion.id}`} className="text-xs">Summary (Visible only after submission)</Label>
                       <Input
                         id={`summary-${currentQuestion.id}`}
                         value={currentQuestion.summary}
                         onChange={(e) => updateQuestion(currentQuestion.id, 'summary', e.target.value)}
-                        className="text-sm h-8"
+                        className="text-xs h-5"
                         placeholder="Summary"
                       />
                     </div>
@@ -1867,16 +2196,51 @@ const QuizCreator = () => {
                     </AlertDialogContent>
                   </AlertDialog>
                   
+                  <Button
+                    size="sm"
+                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-xs px-3"
+                    onClick={() => {
+                      // Validate difficulty distribution first
+                      const easyQuestions = questions.filter(q => q.difficulty === 'LOW').length;
+                      const mediumQuestions = questions.filter(q => q.difficulty === 'MEDIUM').length;
+                      const highQuestions = questions.filter(q => q.difficulty === 'HIGH').length;
+                      
+                      if (easyQuestions < metadata.num_easy_questions) {
+                        toast({
+                          title: "Validation Error",
+                          description: `You need ${metadata.num_easy_questions} easy questions, but only have ${easyQuestions}.`,
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      
+                      if (mediumQuestions < metadata.num_medium_questions) {
+                        toast({
+                          title: "Validation Error",
+                          description: `You need ${metadata.num_medium_questions} medium questions, but only have ${mediumQuestions}.`,
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      
+                      if (highQuestions < metadata.num_high_questions) {
+                        toast({
+                          title: "Validation Error",
+                          description: `You need ${metadata.num_high_questions} high questions, but only have ${highQuestions}.`,
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      
+                      // If validation passes, show reminder dialog
+                      setShowReminderDialog(true);
+                    }}
+                  >
+                    <Download className="h-3 w-3 mr-1" />
+                    Generate ZIP
+                  </Button>
+                  
                   <Dialog open={showReminderDialog} onOpenChange={setShowReminderDialog}>
-                    <DialogTrigger asChild>
-                      <Button
-                        size="sm"
-                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-xs px-3"
-                      >
-                        <Download className="h-3 w-3 mr-1" />
-                        Generate ZIP
-                      </Button>
-                    </DialogTrigger>
                     <DialogContent className="sm:max-w-md">
                       <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
@@ -1963,17 +2327,27 @@ const QuizCreator = () => {
                 </div>
                 
                 <div className="grid grid-cols-4 gap-1">
-                  {Array.from({ length: numberOfQuestions }, (_, i) => (
-                    <Button
-                      key={i}
-                      variant={currentQuestionIndex === i ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCurrentQuestionIndex(i)}
-                      className="w-6 h-6 rounded-full text-xs p-0"
-                    >
-                      {i + 1}
-                    </Button>
-                  ))}
+                  {Array.from({ length: numberOfQuestions }, (_, i) => {
+                    const question = questions[i];
+                    const difficulty = question?.difficulty || 'MEDIUM';
+                    const difficultyLabel = difficulty === 'LOW' ? 'E' : difficulty === 'MEDIUM' ? 'M' : 'H';
+                    
+                    return (
+                      <div key={i} className="relative">
+                        <Button
+                          variant={currentQuestionIndex === i ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentQuestionIndex(i)}
+                          className="w-7 h-7 rounded-full text-xs p-0 relative"
+                        >
+                          {i + 1}
+                        </Button>
+                        <span className="absolute -top-1 -right-1 text-[8px] font-bold bg-gray-200 text-gray-700 rounded-full w-3 h-3 flex items-center justify-center">
+                          {difficultyLabel}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </CardContent>
