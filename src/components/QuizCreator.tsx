@@ -2618,7 +2618,7 @@ const QuizCreator = () => {
                     disabled={currentQuestionIndex === 0}
                     variant="outline"
                     size="sm"
-                    className="flex items-center gap-1"
+                    className="flex items-center gap-1 bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200 hover:text-blue-900 disabled:opacity-50"
                   >
                     <ChevronLeft className="h-3 w-3" />
                     Previous
@@ -2633,7 +2633,7 @@ const QuizCreator = () => {
                     disabled={currentQuestionIndex === numberOfQuestions - 1}
                     variant="outline"
                     size="sm"
-                    className="flex items-center gap-1"
+                    className="flex items-center gap-1 bg-green-100 text-green-700 border-green-300 hover:bg-green-200 hover:text-green-900 disabled:opacity-50"
                   >
                     Next
                     <ChevronLeft className="h-3 w-3 rotate-180" />
