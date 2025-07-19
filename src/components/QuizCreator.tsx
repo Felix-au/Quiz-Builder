@@ -2809,28 +2809,72 @@ const QuizCreator = () => {
             </CardHeader>
             <CardContent className="p-3 space-y-3">
               <div className="space-y-2">
-                <div className="flex items-center gap-1">
-                  <Label htmlFor="num-questions-desktop" className="text-xs">Total:</Label>
-                  <Input
-                    id="num-questions-desktop"
-                    type="number"
-                    min="1"
-                    max="500"
-                    value={numberOfQuestions}
-                    onChange={(e) => {
-                      const newValue = parseInt(e.target.value) || 1;
-                      setNumberOfQuestions(newValue);
-                      // Debounce the actual adjustment
-                      if (questionAdjustTimeout) {
-                        clearTimeout(questionAdjustTimeout);
-                      }
-                      const timeout = setTimeout(() => {
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="num-questions-desktop" className="text-xs">Total:</Label>
+                    <Input
+                      id="num-questions-desktop"
+                      type="number"
+                      min="1"
+                      max="500"
+                      value={numberOfQuestions}
+                      onChange={(e) => {
+                        const newValue = parseInt(e.target.value) || 1;
+                        setNumberOfQuestions(newValue);
+                        // Debounce the actual adjustment
+                        if (questionAdjustTimeout) {
+                          clearTimeout(questionAdjustTimeout);
+                        }
+                        const timeout = setTimeout(() => {
+                          adjustQuestions(newValue);
+                        }, 500);
+                        setQuestionAdjustTimeout(timeout);
+                      }}
+                      className="w-16 h-6 text-xs"
+                    />
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newValue = Math.max(1, numberOfQuestions - 1);
+                          setNumberOfQuestions(newValue);
+                          adjustQuestions(newValue);
+                        }}
+                        className="h-6 w-6 p-0 text-xs"
+                      >
+                        -
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newValue = Math.min(500, numberOfQuestions + 1);
+                          setNumberOfQuestions(newValue);
+                          adjustQuestions(newValue);
+                        }}
+                        className="h-6 w-6 p-0 text-xs"
+                      >
+                        +
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-600">1</span>
+                    <input
+                      type="range"
+                      min="1"
+                      max="500"
+                      value={numberOfQuestions}
+                      onChange={(e) => {
+                        const newValue = parseInt(e.target.value);
+                        setNumberOfQuestions(newValue);
                         adjustQuestions(newValue);
-                      }, 500);
-                      setQuestionAdjustTimeout(timeout);
-                    }}
-                    className="w-16 h-6 text-xs"
-                  />
+                      }}
+                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                    />
+                    <span className="text-xs text-gray-600">500</span>
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-4 gap-1">
@@ -2849,7 +2893,7 @@ const QuizCreator = () => {
                         >
                           {i + 1}
                         </Button>
-                        <span className="absolute -top-1 -right-1 text-[8px] font-bold bg-gray-200 text-gray-700 rounded-full w-3 h-3 flex items-center justify-center">
+                        <span className="absolute top-0 left-0 text-[8px] font-bold bg-gray-200 text-gray-700 rounded-full w-3 h-3 flex items-center justify-center">
                           {difficultyLabel}
                         </span>
                       </div>
