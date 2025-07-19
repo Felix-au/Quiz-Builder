@@ -121,13 +121,13 @@ const LoginScreen = () => {
       {/* Desktop Layout - Original Design */}
       <div className="hidden md:flex min-h-screen items-center justify-center p-4">
         <div className="w-full h-screen min-h-screen grid grid-cols-2 shadow-xl rounded-lg overflow-hidden bg-white">
-          {/* Left Branding Section */}
+        {/* Left Branding Section */}
           <div className="flex flex-col items-center justify-center bg-gradient-to-br from-gray-200 to-gray-400 text-gray-900 p-8 h-full min-h-screen w-full">
-            <div className="text-center max-w-xs mx-auto">
-              <img src="/logo23.png" alt="PrashnaSetu Logo" className="mx-auto h-56 w-56 object-contain" />
-              <p className="text-base opacity-80 -mt-2 leading-tight">PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
-            </div>
+          <div className="text-center max-w-xs mx-auto">
+            <img src="/logo23.png" alt="PrashnaSetu Logo" className="mx-auto h-56 w-56 object-contain" />
+            <p className="text-base opacity-80 -mt-2 leading-tight">PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
           </div>
+        </div>
           
           {/* Right Form Section */}
           <div className="flex items-center justify-center bg-background p-8">
@@ -240,6 +240,12 @@ const LoginScreen = () => {
               </CardContent>
             </Card>
           </div>
+          
+          {/* Copyright Footer - Desktop */}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center text-xs text-gray-600">
+            <p>© CAD-CS, BML Munjal University</p>
+            <p>contact: cadcs@bmu.edu.in</p>
+          </div>
         </div>
       </div>
 
@@ -253,9 +259,15 @@ const LoginScreen = () => {
           </div>
           
           {/* Scroll Indicator */}
-          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-center animate-pulse">
+          <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 text-center animate-pulse">
             <p className="text-sm text-gray-700 mb-2">Scroll down to login</p>
             <ChevronDown className="h-6 w-6 mx-auto text-gray-600 animate-bounce" />
+          </div>
+          
+          {/* Copyright Footer - Mobile Screen 1 */}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center text-xs text-gray-600">
+            <p>© CAD-CS, BML Munjal University</p>
+            <p>contact: cadcs@bmu.edu.in</p>
           </div>
         </div>
 
@@ -369,6 +381,12 @@ const LoginScreen = () => {
               )}
             </CardContent>
           </Card>
+          
+          {/* Copyright Footer - Mobile Screen 2 */}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center text-xs text-gray-600">
+            <p>© CAD-CS, BML Munjal University</p>
+            <p>contact: cadcs@bmu.edu.in</p>
+          </div>
         </div>
       </div>
     </div>

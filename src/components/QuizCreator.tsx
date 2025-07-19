@@ -1736,6 +1736,12 @@ const QuizCreator = () => {
         <div className="text-center text-sm text-gray-500 mt-8">
           Select an option above to begin creating your quiz
         </div>
+        
+        {/* Copyright Footer */}
+        <div className="text-center text-xs text-gray-500 mt-8 pt-4 border-t border-gray-200">
+          <p>© CAD-CS, BML Munjal University</p>
+          <p>contact: cadcs@bmu.edu.in</p>
+        </div>
       </CardContent>
     </Card>
   );
