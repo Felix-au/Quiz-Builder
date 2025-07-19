@@ -1739,8 +1739,8 @@ const QuizCreator = () => {
         
         {/* Copyright Footer */}
         <div className="text-center text-xs text-gray-500 mt-8 pt-4 border-t border-gray-200">
-          <p>© CAD-CS, BML Munjal University</p>
-          <p>contact: cadcs@bmu.edu.in</p>
+          <p>© Copyrighted by CAD-CS, BML Munjal University</p>
+          <p><Mail className="inline-block w-4 h-4 mr-1 -mt-1 align-middle text-gray-500" /> : <a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-blue-700">cadcs@bmu.edu.in</a></p>
         </div>
       </CardContent>
     </Card>
@@ -2165,18 +2165,21 @@ const QuizCreator = () => {
                     const question = questions[i];
                     const difficulty = question?.difficulty || 'MEDIUM';
                     const difficultyLabel = difficulty === 'LOW' ? 'E' : difficulty === 'MEDIUM' ? 'M' : 'H';
-                    
+                    let diffBg = 'bg-yellow-200';
+                    let diffText = 'text-yellow-900';
+                    if (difficulty === 'LOW') { diffBg = 'bg-green-200'; diffText = 'text-green-900'; }
+                    if (difficulty === 'HIGH') { diffBg = 'bg-red-200'; diffText = 'text-red-900'; }
                     return (
                       <div key={i} className="relative">
                         <Button
                           variant={currentQuestionIndex === i ? "default" : "outline"}
                           size="sm"
                           onClick={() => setCurrentQuestionIndex(i)}
-                          className="w-8 h-8 md:w-7 md:h-7 rounded-full text-xs p-0 relative"
+                          className={`w-8 h-8 md:w-7 md:h-7 rounded-full text-xs p-0 relative ${diffBg} ${diffText}`}
                         >
                           {i + 1}
                         </Button>
-                        <span className="absolute top-0 left-0 md:-top-1 md:-right-1 text-[8px] font-bold bg-gray-200 text-gray-700 rounded-full w-3 h-3 flex items-center justify-center">
+                        <span className="absolute top-0 left-0 text-[8px] font-bold bg-gray-200 text-gray-700 rounded-full w-3 h-3 flex items-center justify-center">
                           {difficultyLabel}
                         </span>
                       </div>
@@ -2189,11 +2192,11 @@ const QuizCreator = () => {
         </div>
 
         <div className="col-span-1 md:col-span-4">
-            {currentQuestion && (
-              <Card className="shadow-lg border-0 h-full">
-                <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-t-lg py-2">
+          {currentQuestion && (
+            <Card className="shadow-lg border-0 h-full">
+              <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-t-lg py-2">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">Question {currentQuestionIndex + 1}</CardTitle>
+                <CardTitle className="text-lg">Question {currentQuestionIndex + 1}</CardTitle>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -2204,8 +2207,8 @@ const QuizCreator = () => {
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                </CardHeader>
-                <CardContent className="p-3 space-y-2 overflow-y-auto">
+              </CardHeader>
+              <CardContent className="p-3 space-y-2 overflow-y-auto">
                                   {/* Desktop Layout */}
                 <div className="hidden md:grid grid-cols-3 gap-3">
                   <div className="col-span-2">
@@ -2649,13 +2652,13 @@ const QuizCreator = () => {
                   </Button>
 
                   <Button
-                    onClick={() => setCurrentScreen(0)}
-                    variant="outline"
+                onClick={() => setCurrentScreen(0)}
+                variant="outline"
                     className="flex items-center gap-1 text-xs px-3 h-8 md:h-7"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    Back to Home
-                  </Button>
+              >
+                <RefreshCw className="h-4 w-4" />
+                Back to Home
+              </Button>
                   
                   <Button
                     onClick={saveSession}
@@ -2697,8 +2700,8 @@ const QuizCreator = () => {
                     </AlertDialogContent>
                   </AlertDialog>
                   
-                  <Button
-                    size="sm"
+                      <Button
+                        size="sm"
                     className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-xs px-3 h-8 md:h-7"
                     onClick={() => {
                       // Validate difficulty distribution first
@@ -2736,10 +2739,10 @@ const QuizCreator = () => {
                       // If validation passes, show reminder dialog
                       setShowReminderDialog(true);
                     }}
-                  >
-                    <Download className="h-3 w-3 mr-1" />
-                    Generate ZIP
-                  </Button>
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        Generate ZIP
+                      </Button>
                   
                   <Dialog open={showReminderDialog} onOpenChange={setShowReminderDialog}>
                     <DialogContent className="sm:max-w-md">
@@ -2818,12 +2821,12 @@ const QuizCreator = () => {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Label htmlFor="num-questions-desktop" className="text-xs">Total:</Label>
-                    <Input
+                  <Input
                       id="num-questions-desktop"
-                      type="number"
-                      min="1"
-                      max="500"
-                      value={numberOfQuestions}
+                    type="number"
+                    min="1"
+                    max="500"
+                    value={numberOfQuestions}
                       onChange={(e) => {
                         const newValue = parseInt(e.target.value) || 1;
                         setNumberOfQuestions(newValue);
@@ -2836,8 +2839,8 @@ const QuizCreator = () => {
                         }, 500);
                         setQuestionAdjustTimeout(timeout);
                       }}
-                      className="w-16 h-6 text-xs"
-                    />
+                    className="w-16 h-6 text-xs"
+                  />
                     <div className="flex items-center gap-1">
                       <Button
                         variant="outline"
@@ -2888,14 +2891,17 @@ const QuizCreator = () => {
                     const question = questions[i];
                     const difficulty = question?.difficulty || 'MEDIUM';
                     const difficultyLabel = difficulty === 'LOW' ? 'E' : difficulty === 'MEDIUM' ? 'M' : 'H';
-                    
+                    let diffBg = 'bg-yellow-200';
+                    let diffText = 'text-yellow-900';
+                    if (difficulty === 'LOW') { diffBg = 'bg-green-200'; diffText = 'text-green-900'; }
+                    if (difficulty === 'HIGH') { diffBg = 'bg-red-200'; diffText = 'text-red-900'; }
                     return (
                       <div key={i} className="relative">
                         <Button
                           variant={currentQuestionIndex === i ? "default" : "outline"}
                           size="sm"
                           onClick={() => setCurrentQuestionIndex(i)}
-                          className="w-7 h-7 rounded-full text-xs p-0 relative"
+                          className={`w-8 h-8 md:w-7 md:h-7 rounded-full text-xs p-0 relative ${diffBg} ${diffText}`}
                         >
                           {i + 1}
                         </Button>
@@ -2987,86 +2993,86 @@ const QuizCreator = () => {
           <>
             {/* Desktop Layout */}
             <div className="hidden md:flex justify-between items-center">
-              <div className="flex gap-4">
-                {currentScreen > 1 && (
-                  <Button
-                    onClick={() => setCurrentScreen(currentScreen - 1)}
-                    variant="outline"
-                    className="flex items-center gap-2"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    Previous
-                  </Button>
-                )}
-                
+            <div className="flex gap-4">
+              {currentScreen > 1 && (
                 <Button
-                  onClick={() => setCurrentScreen(0)}
+                  onClick={() => setCurrentScreen(currentScreen - 1)}
                   variant="outline"
                   className="flex items-center gap-2"
                 >
-                  <RefreshCw className="h-4 w-4" />
-                  Back to Home
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
                 </Button>
-              </div>
+              )}
               
-              <div className="flex gap-4">
-                <Button
-                  onClick={saveSession}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                >
-                  <Save className="h-4 w-4" />
-                  Save Session
-                </Button>
-                
-                <AlertDialog open={showFlushDialog} onOpenChange={setShowFlushDialog}>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Flush Data
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="flex items-center gap-2">
-                        <AlertTriangle className="h-5 w-5 text-red-500" />
-                        Confirm Data Flush
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action will permanently delete all quiz data including:
-                        <ul className="list-disc list-inside mt-2 space-y-1">
-                          <li>Quiz information and metadata</li>
-                          <li>All instructions</li>
-                          <li>All questions and their options</li>
-                          <li>Uploaded images</li>
-                          <li>Saved session data</li>
-                        </ul>
-                        This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={flushData} className="bg-red-600 hover:bg-red-700">
-                        Yes, Clear All Data
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-
-              <div>
-                <Button
-                  onClick={handleNext}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                  disabled={currentScreen === 1 && !checkAllRequiredFieldsFilled()}
-                >
-                  Next
-                </Button>
-              </div>
+              <Button
+                onClick={() => setCurrentScreen(0)}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Back to Home
+              </Button>
             </div>
+            
+            <div className="flex gap-4">
+              <Button
+                onClick={saveSession}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Save className="h-4 w-4" />
+                Save Session
+              </Button>
+              
+              <AlertDialog open={showFlushDialog} onOpenChange={setShowFlushDialog}>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Flush Data
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-red-500" />
+                      Confirm Data Flush
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action will permanently delete all quiz data including:
+                      <ul className="list-disc list-inside mt-2 space-y-1">
+                        <li>Quiz information and metadata</li>
+                        <li>All instructions</li>
+                        <li>All questions and their options</li>
+                        <li>Uploaded images</li>
+                        <li>Saved session data</li>
+                      </ul>
+                      This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={flushData} className="bg-red-600 hover:bg-red-700">
+                      Yes, Clear All Data
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+
+            <div>
+              <Button
+                onClick={handleNext}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                disabled={currentScreen === 1 && !checkAllRequiredFieldsFilled()}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
 
             {/* Mobile Layout - Dynamic Grid */}
             <div className="md:hidden space-y-3">
@@ -3148,7 +3154,7 @@ const QuizCreator = () => {
                 >
                   Next
                 </Button>
-              </div>
+        </div>
 
               {/* Row 3: Back to Home (only for screen 2+) */}
               {currentScreen > 1 && (
