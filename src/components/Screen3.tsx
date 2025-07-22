@@ -44,7 +44,7 @@ interface Screen3Props {
   setActiveFormatting: React.Dispatch<React.SetStateAction<'none' | 'superscript' | 'subscript'>>;
   currentSymbolPage: number;
   setCurrentSymbolPage: React.Dispatch<React.SetStateAction<number>>;
-  insertMathSymbol: (questionId: number, symbol: string) => void;
+  insertMathSymbol: (questionId: number, symbol: string, cursorPos?: number) => void;
   handleQuestionTextChange: (questionId: number, value: string, previousValue: string) => void;
   toggleFormatting: (format: 'superscript' | 'subscript') => void;
   renderMathPreview: (text: string) => string;
@@ -164,9 +164,9 @@ const Screen3: React.FC<Screen3Props> = (props) => {
     const latex =
       '\n' +
       '\\[\n' +
-      '\\begin{matrix}\n' +
+      '\\begin{bmatrix}\n'  + 
       matrixElements.map(row => row.join(' & ')).join(' \\\\ ') +
-      '\n\\end{matrix}\n' +
+      '\n\\end{bmatrix}\n' +
       '\\]\n';
     const q = questions.find(q => q.id === matrixTargetId);
     if (!q) return;
@@ -395,7 +395,11 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                                   variant="outline"
                                   size="sm"
                                   className="h-8 w-8 p-0 text-sm hover:bg-blue-50"
-                                  onClick={() => insertMathSymbol(currentQuestion.id, item.symbol)}
+                                  onClick={() => {
+                                    const textarea = document.getElementById(`question-textarea-${currentQuestion.id}`) as HTMLTextAreaElement;
+                                    const cursorPos = textarea ? textarea.selectionStart : undefined;
+                                    insertMathSymbol(currentQuestion.id, item.symbol, cursorPos);
+                                  }}
                                   title={item.name}
                                 >
                                   {item.symbol}
@@ -562,7 +566,11 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                                   variant="outline"
                                   size="sm"
                                   className="h-8 w-8 p-0 text-sm hover:bg-blue-50"
-                                  onClick={() => insertMathSymbol(currentQuestion.id, item.symbol)}
+                                  onClick={() => {
+                                    const textarea = document.getElementById(`question-mobile-${currentQuestion.id}`) as HTMLTextAreaElement;
+                                    const cursorPos = textarea ? textarea.selectionStart : undefined;
+                                    insertMathSymbol(currentQuestion.id, item.symbol, cursorPos);
+                                  }}
                                   title={item.name}
                                 >
                                   {item.symbol}
@@ -833,7 +841,11 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                                     variant="outline"
                                     size="sm"
                                     className="h-8 w-8 p-0 text-sm hover:bg-blue-50"
-                                    onClick={() => insertOptionSymbol(item.symbol)}
+                                    onClick={() => {
+                                      const textarea = document.getElementById(`question-textarea-${currentQuestion.id}`) as HTMLTextAreaElement;
+                                      const cursorPos = textarea ? textarea.selectionStart : undefined;
+                                      insertMathSymbol(currentQuestion.id, item.symbol, cursorPos);
+                                    }}
                                     title={item.name}
                                   >
                                     {item.symbol}

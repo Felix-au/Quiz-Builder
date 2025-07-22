@@ -1622,7 +1622,7 @@ const QuizCreator = () => {
     );
   };
 
-  const insertMathSymbol = (questionId: number, symbol: string) => {
+  const insertMathSymbol = (questionId: number, symbol: string, cursorPos?: number) => {
     const currentQuestion = questions.find(q => q.id === questionId);
     if (currentQuestion) {
       let formattedSymbol = symbol;
@@ -1633,7 +1633,15 @@ const QuizCreator = () => {
         formattedSymbol = `_{${symbol}}`;
       }
       
-      const updatedQuestion = currentQuestion.question + formattedSymbol;
+      let updatedQuestion = currentQuestion.question;
+      if (typeof cursorPos === 'number') {
+        updatedQuestion =
+          currentQuestion.question.slice(0, cursorPos) +
+          formattedSymbol +
+          currentQuestion.question.slice(cursorPos);
+      } else {
+        updatedQuestion = currentQuestion.question + formattedSymbol;
+      }
       updateQuestion(questionId, 'question', updatedQuestion);
     }
   };
