@@ -121,13 +121,13 @@ const LoginScreen = () => {
       <div className="hidden md:flex flex-col min-h-screen">
         <div className="flex-1 flex items-center justify-center p-4 overflow-y-auto">
           <div className="w-full max-w-screen-xl grid grid-cols-2 shadow-xl rounded-lg overflow-hidden bg-white">
-            {/* Left Branding Section */}
+        {/* Left Branding Section */}
             <div className="flex flex-col items-center justify-center bg-gradient-to-br from-gray-200 to-gray-400 text-gray-900 p-8 h-full min-h-screen w-full">
-              <div className="text-center max-w-xs mx-auto">
-                <img src="/logo23.png" alt="PrashnaSetu Logo" className="mx-auto h-56 w-56 object-contain" />
-                <p className="text-base opacity-80 -mt-2 leading-tight">PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
-              </div>
-            </div>
+          <div className="text-center max-w-xs mx-auto">
+            <img src="/logo23.png" alt="PrashnaSetu Logo" className="mx-auto h-56 w-56 object-contain" />
+            <p className="text-base opacity-80 -mt-2 leading-tight">PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
+          </div>
+        </div>
             
             {/* Right Form Section */}
             <div className="flex items-center justify-center bg-background p-8">
@@ -275,18 +275,18 @@ const LoginScreen = () => {
         {/* Screen 2: Login Form Screen */}
         <div className={`min-h-screen bg-background flex flex-col justify-center p-4 transition-opacity duration-500 ${showLoginForm ? 'opacity-100' : 'opacity-0'}`}>
           <div className="flex-1 flex items-center justify-center">
-            <Card className="w-full max-w-md shadow-none border-0">
-              <CardHeader className="text-center pb-2">
-                <CardDescription>
-                  {showForgotPassword 
-                    ? 'Reset your password' 
-                    : isSignUp 
-                      ? 'Create your account' 
-                      : 'Sign in to your account'
-                  }
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+          <Card className="w-full max-w-md shadow-none border-0">
+            <CardHeader className="text-center pb-2">
+              <CardDescription>
+                {showForgotPassword 
+                  ? 'Reset your password' 
+                  : isSignUp 
+                    ? 'Create your account' 
+                    : 'Sign in to your account'
+                }
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
               {showForgotPassword ? (
                 <form onSubmit={handleForgotPassword} className="space-y-4">
                   <div className="relative">
