@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,1970 +10,1062 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText, Sigma, Superscript, Subscript, Calendar, Mail, ChevronRight, HelpCircle, FileUp, PlayCircle, RefreshCw, LogOut } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import JSZip from 'jszip';
-import * as FileSaver from 'file-saver';
-import { uploadImageToImgBB, downloadImageAsFile } from '@/utils/imageUpload';
-import emailjs from '@emailjs/browser';
-import Screen0 from './Screen0';
-import Screen1 from './Screen1';
-import Screen2 from './Screen2';
-import Screen3 from './Screen3';
+import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText, Sigma, Superscript, Subscript, Calendar, Mail, ChevronRight, HelpCircle, RefreshCw } from 'lucide-react';
 
-interface Option {
-  id: number;
-  option_text: string;
-  is_correct: boolean;
-  option_order: number;
+declare global {
+  interface Window {
+    MathJax?: any;
+  }
 }
 
-interface Question {
-  id: number;
-  question: string;
-  topic: string;
-  summary: string;
-  question_order: number;
-  points: number;
-  image_path: string;
-  image_url: string;
-  image: string;
-  difficulty: 'LOW' | 'MEDIUM' | 'HIGH';
-  options: Option[];
-  imageFile?: File;
-  originalImageFileName?: string;
-  imgbbUrl?: string;
+// Define the props type for Screen3
+interface Screen3Props {
+  questions: any[];
+  setQuestions: React.Dispatch<React.SetStateAction<any[]>>;
+  numberOfQuestions: number;
+  setNumberOfQuestions: React.Dispatch<React.SetStateAction<number>>;
+  currentQuestionIndex: number;
+  setCurrentQuestionIndex: React.Dispatch<React.SetStateAction<number>>;
+  questionAdjustTimeout: any;
+  setQuestionAdjustTimeout: React.Dispatch<React.SetStateAction<any>>;
+  adjustQuestions: (newCount: number) => void;
+  updateQuestion: (questionId: number, field: string, value: any) => void;
+  updateOption: (questionId: number, optionId: number, field: string, value: any) => void;
+  addOption: (questionId: number) => void;
+  removeOption: (questionId: number, optionId: number) => void;
+  handleImageUpload: (questionId: number, file: File) => void;
+  removeImage: (questionId: number) => void;
+  deleteQuestion: (questionId: number) => void;
+  saveSession: () => void;
+  showFlushDialog: boolean;
+  setShowFlushDialog: React.Dispatch<React.SetStateAction<boolean>>;
+  flushData: () => void;
+  activeFormatting: 'none' | 'superscript' | 'subscript';
+  setActiveFormatting: React.Dispatch<React.SetStateAction<'none' | 'superscript' | 'subscript'>>;
+  currentSymbolPage: number;
+  setCurrentSymbolPage: React.Dispatch<React.SetStateAction<number>>;
+  insertMathSymbol: (questionId: number, symbol: string, cursorPos?: number) => void;
+  handleQuestionTextChange: (questionId: number, value: string, previousValue: string, e?: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  toggleFormatting: (format: 'superscript' | 'subscript') => void;
+  renderMathPreview: (text: string) => string;
+  getPageTitle: () => string;
+  getCurrentSymbols: () => any[];
+  optionFormatting: { [optionId: number]: 'none' | 'superscript' | 'subscript' };
+  setOptionFormatting: React.Dispatch<React.SetStateAction<{ [optionId: number]: 'none' | 'superscript' | 'subscript' }>>;
+  optionSymbolPage: { [optionId: number]: number };
+  setOptionSymbolPage: React.Dispatch<React.SetStateAction<{ [optionId: number]: number }>>;
+  mostFrequentSymbols: any[];
+  frequentSymbols: any[];
+  rarelyUsedSymbols: any[];
+  showReminderDialog: boolean;
+  setShowReminderDialog: React.Dispatch<React.SetStateAction<boolean>>;
+  reminderDate: string;
+  setReminderDate: React.Dispatch<React.SetStateAction<string>>;
+  reminderTime: string;
+  setReminderTime: React.Dispatch<React.SetStateAction<string>>;
+  reminderEmail: string;
+  setReminderEmail: React.Dispatch<React.SetStateAction<string>>;
+  handleReminderSubmit: (sendReminder: boolean) => void;
+  metadata: any;
+  setCurrentScreen: React.Dispatch<React.SetStateAction<number>>;
+  toast: any;
 }
 
-interface Instruction {
-  id: number;
-  instruction_text: string;
-  instruction_order: number;
-}
+const Screen3: React.FC<Screen3Props> = (props) => {
+  const {
+    questions,
+    setQuestions,
+    numberOfQuestions,
+    setNumberOfQuestions,
+    currentQuestionIndex,
+    setCurrentQuestionIndex,
+    questionAdjustTimeout,
+    setQuestionAdjustTimeout,
+    adjustQuestions,
+    updateQuestion,
+    updateOption,
+    addOption,
+    removeOption,
+    handleImageUpload,
+    removeImage,
+    deleteQuestion,
+    saveSession,
+    showFlushDialog,
+    setShowFlushDialog,
+    flushData,
+    activeFormatting,
+    setActiveFormatting,
+    currentSymbolPage,
+    setCurrentSymbolPage,
+    insertMathSymbol,
+    handleQuestionTextChange,
+    toggleFormatting,
+    renderMathPreview,
+    getPageTitle,
+    getCurrentSymbols,
+    optionFormatting,
+    setOptionFormatting,
+    optionSymbolPage,
+    setOptionSymbolPage,
+    mostFrequentSymbols,
+    frequentSymbols,
+    rarelyUsedSymbols,
+    showReminderDialog,
+    setShowReminderDialog,
+    reminderDate,
+    setReminderDate,
+    reminderTime,
+    setReminderTime,
+    reminderEmail,
+    setReminderEmail,
+    handleReminderSubmit,
+    metadata,
+    setCurrentScreen,
+    toast,
+  } = props;
+  const currentQuestion = questions[currentQuestionIndex];
 
-interface QuizMetadata {
-  id: number;
-  code: string;
-  name: string;
-  instructor: string;
-  course: string;
-  year: string;
-  academic_year: string;
-  subject: string;
-  subject_code: string;
-  allowed_time: number;
-  visible: boolean;
-  total_points: number;
-  num_displayed_questions: number;
-  num_easy_questions: number;
-  num_medium_questions: number;
-  num_high_questions: number;
-  allow_resume: boolean;
-  created_at: string;
-  updated_at: string;
-  created_by: null;
-}
+  // Matrix dialog state
+  const [showMatrixDialog, setShowMatrixDialog] = useState(false);
+  const [matrixRows, setMatrixRows] = useState(2);
+  const [matrixCols, setMatrixCols] = useState(2);
+  const [matrixElements, setMatrixElements] = useState<string[][]>([['', ''], ['', '']]);
+  const [matrixTargetId, setMatrixTargetId] = useState<number | null>(null);
+  const [matrixInsertPos, setMatrixInsertPos] = useState<number | null>(null);
 
-const QuizCreator = () => {
-  const { toast } = useToast();
-  const { logout, user } = useAuth();
-  const [currentScreen, setCurrentScreen] = useState(0);
-  const [showFlushDialog, setShowFlushDialog] = useState(false);
-  const [showReminderDialog, setShowReminderDialog] = useState(false);
-  
-  const [reminderDate, setReminderDate] = useState('');
-  const [reminderTime, setReminderTime] = useState('');
-  const [reminderEmail, setReminderEmail] = useState('');
-  
-  const [activeFormatting, setActiveFormatting] = useState<'none' | 'superscript' | 'subscript'>('none');
-  
-  const [currentSymbolPage, setCurrentSymbolPage] = useState(1);
-  const [showMultiImportDialog, setShowMultiImportDialog] = useState(false);
-  const [importProgress, setImportProgress] = useState(0);
-  const [importingFiles, setImportingFiles] = useState<string[]>([]);
-  const [currentImportFile, setCurrentImportFile] = useState('');
+  // Add state for showing each dialog and their input fields
+  const [showFractionDialog, setShowFractionDialog] = useState(false);
+  const [fractionNumerator, setFractionNumerator] = useState('');
+  const [fractionDenominator, setFractionDenominator] = useState('');
+  const [showBinomialDialog, setShowBinomialDialog] = useState(false);
+  const [binomialN, setBinomialN] = useState('');
+  const [binomialK, setBinomialK] = useState('');
+  const [showIntegralDialog, setShowIntegralDialog] = useState(false);
+  const [integralLower, setIntegralLower] = useState('');
+  const [integralUpper, setIntegralUpper] = useState('');
+  const [integralFunction, setIntegralFunction] = useState('');
+  const [integralVariable, setIntegralVariable] = useState('x');
+  const [showDoubleIntegralDialog, setShowDoubleIntegralDialog] = useState(false);
+  const [doubleIntegralLower, setDoubleIntegralLower] = useState('');
+  const [doubleIntegralUpper, setDoubleIntegralUpper] = useState('');
+  const [doubleIntegralFunction, setDoubleIntegralFunction] = useState('');
+  const [doubleIntegralVariable, setDoubleIntegralVariable] = useState('x, y');
+  const [showSummationDialog, setShowSummationDialog] = useState(false);
+  const [summationIndex, setSummationIndex] = useState('k');
+  const [summationLower, setSummationLower] = useState('0');
+  const [summationUpper, setSummationUpper] = useState('n');
+  const [summationFunction, setSummationFunction] = useState('');
+  const [showLimitDialog, setShowLimitDialog] = useState(false);
+  const [limitVariable, setLimitVariable] = useState('x');
+  const [limitApproaches, setLimitApproaches] = useState('0');
+  const [limitFunction, setLimitFunction] = useState('');
+  const [showRootDialog, setShowRootDialog] = useState(false);
+  const [rootDegree, setRootDegree] = useState('n');
+  const [rootRadicand, setRootRadicand] = useState('x');
+  const [showProductDialog, setShowProductDialog] = useState(false);
+  const [productIndex, setProductIndex] = useState('i');
+  const [productLower, setProductLower] = useState('1');
+  const [productUpper, setProductUpper] = useState('n');
+  const [productFunction, setProductFunction] = useState('');
 
-  const [metadata, setMetadata] = useState<QuizMetadata>({
-    id: 1,
-    code: '',
-    name: '',
-    instructor: '',
-    course: '',
-    year: '',
-    academic_year: new Date().getFullYear().toString(),
-    subject: '',
-    subject_code: '',
-    allowed_time: 0,
-    visible: true,
-    total_points: 0,
-    num_displayed_questions: 0,
-    num_easy_questions: 0,
-    num_medium_questions: 0,
-    num_high_questions: 0,
-    allow_resume: false,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    created_by: null,
-  });
-
-  const [instructions, setInstructions] = useState<Instruction[]>([]);
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [newInstruction, setNewInstruction] = useState('');
-  const [numberOfQuestions, setNumberOfQuestions] = useState(1);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [questionAdjustTimeout, setQuestionAdjustTimeout] = useState<NodeJS.Timeout | null>(null);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (questionAdjustTimeout) {
-        clearTimeout(questionAdjustTimeout);
-      }
-    };
-  }, [questionAdjustTimeout]);
-
-  const [selectedProgram, setSelectedProgram] = useState('');
-  const [selectedDepartment, setSelectedDepartment] = useState('');
-  const [selectedSections, setSelectedSections] = useState<string[]>([]);
-  const [customProgram, setCustomProgram] = useState('');
-  const [customDepartment, setCustomDepartment] = useState('');
-  const [customSections, setCustomSections] = useState('');
-  const [skipLoadSavedData, setSkipLoadSavedData] = useState(false);
-
-  // Place these at the top level of QuizCreator, after other useState hooks:
-  const [optionFormatting, setOptionFormatting] = useState<{ [optionId: number]: 'none' | 'superscript' | 'subscript' }>({});
-  const [optionSymbolPage, setOptionSymbolPage] = useState<{ [optionId: number]: number }>({});
-
-  const programs = [
-    { value: 'BTech', label: 'BTech', years: 4 },
-    { value: 'BA', label: 'BA', years: 3 },
-    { value: 'MBA', label: 'MBA', years: 2 },
-    { value: 'MTech', label: 'MTech', years: 2 },
-    { value: 'PhD', label: 'PhD', years: 5 },
-    { value: 'custom', label: 'Other (Type your own)', years: 4 }
-  ];
-
-  const departments = [
-    'CSE', 'ME', 'ECE', 'ECOM', 'CE', 'EE', 'IT', 'BT', 'CH', 'custom'
-  ];
-
-  const sections = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'custom'];
-
-  const mostFrequentSymbols = [
-    { symbol: '±', name: 'Plus-minus' },
-    { symbol: '×', name: 'Multiplication' },
-    { symbol: '÷', name: 'Division' },
-    { symbol: '≠', name: 'Not equal' },
-    { symbol: '≈', name: 'Approximately' },
-    { symbol: '≤', name: 'Less than or equal' },
-    { symbol: '≥', name: 'Greater than or equal' },
-    { symbol: '∞', name: 'Infinity' },
-    { symbol: 'π', name: 'Pi' },
-    { symbol: '√', name: 'Square root' },
-    { symbol: '²', name: 'Superscript 2' },
-    { symbol: '³', name: 'Superscript 3' },
-    { symbol: '∑', name: 'Summation' },
-    { symbol: '∫', name: 'Integral' },
-    { symbol: '∂', name: 'Partial derivative' },
-    { symbol: '∆', name: 'Delta/Laplacian' },
-    { symbol: '°', name: 'Degree' },
-    { symbol: '%', name: 'Percent' },
-    { symbol: 'α', name: 'Alpha' },
-    { symbol: 'β', name: 'Beta' },
-    { symbol: 'γ', name: 'Gamma' },
-    { symbol: 'δ', name: 'Delta' },
-    { symbol: 'θ', name: 'Theta' },
-    { symbol: 'λ', name: 'Lambda' },
-    { symbol: 'μ', name: 'Mu' },
-    { symbol: 'σ', name: 'Sigma' },
-    { symbol: 'φ', name: 'Phi' },
-    { symbol: 'ω', name: 'Omega' },
-  ];
-
-  const frequentSymbols = [
-    { symbol: '∓', name: 'Minus-plus' },
-    { symbol: '∙', name: 'Bullet operator' },
-    { symbol: '∘', name: 'Ring operator' },
-    { symbol: '≡', name: 'Identical to' },
-    { symbol: '≪', name: 'Much less than' },
-    { symbol: '≫', name: 'Much greater than' },
-    { symbol: '∝', name: 'Proportional to' },
-    { symbol: 'e', name: 'Euler\'s number' },
-    { symbol: '∛', name: 'Cube root' },
-    { symbol: '∜', name: 'Fourth root' },
-    { symbol: '⁴', name: 'Superscript 4' },
-    { symbol: '⁵', name: 'Superscript 5' },
-    { symbol: '⁻¹', name: 'Superscript -1' },
-    { symbol: '∏', name: 'Product' },
-    { symbol: '∬', name: 'Double integral' },
-    { symbol: '∭', name: 'Triple integral' },
-    { symbol: '∇', name: 'Nabla/Del' },
-    { symbol: '∴', name: 'Therefore' },
-    { symbol: '∵', name: 'Because' },
-    { symbol: 'ε', name: 'Epsilon' },
-    { symbol: 'ζ', name: 'Zeta' },
-    { symbol: 'η', name: 'Eta' },
-    { symbol: 'ι', name: 'Iota' },
-    { symbol: 'κ', name: 'Kappa' },
-    { symbol: 'ν', name: 'Nu' },
-    { symbol: 'ξ', name: 'Xi' },
-    { symbol: 'ρ', name: 'Rho' },
-    { symbol: 'τ', name: 'Tau' },
-    { symbol: 'υ', name: 'Upsilon' },
-    { symbol: 'χ', name: 'Chi' },
-    { symbol: 'ψ', name: 'Psi' },
-    { symbol: '∈', name: 'Element of' },
-    { symbol: '∉', name: 'Not an element of' },
-    { symbol: '⊂', name: 'Subset of' },
-    { symbol: '⊃', name: 'Superset of' },
-    { symbol: '∪', name: 'Union' },
-    { symbol: '∩', name: 'Intersection' },
-    { symbol: '∅', name: 'Empty set' },
-  ];
-
-  const rarelyUsedSymbols = [
-    { symbol: 'ℏ', name: 'Reduced Planck constant' },
-    { symbol: 'ℓ', name: 'Script l' },
-    { symbol: '∮', name: 'Contour integral' },
-    { symbol: '⊆', name: 'Subset of or equal to' },
-    { symbol: '⊇', name: 'Superset of or equal to' },
-    { symbol: '∀', name: 'For all' },
-    { symbol: '∃', name: 'There exists' },
-    { symbol: '∄', name: 'There does not exist' },
-    { symbol: '∧', name: 'Logical and' },
-    { symbol: '∨', name: 'Logical or' },
-    { symbol: '¬', name: 'Logical not' },
-    { symbol: '⊕', name: 'Exclusive or' },
-    { symbol: '→', name: 'Implies' },
-    { symbol: '↔', name: 'If and only if' },
-    { symbol: 'Α', name: 'Alpha (capital)' },
-    { symbol: 'Β', name: 'Beta (capital)' },
-    { symbol: 'Γ', name: 'Gamma (capital)' },
-    { symbol: 'Δ', name: 'Delta (capital)' },
-    { symbol: 'Ε', name: 'Epsilon (capital)' },
-    { symbol: 'Ζ', name: 'Zeta (capital)' },
-    { symbol: 'Η', name: 'Eta (capital)' },
-    { symbol: 'Θ', name: 'Theta (capital)' },
-    { symbol: 'Ι', name: 'Iota (capital)' },
-    { symbol: 'Κ', name: 'Kappa (capital)' },
-    { symbol: 'Λ', name: 'Lambda (capital)' },
-    { symbol: 'Μ', name: 'Mu (capital)' },
-    { symbol: 'Ν', name: 'Nu (capital)' },
-    { symbol: 'Ξ', name: 'Xi (capital)' },
-    { symbol: 'Ο', name: 'Omicron (capital)' },
-    { symbol: 'Π', name: 'Pi (capital)' },
-    { symbol: 'Ρ', name: 'Rho (capital)' },
-    { symbol: 'Σ', name: 'Sigma (capital)' },
-    { symbol: 'Τ', name: 'Tau (capital)' },
-    { symbol: 'Υ', name: 'Upsilon (capital)' },
-    { symbol: 'Φ', name: 'Phi (capital)' },
-    { symbol: 'Χ', name: 'Chi (capital)' },
-    { symbol: 'Ψ', name: 'Psi (capital)' },
-    { symbol: 'Ω', name: 'Omega (capital)' },
-    { symbol: '∠', name: 'Angle' },
-    { symbol: '⊥', name: 'Perpendicular' },
-    { symbol: '∥', name: 'Parallel' },
-    { symbol: '△', name: 'Triangle' },
-    { symbol: '□', name: 'Square' },
-    { symbol: '◯', name: 'Circle' },
-    { symbol: '↑', name: 'Up arrow' },
-    { symbol: '↓', name: 'Down arrow' },
-    { symbol: '←', name: 'Left arrow' },
-    { symbol: '⇒', name: 'Double right arrow' },
-    { symbol: '⇔', name: 'Double left-right arrow' },
-    { symbol: '§', name: 'Section sign' },
-    { symbol: '¶', name: 'Paragraph sign' },
-    { symbol: '†', name: 'Dagger' },
-    { symbol: '‡', name: 'Double dagger' },
-    { symbol: '•', name: 'Bullet' },
-    { symbol: '‰', name: 'Per mille' },
-    { symbol: '℃', name: 'Celsius' },
-    { symbol: '℉', name: 'Fahrenheit' },
-    { symbol: 'Å', name: 'Angstrom' },
-    { symbol: '℧', name: 'Mho' },
-  ];
-
-  const getCurrentSymbols = () => {
-    switch (currentSymbolPage) {
-      case 1:
-        return mostFrequentSymbols;
-      case 2:
-        return frequentSymbols;
-      case 3:
-        return rarelyUsedSymbols;
-      default:
-        return mostFrequentSymbols;
-    }
+  // Open matrix dialog and store cursor position
+  const openMatrixDialog = (questionId: number) => {
+    setMatrixRows(2);
+    setMatrixCols(2);
+    setMatrixElements([['', ''], ['', '']]);
+    setMatrixTargetId(questionId);
+    // Get cursor position
+    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
+    setShowMatrixDialog(true);
   };
 
-  const getPageTitle = () => {
-    switch (currentSymbolPage) {
-      case 1:
-        return 'Most Frequent Symbols';
-      case 2:
-        return 'Frequent Symbols';
-      case 3:
-        return 'Rarely Used Symbols';
-      default:
-        return 'Mathematical Symbols';
-    }
-  };
-
-  useEffect(() => {
-    emailjs.init('wnSCgvOBG9hB6q1_g');
-  }, []);
-
-  useEffect(() => {
-    const loadSavedData = async () => {
-      // Skip loading saved data if user explicitly wants to start new quiz
-      if (skipLoadSavedData) {
-        setSkipLoadSavedData(false); // Reset the flag
-        return;
-      }
-      
-      const savedData = localStorage.getItem('quizCreatorData');
-      if (savedData) {
-        await loadSavedDataFromStorage();
-        setCurrentScreen(0);
-      } else {
-        const defaultInstruction: Instruction = {
-          id: 1,
-          instruction_text: 'Once the quiz starts, full screen will trigger automatically, everytime window goes out of focus or is switched, one fault is counted. Faculty may terminate quiz or negative marks may be given based on it.',
-          instruction_order: 1,
-        };
-        setInstructions([defaultInstruction]);
-        
-        initializeDefaultQuestion();
-      }
-    };
-    
-    loadSavedData();
-  }, []);
-
-  const initializeDefaultQuestion = () => {
-    const defaultQuestion: Question = {
-      id: 1,
-      question: '',
-      topic: 'NA',
-      summary: 'NA',
-      question_order: 0,
-      points: 1,
-      image_path: '',
-      image_url: '',
-      image: '',
-      difficulty: 'MEDIUM',
-      options: [
-        { id: 1, option_text: '', is_correct: false, option_order: 0 },
-        { id: 2, option_text: '', is_correct: false, option_order: 0 },
-        { id: 3, option_text: '', is_correct: false, option_order: 0 },
-        { id: 4, option_text: '', is_correct: false, option_order: 0 },
-      ],
-    };
-    setQuestions([defaultQuestion]);
-  };
-
-  useEffect(() => {
-    let courseValue = '';
-    const program = selectedProgram === 'custom' ? customProgram : selectedProgram;
-    const department = selectedDepartment === 'custom' ? customDepartment : selectedDepartment;
-    const sectionStr = selectedSections.includes('custom') 
-      ? customSections 
-      : selectedSections.join(', ');
-    
-    if (program || department || sectionStr) {
-      courseValue = `${program} ${department} ${sectionStr}`.trim();
-    }
-    
-    setMetadata(prev => ({ ...prev, course: courseValue }));
-  }, [selectedProgram, selectedDepartment, selectedSections, customProgram, customDepartment, customSections]);
-
-  const generateYearOptions = () => {
-    const currentYear = new Date().getFullYear();
-    const programYears = programs.find(p => p.value === selectedProgram)?.years || 4;
-    const options = [];
-    
-    for (let startYear = 2021; startYear <= currentYear + 1; startYear++) {
-      const endYear = startYear + programYears;
-      options.push(`${startYear}-${endYear}`);
-    }
-    
-    return options;
-  };
-
-  const loadSavedDataFromStorage = async () => {
-    const savedData = localStorage.getItem('quizCreatorData');
-    if (savedData) {
-      const parsed = JSON.parse(savedData);
-      setMetadata(parsed.metadata || metadata);
-      
-      if (parsed.instructions && parsed.instructions.length > 0) {
-        setInstructions(parsed.instructions);
-      } else {
-        const defaultInstruction: Instruction = {
-          id: 1,
-          instruction_text: 'Once the quiz starts, full screen will trigger automatically, everytime window goes out of focus or is switched, one fault is counted. Faculty may terminate quiz or negative marks may be given based on it.',
-          instruction_order: 1,
-        };
-        setInstructions([defaultInstruction]);
-      }
-      
-      const loadedQuestions = parsed.questions || [];
-      
-      const questionsWithImages = await Promise.all(
-        loadedQuestions.map(async (q: Question) => {
-          if (q.imgbbUrl && q.originalImageFileName) {
-            try {
-              const imageFile = await downloadImageAsFile(q.imgbbUrl, q.originalImageFileName);
-              return { ...q, imageFile };
-            } catch (error) {
-              console.error('Failed to download image for question', q.id, error);
-              toast({
-                title: "Image Download Failed",
-                description: `Failed to restore image for question ${q.id}`,
-                variant: "destructive",
-              });
-              return { ...q, imageFile: undefined };
-            }
-          }
-          return { ...q, imageFile: undefined };
-        })
+  // Update matrix size and elements
+  const handleMatrixSizeChange = (rows: number, cols: number) => {
+    setMatrixRows(rows);
+    setMatrixCols(cols);
+    setMatrixElements(prev => {
+      const newArr = Array.from({ length: rows }, (_, i) =>
+        Array.from({ length: cols }, (_, j) => (prev[i] && prev[i][j]) ? prev[i][j] : '')
       );
-      
-      setQuestions(questionsWithImages);
-      
-      const displayedQuestions = parsed.metadata?.num_displayed_questions || 1;
-      const totalQuestions = Math.max(displayedQuestions, parsed.numberOfQuestions || 1);
-      setNumberOfQuestions(totalQuestions);
-      
-      setSelectedProgram(parsed.selectedProgram || '');
-      setSelectedDepartment(parsed.selectedDepartment || '');
-      setSelectedSections(parsed.selectedSections || []);
-      setCustomProgram(parsed.customProgram || '');
-      setCustomDepartment(parsed.customDepartment || '');
-      setCustomSections(parsed.customSections || '');
-      
-      toast({
-        title: "Session Loaded",
-        description: "Your saved session has been restored successfully.",
-      });
+      return newArr;
+    });
+  };
+
+  // Insert matrix into question at cursor as LaTeX (double backslashes for row separation)
+  const handleMatrixInsert = () => {
+    if (matrixTargetId == null) return;
+    // Build LaTeX matrix with double backslashes for row separation
+    const latex =
+      '\n' +
+      '\\[\n' +
+      '\\begin{bmatrix}\n'  + 
+      matrixElements.map(row => row.join(' & ')).join(' \\\\\\ ') +
+      '\n\\end{bmatrix}\n' +
+      '\\]\n';
+    const q = questions.find(q => q.id === matrixTargetId);
+    if (!q) return;
+    let newValue = q.question;
+    if (matrixInsertPos != null) {
+      newValue =
+        q.question.slice(0, matrixInsertPos) +
+        latex +
+        q.question.slice(matrixInsertPos);
     } else {
-      toast({
-        title: "No Saved Session",
-        description: "No saved session found. Start creating a new quiz.",
-        variant: "destructive",
-      });
+      newValue = q.question + latex;
     }
+    updateQuestion(matrixTargetId, 'question', newValue);
+    setShowMatrixDialog(false);
   };
 
-  const loadFromSavedSession = async () => {
-    await loadSavedDataFromStorage();
-    setCurrentScreen(1);
-  };
-
-  const startNewQuiz = () => {
-    // Set flag to skip loading saved data
-    setSkipLoadSavedData(true);
-    
-    // Reset metadata to default values (don't clear localStorage)
-    setMetadata({
-      id: 1,
-      code: '',
-      name: '',
-      instructor: '',
-      course: '',
-      year: '',
-      academic_year: new Date().getFullYear().toString(),
-      subject: '',
-      subject_code: '',
-      allowed_time: 0,
-      visible: true,
-      total_points: 0,
-      num_displayed_questions: 0,
-      num_easy_questions: 0,
-      num_medium_questions: 0,
-      num_high_questions: 0,
-      allow_resume: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      created_by: null,
-    });
-    
-    // Reset instructions to default
-    const defaultInstruction: Instruction = {
-      id: 1,
-      instruction_text: 'Once the quiz starts, full screen will trigger automatically, everytime window goes out of focus or is switched, one fault is counted. Faculty may terminate quiz or negative marks may be given based on it.',
-      instruction_order: 1,
-    };
-    setInstructions([defaultInstruction]);
-    
-    // Reset questions to default
-    initializeDefaultQuestion();
-    
-    // Reset form state variables
-    setCurrentScreen(1);
-    setNumberOfQuestions(1);
-    setSelectedProgram('');
-    setSelectedDepartment('');
-    setSelectedSections([]);
-    setCustomProgram('');
-    setCustomDepartment('');
-    setCustomSections('');
-    
-    toast({
-      title: "New Quiz Started",
-      description: "Form has been reset. Your previous saved session is still available.",
-    });
-  };
-
-  const importFromZip = async (file: File) => {
-    try {
-      const zip = new JSZip();
-      const zipContent = await zip.loadAsync(file);
-      
-      const quizJsonFile = zipContent.file('quiz.json');
-      if (!quizJsonFile) {
-        toast({
-          title: "Invalid ZIP file",
-          description: "No quiz.json file found in the ZIP.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const quizJsonContent = await quizJsonFile.async('text');
-      const quizData = JSON.parse(quizJsonContent);
-      
-      if (!quizData.quiz) {
-        toast({
-          title: "Invalid quiz format",
-          description: "The quiz.json file does not contain valid quiz data.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const quiz = quizData.quiz;
-      
-      // Load metadata
-      setMetadata({
-        id: quiz.id || 1,
-        code: quiz.code || '',
-        name: quiz.name || '',
-        instructor: quiz.instructor || '',
-        course: quiz.course || '',
-        year: quiz.year || '',
-        academic_year: quiz.academic_year || new Date().getFullYear().toString(),
-        subject: quiz.subject || '',
-        subject_code: quiz.subject_code || '',
-        allowed_time: quiz.allowed_time || 0,
-        visible: quiz.visible !== undefined ? quiz.visible : true,
-        total_points: quiz.total_points || 0,
-        num_displayed_questions: quiz.num_displayed_questions || 1,
-        num_easy_questions: quiz.num_easy_questions || 0,
-        num_medium_questions: quiz.num_medium_questions || 0,
-        num_high_questions: quiz.num_high_questions || 0,
-        allow_resume: quiz.allow_resume !== undefined ? quiz.allow_resume : false,
-        created_at: quiz.created_at || new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        created_by: quiz.created_by || null,
-      });
-
-      // Parse course field to set program/department/sections
-      if (quiz.course) {
-        const courseParts = quiz.course.split(' ').filter(part => part.trim() !== '');
-        if (courseParts.length > 0) {
-          // Set as custom since we can't match exactly
-          setSelectedProgram('custom');
-          setCustomProgram(courseParts[0] || '');
-          
-          if (courseParts.length > 1) {
-            setSelectedDepartment('custom');
-            setCustomDepartment(courseParts[1] || '');
-          }
-          
-          if (courseParts.length > 2) {
-            setSelectedSections(['custom']);
-            setCustomSections(courseParts.slice(2).join(' '));
-          }
-        }
-      }
-
-      // Load instructions
-      const importedInstructions: Instruction[] = quiz.instructions?.map((inst: any) => ({
-        id: inst.id,
-        instruction_text: inst.instruction_text,
-        instruction_order: inst.instruction_order,
-      })) || [];
-      
-      // Check if full screen instruction exists, if not add it
-      const fullScreenInstructionText = 'Once the quiz starts, full screen will trigger automatically, everytime window goes out of focus or is switched, one fault is counted. Faculty may terminate quiz or negative marks may be given based on it.';
-      const hasFullScreenInstruction = importedInstructions.some(inst => 
-        inst.instruction_text.includes('full screen') || 
-        inst.instruction_text.includes('window goes out of focus')
-      );
-      
-      let finalInstructions = importedInstructions;
-      if (!hasFullScreenInstruction) {
-        const fullScreenInstruction: Instruction = {
-          id: Math.max(...importedInstructions.map(inst => inst.id), 0) + 1,
-          instruction_text: fullScreenInstructionText,
-          instruction_order: Math.max(...importedInstructions.map(inst => inst.instruction_order), 0) + 1,
-        };
-        finalInstructions = [fullScreenInstruction, ...importedInstructions];
-      }
-      
-      setInstructions(finalInstructions);
-
-      // Load questions with images
-      const questionsWithImages = await Promise.all(
-        quiz.questions?.map(async (q: any) => {
-          let imageFile: File | undefined;
-          
-          if (q.image && zipContent.folder('images')) {
-            const imageFileName = q.image.split('/').pop();
-            const imageFileInZip = zipContent.file(`images/${imageFileName}`);
-            
-            if (imageFileInZip) {
-              try {
-                const imageBlob = await imageFileInZip.async('blob');
-                imageFile = new File([imageBlob], imageFileName || 'image.png', { type: imageBlob.type });
-              } catch (error) {
-                console.error('Failed to load image:', error);
-              }
-            }
-          }
-
-          return {
-            id: q.id,
-            question: q.question || '',
-            topic: q.topic || 'NA',
-            summary: q.summary || 'NA',
-            question_order: q.question_order || 0,
-            points: q.points || 1,
-            image_path: q.image_path || '',
-            image_url: q.image_url || '',
-            image: q.image || '',
-            difficulty: q.difficulty || 'MEDIUM',
-            imageFile,
-            originalImageFileName: imageFile?.name,
-            options: q.options?.map((opt: any) => ({
-              id: opt.id,
-              option_text: opt.option_text || '',
-              is_correct: opt.is_correct || false,
-              option_order: opt.option_order || 0,
-            })) || [],
-          };
-        }) || []
-      );
-
-      setQuestions(questionsWithImages);
-      setNumberOfQuestions(questionsWithImages.length);
-      setCurrentScreen(1);
-      
-      toast({
-        title: "Import Successful",
-        description: "Quiz data has been imported successfully.",
-      });
-    } catch (error) {
-      console.error('Import error:', error);
-      toast({
-        title: "Import Failed",
-        description: "Failed to import the ZIP file. Please check the file format.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const sendReminderEmail = async (date: string, time: string, email: string) => {
-    try {
-      const startDateTime = new Date(`${date}T${time}:00+05:30`);
-      const endDateTime = new Date(startDateTime.getTime() + (metadata.allowed_time * 60 * 1000));
-
-      const formatDateForGoogle = (date: Date) => {
-        return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-      };
-
-      const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE` +
-        `&text=${encodeURIComponent(`Quiz: ${metadata.name}`)}` +
-        `&dates=${formatDateForGoogle(startDateTime)}/${formatDateForGoogle(endDateTime)}`;
-
-      const templateParams = {
-        to_email: email,
-        from_name: 'PrashnaSetu',
-        from_email: 'quizbuilder86@gmail.com',
-        quiz_name: metadata.name,
-        quiz_date: date,
-        quiz_time: time,
-        subject: metadata.subject,
-        instructor: metadata.instructor,
-        course: metadata.course,
-        allowed_time: metadata.allowed_time,
-        quiz_code: metadata.code,
-        link: calendarUrl,
-      };
-
-      const response = await emailjs.send(
-        'default_service',
-        'template_quiz_reminder',
-        templateParams,
-        'wnSCgvOBG9hB6q1_g'
-      );
-
-      if (response.status === 200) {
-        toast({
-          title: "Reminder Set Successfully!",
-          description: `Quiz reminder email has been sent to ${email} for ${date} at ${time}`,
-        });
-      }
-    } catch (error) {
-      console.error('Failed to send reminder email:', error);
-      toast({
-        title: "Reminder Failed",
-        description: "Failed to schedule email reminder. Please check your email address and try again.",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  const saveSession = async () => {
-    try {
-      const questionsWithUploadedImages = await Promise.all(
-        questions.map(async (q) => {
-          if (q.imageFile && !q.imgbbUrl) {
-            try {
-              const imgbbUrl = await uploadImageToImgBB(q.imageFile);
-              return {
-                ...q,
-                imgbbUrl,
-                originalImageFileName: q.imageFile.name,
-              };
-            } catch (error) {
-              console.error('Failed to upload image for question', q.id, error);
-              toast({
-                title: "Image Upload Failed",
-                description: `Failed to save image for question ${q.id}`,
-                variant: "destructive",
-              });
-              return q;
-            }
-          }
-          return q;
-        })
-      );
-
-      setQuestions(questionsWithUploadedImages);
-
-      const questionsForSave = questionsWithUploadedImages.map(q => {
-        const { imageFile, ...questionWithoutFile } = q;
-        return questionWithoutFile;
-      });
-
-      const dataToSave = {
-        metadata,
-        instructions,
-        questions: questionsForSave,
-        currentScreen,
-        numberOfQuestions,
-        selectedProgram,
-        selectedDepartment,
-        selectedSections,
-        customProgram,
-        customDepartment,
-        customSections
-      };
-      
-      localStorage.setItem('quizCreatorData', JSON.stringify(dataToSave));
-      toast({
-        title: "Session Saved",
-        description: "Your progress and images have been saved successfully.",
-      });
-    } catch (error) {
-      console.error('Error saving session:', error);
-      toast({
-        title: "Save Failed",
-        description: "Failed to save session. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const flushData = () => {
-    localStorage.removeItem('quizCreatorData');
-    setMetadata({
-      id: 1,
-      code: '',
-      name: '',
-      instructor: '',
-      course: '',
-      year: '',
-      academic_year: new Date().getFullYear().toString(),
-      subject: '',
-      subject_code: '',
-      allowed_time: 0,
-      visible: true,
-      total_points: 0,
-      num_displayed_questions: 0,
-      num_easy_questions: 0,
-      num_medium_questions: 0,
-      num_high_questions: 0,
-      allow_resume: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      created_by: null,
-    });
-    
-    const defaultInstruction: Instruction = {
-      id: 1,
-      instruction_text: 'Once the quiz starts, full screen will trigger automatically, everytime window goes out of focus or is switched, one fault is counted. Faculty may terminate quiz or negative marks may be given based on it.',
-      instruction_order: 1,
-    };
-    setInstructions([defaultInstruction]);
-    
-    initializeDefaultQuestion();
-    
-    setCurrentScreen(1);
-    setNumberOfQuestions(1);
-    setSelectedProgram('');
-    setSelectedDepartment('');
-    setSelectedSections([]);
-    setCustomProgram('');
-    setCustomDepartment('');
-    setCustomSections('');
-    setShowFlushDialog(false);
-    toast({
-      title: "Data Flushed",
-      description: "All data has been cleared. Starting fresh.",
-    });
-  };
-
-  const adjustQuestions = (newCount: number) => {
-    const minCount = metadata.num_displayed_questions;
-    const actualCount = Math.max(newCount, minCount);
-    
-    if (actualCount !== newCount) {
-      toast({
-        title: "Question Count Adjusted",
-        description: `Cannot have fewer than ${minCount} questions (Number of Displayed Questions).`,
-        variant: "destructive",
-      });
-    }
-    
-    if (actualCount > questions.length) {
-      const additionalQuestions = [];
-      for (let i = questions.length; i < actualCount; i++) {
-        additionalQuestions.push({
-          id: i + 1,
-          question: '',
-          topic: 'NA',
-          summary: 'NA',
-          question_order: i,
-          points: 1,
-          image_path: '',
-          image_url: '',
-          image: '',
-          difficulty: 'MEDIUM',
-          options: [
-            { id: 1, option_text: '', is_correct: false, option_order: 0 },
-            { id: 2, option_text: '', is_correct: false, option_order: 0 },
-            { id: 3, option_text: '', is_correct: false, option_order: 0 },
-            { id: 4, option_text: '', is_correct: false, option_order: 0 },
-          ],
-        });
-      }
-      setQuestions([...questions, ...additionalQuestions]);
-    } else if (actualCount < questions.length) {
-      setQuestions(questions.slice(0, actualCount));
-      if (currentQuestionIndex >= actualCount) {
-        setCurrentQuestionIndex(Math.max(0, actualCount - 1));
-      }
-    } else if (questions.length === 0 && actualCount > 0) {
-      const newQuestions = [];
-      for (let i = 0; i < actualCount; i++) {
-        newQuestions.push({
-          id: i + 1,
-          question: '',
-          topic: 'NA',
-          summary: 'NA',
-          question_order: i,
-          points: 1,
-          image_path: '',
-          image_url: '',
-          image: '',
-          difficulty: 'MEDIUM',
-          options: [
-            { id: 1, option_text: '', is_correct: false, option_order: 0 },
-            { id: 2, option_text: '', is_correct: false, option_order: 0 },
-            { id: 3, option_text: '', is_correct: false, option_order: 0 },
-            { id: 4, option_text: '', is_correct: false, option_order: 0 },
-          ],
-        });
-      }
-      setQuestions(newQuestions);
-    }
-    setNumberOfQuestions(actualCount);
-    setMetadata(prev => ({ ...prev, total_points: actualCount }));
-  };
-
-  const addInstruction = () => {
-    if (newInstruction.trim()) {
-      const instruction: Instruction = {
-        id: instructions.length + 1,
-        instruction_text: newInstruction,
-        instruction_order: instructions.length + 1,
-      };
-      setInstructions([...instructions, instruction]);
-      setNewInstruction('');
-    }
-  };
-
-  const removeInstruction = (id: number) => {
-    setInstructions(instructions.filter(inst => inst.id !== id));
-  };
-
-  const updateQuestion = (questionId: number, field: string, value: any) => {
-    setQuestions(questions.map(q => 
-      q.id === questionId ? { ...q, [field]: value } : q
-    ));
-  };
-
-  const updateOption = (questionId: number, optionId: number, field: string, value: any) => {
-    setQuestions(questions.map(q => 
-      q.id === questionId 
-        ? {
-            ...q,
-            options: q.options.map(opt => 
-              opt.id === optionId ? { ...opt, [field]: value } : opt
-            )
-          }
-        : q
-    ));
-  };
-
-  const addOption = (questionId: number) => {
-    setQuestions(questions.map(q => 
-      q.id === questionId 
-        ? {
-            ...q,
-            options: [...q.options, {
-              id: q.options.length + 1,
-              option_text: '',
-              is_correct: false,
-              option_order: q.options.length,
-            }]
-          }
-        : q
-    ));
-  };
-
-  const removeOption = (questionId: number, optionId: number) => {
-    setQuestions(questions.map(q => 
-      q.id === questionId 
-        ? { ...q, options: q.options.filter(opt => opt.id !== optionId) }
-        : q
-    ));
-  };
-
-  const handleImageUpload = async (questionId: number, file: File) => {
-    const fileName = file.name;
-    const uuid = crypto.randomUUID();
-    const fileExtension = fileName.split('.').pop();
-    const newFileName = `${uuid}.${fileExtension}`;
-    
-    setQuestions(questions.map(q => 
-      q.id === questionId 
-        ? {
-            ...q,
-            imageFile: file,
-            originalImageFileName: file.name,
-            imgbbUrl: undefined,
-            image_path: `quiz_images\\${newFileName}`,
-            image_url: `http://192.168.1.194:8080/${newFileName}`,
-            image: `images/${newFileName}`,
-          }
-        : q
-    ));
-  };
-
-  const removeImage = (questionId: number) => {
-    setQuestions(questions.map(q => 
-      q.id === questionId 
-        ? {
-            ...q,
-            imageFile: undefined,
-            originalImageFileName: undefined,
-            imgbbUrl: undefined,
-            image_path: '',
-            image_url: '',
-            image: '',
-          }
-        : q
-    ));
-  };
-
-  const deleteQuestion = (questionId: number) => {
-    const questionIndex = questions.findIndex(q => q.id === questionId);
-    if (questionIndex === -1) return;
-
-    // Remove the question
-    const updatedQuestions = questions.filter(q => q.id !== questionId);
-    
-    // Update question_order for remaining questions
-    const reorderedQuestions = updatedQuestions.map((q, index) => ({
-      ...q,
-      question_order: index
-    }));
-    
-    setQuestions(reorderedQuestions);
-    setNumberOfQuestions(reorderedQuestions.length);
-    
-    // Adjust current question index if needed
-    if (reorderedQuestions.length === 0) {
-      setCurrentQuestionIndex(0);
-    } else if (currentQuestionIndex >= reorderedQuestions.length) {
-      setCurrentQuestionIndex(reorderedQuestions.length - 1);
-    } else if (currentQuestionIndex >= questionIndex) {
-      setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1));
-    }
-    
-    toast({
-      title: "Question Deleted",
-      description: "The question has been successfully deleted.",
-    });
-  };
-
-  const importFromMultipleZips = async (files: FileList) => {
-    if (files.length === 0) return;
-
-    setShowMultiImportDialog(true);
-    setImportProgress(0);
-    setImportingFiles(Array.from(files).map(f => f.name));
-    setCurrentImportFile('');
-
-    let allQuestions: Question[] = [];
-    let firstMetadata: QuizMetadata | null = null;
-    let firstInstructions: Instruction[] = [];
-    let questionIdCounter = 1;
-
-    try {
-      // Show initial toast
-      toast({
-        title: "Multi-ZIP Import Started",
-        description: `Questions will be combined. Quiz metadata and instructions will be from the first ZIP file.`,
-      });
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        setCurrentImportFile(file.name);
-        setImportProgress(((i + 1) / files.length) * 100);
-
-        const zip = new JSZip();
-        const zipContent = await zip.loadAsync(file);
-        
-        const quizJsonFile = zipContent.file('quiz.json');
-        if (!quizJsonFile) {
-          toast({
-            title: "Invalid ZIP file",
-            description: `No quiz.json file found in ${file.name}`,
-            variant: "destructive",
-          });
-          continue;
-        }
-
-        const quizJsonContent = await quizJsonFile.async('text');
-        const quizData = JSON.parse(quizJsonContent);
-        
-        if (!quizData.quiz) {
-          toast({
-            title: "Invalid quiz format",
-            description: `The quiz.json file in ${file.name} does not contain valid quiz data.`,
-            variant: "destructive",
-          });
-          continue;
-        }
-
-        const quiz = quizData.quiz;
-
-        // Use metadata and instructions from first ZIP only
-        if (i === 0) {
-          firstMetadata = {
-            id: quiz.id || 1,
-            code: quiz.code || '',
-            name: quiz.name || '',
-            instructor: quiz.instructor || '',
-            course: quiz.course || '',
-            year: quiz.year || '',
-            academic_year: quiz.academic_year || new Date().getFullYear().toString(),
-            subject: quiz.subject || '',
-            subject_code: quiz.subject_code || '',
-            allowed_time: quiz.allowed_time || 0,
-            visible: quiz.visible !== undefined ? quiz.visible : true,
-            total_points: quiz.total_points || 0,
-            num_displayed_questions: quiz.num_displayed_questions || 1,
-            num_easy_questions: quiz.num_easy_questions || 0,
-            num_medium_questions: quiz.num_medium_questions || 0,
-            num_high_questions: quiz.num_high_questions || 0,
-            allow_resume: quiz.allow_resume !== undefined ? quiz.allow_resume : false,
-            created_at: quiz.created_at || new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            created_by: quiz.created_by || null,
-          };
-
-          firstInstructions = quiz.instructions?.map((inst: any) => ({
-            id: inst.id,
-            instruction_text: inst.instruction_text,
-            instruction_order: inst.instruction_order,
-          })) || [];
-          
-          // Check if full screen instruction exists, if not add it
-          const fullScreenInstructionText = 'Once the quiz starts, full screen will trigger automatically, everytime window goes out of focus or is switched, one fault is counted. Faculty may terminate quiz or negative marks may be given based on it.';
-          const hasFullScreenInstruction = firstInstructions.some(inst => 
-            inst.instruction_text.includes('full screen') || 
-            inst.instruction_text.includes('window goes out of focus')
-          );
-          
-          if (!hasFullScreenInstruction) {
-            const fullScreenInstruction: Instruction = {
-              id: Math.max(...firstInstructions.map(inst => inst.id), 0) + 1,
-              instruction_text: fullScreenInstructionText,
-              instruction_order: Math.max(...firstInstructions.map(inst => inst.instruction_order), 0) + 1,
-            };
-            firstInstructions = [fullScreenInstruction, ...firstInstructions];
-          }
-        }
-
-        // Load questions with images from all ZIPs
-        const questionsWithImages = await Promise.all(
-          quiz.questions?.map(async (q: any) => {
-            let imageFile: File | undefined;
-            
-            if (q.image && zipContent.folder('images')) {
-              const imageFileName = q.image.split('/').pop();
-              const imageFileInZip = zipContent.file(`images/${imageFileName}`);
-              
-              if (imageFileInZip) {
-                try {
-                  const imageBlob = await imageFileInZip.async('blob');
-                  imageFile = new File([imageBlob], imageFileName || 'image.png', { type: imageBlob.type });
-                } catch (error) {
-                  console.error('Failed to load image:', error);
-                }
-              }
-            }
-
-            return {
-              id: questionIdCounter++,
-              question: q.question || '',
-              topic: q.topic || 'NA',
-              summary: q.summary || 'NA',
-              question_order: allQuestions.length,
-              points: q.points || 1,
-              image_path: q.image_path || '',
-              image_url: q.image_url || '',
-              image: q.image || '',
-              difficulty: q.difficulty || 'MEDIUM',
-              imageFile,
-              originalImageFileName: imageFile?.name,
-              options: q.options?.map((opt: any) => ({
-                id: opt.id,
-                option_text: opt.option_text || '',
-                is_correct: opt.is_correct || false,
-                option_order: opt.option_order || 0,
-              })) || [],
-            };
-          }) || []
-        );
-
-        allQuestions = [...allQuestions, ...questionsWithImages];
-      }
-
-      // Set the combined data
-      if (firstMetadata) {
-        setMetadata(firstMetadata);
-        
-        // Parse course field to set program/department/sections
-        if (firstMetadata.course) {
-          const courseParts = firstMetadata.course.split(' ').filter(part => part.trim() !== '');
-          if (courseParts.length > 0) {
-            setSelectedProgram('custom');
-            setCustomProgram(courseParts[0] || '');
-            
-            if (courseParts.length > 1) {
-              setSelectedDepartment('custom');
-              setCustomDepartment(courseParts[1] || '');
-            }
-            
-            if (courseParts.length > 2) {
-              setSelectedSections(['custom']);
-              setCustomSections(courseParts.slice(2).join(' '));
-            }
-          }
-        }
-      }
-
-      setInstructions(firstInstructions);
-      setQuestions(allQuestions);
-      setNumberOfQuestions(allQuestions.length);
-      setCurrentScreen(1);
-      
-      setShowMultiImportDialog(false);
-      setImportProgress(0);
-      setImportingFiles([]);
-      setCurrentImportFile('');
-
-      toast({
-        title: "Multi-ZIP Import Successful",
-        description: `Successfully imported ${allQuestions.length} questions from ${files.length} ZIP files.`,
-      });
-
-    } catch (error) {
-      console.error('Multi-import error:', error);
-      toast({
-        title: "Multi-ZIP Import Failed",
-        description: "Failed to import one or more ZIP files. Please check the file formats.",
-        variant: "destructive",
-      });
-      setShowMultiImportDialog(false);
-      setImportProgress(0);
-      setImportingFiles([]);
-      setCurrentImportFile('');
-    }
-  };
-
-  const logToGoogleForm = (metadata: QuizMetadata) => {
-    try {
-      const formUrl = "https://docs.google.com/forms/u/0/d/e/1FAIpQLSftIXPhGzEGDsyCtApgXxpsS48Na74HnL6zcZV-fR37WROuuQ/formResponse";
-
-      const formData = new FormData();
-      formData.append("entry.1545203247", metadata.subject_code || "");            // Subject Code
-      formData.append("entry.1231558053", metadata.subject || "");                 // Subject Name
-      formData.append("entry.1842965857", metadata.code || "");                    // Quiz Code
-      formData.append("entry.1921568803", metadata.name || "");                    // Quiz Name
-      formData.append("entry.603641309",  metadata.course || "");                  // Program/Course entry.
-      formData.append("entry.1652494894",  metadata.instructor || "");                 // Instructor Name
-      formData.append("entry.2088200475", metadata.allowed_time?.toString() || "");         // Allowed Time
-      formData.append("entry.1993777212", metadata.num_displayed_questions?.toString() || ""); // Displayed Questions
-
-      fetch(formUrl, {
-        method: "POST",
-        mode: "no-cors",
-        body: formData
-      });
-
-      console.log('✅ Quiz data logged to Google Form successfully');
-    } catch (error) {
-      console.error('❌ Failed to log to Google Form:', error);
-    }
-  };
-
-  const generateZip = async () => {
-    try {
-      const zip = new JSZip();
-      const imagesFolder = zip.folder('images');
-
-      const currentTime = new Date().toISOString();
-      const updatedMetadata = {
-        ...metadata,
-        updated_at: currentTime,
-        total_points: questions.length,
-      };
-
-      // Log to Google Form
-      logToGoogleForm(updatedMetadata);
-
-      const quizData = {
-        quiz: {
-          ...updatedMetadata,
-          instructions: instructions.map((inst, index) => ({
-            id: inst.id,
-            quiz_id: metadata.id,
-            instruction_text: inst.instruction_text,
-            instruction_order: index + 1,
-          })),
-          questions: questions.map((q, index) => {
-            const { imageFile, originalImageFileName, imgbbUrl, ...cleanQuestion } = q;
-            
-            const filteredOptions = cleanQuestion.options
-              .filter(opt => opt.option_text.trim() !== '')
-              .map((opt, optIndex) => ({
-                id: opt.id,
-                question_id: cleanQuestion.id,
-                option_text: opt.option_text,
-                is_correct: opt.is_correct,
-                option_order: optIndex + 1,
-              }));
-
-            return {
-              id: cleanQuestion.id,
-              quiz_id: metadata.id,
-              question: cleanQuestion.question,
-              topic: cleanQuestion.topic,
-              summary: cleanQuestion.summary,
-              question_order: index,
-              points: cleanQuestion.points,
-              image_path: cleanQuestion.image_path || null,
-              image_url: cleanQuestion.image_url || null,
-              image: cleanQuestion.image || null,
-              difficulty: cleanQuestion.difficulty,
-              options: filteredOptions,
-            };
-          }),
-        }
-      };
-
-      zip.file('quiz.json', JSON.stringify(quizData, null, 2));
-
-      for (const question of questions) {
-        if (question.imageFile) {
-          const fileName = question.image.split('/').pop();
-          if (fileName && imagesFolder) {
-            imagesFolder.file(fileName, question.imageFile);
-          }
-        }
-      }
-
-      const content = await zip.generateAsync({ type: 'blob' });
-      FileSaver.saveAs(content, `${metadata.name || 'quiz'}.zip`);
-      
-      toast({
-        title: "Quiz Generated Successfully!",
-        description: "Your quiz ZIP file has been downloaded and data logged.",
-      });
-    } catch (error) {
-      console.error('Error generating ZIP:', error);
-      toast({
-        title: "Error",
-        description: "Failed to generate quiz ZIP file.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleReminderSubmit = async (sendReminder: boolean) => {
-    if (sendReminder) {
-      if (!reminderDate || !reminderTime || !reminderEmail) {
-        toast({
-          title: "Missing Information",
-          description: "Please fill in all reminder fields.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(reminderEmail)) {
-        toast({
-          title: "Invalid Email",
-          description: "Please enter a valid email address.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      try {
-        await sendReminderEmail(reminderDate, reminderTime, reminderEmail);
-        await generateZip();
-      } catch (error) {
-        return;
-      }
-    } else {
-      await generateZip();
-    }
-    
-    setShowReminderDialog(false);
-    setReminderDate('');
-    setReminderTime('');
-    setReminderEmail('');
-  };
-
-  const validateCurrentQuestion = () => {
-    if (currentScreen === 3 && questions[currentQuestionIndex]) {
-      const currentQuestion = questions[currentQuestionIndex];
-      return currentQuestion.question.trim() !== '';
-    }
-    return true;
-  };
-
-  const preloadQuestionsWithDifficulty = () => {
-    const totalQuestions = metadata.num_displayed_questions;
-    const easyCount = metadata.num_easy_questions;
-    const mediumCount = metadata.num_medium_questions;
-    const highCount = metadata.num_high_questions;
-    
-
-    
-    const newQuestions = [];
-    let questionId = 1;
-    
-    // Create easy questions
-    for (let i = 0; i < easyCount; i++) {
-      newQuestions.push({
-        id: questionId++,
-        question: '',
-        topic: 'NA',
-        summary: 'NA',
-        question_order: i,
-        points: 1,
-        image_path: '',
-        image_url: '',
-        image: '',
-        difficulty: 'LOW',
-        options: [
-          { id: 1, option_text: '', is_correct: false, option_order: 0 },
-          { id: 2, option_text: '', is_correct: false, option_order: 0 },
-          { id: 3, option_text: '', is_correct: false, option_order: 0 },
-          { id: 4, option_text: '', is_correct: false, option_order: 0 },
-        ],
-      });
-    }
-    
-    // Create medium questions
-    for (let i = 0; i < mediumCount; i++) {
-      newQuestions.push({
-        id: questionId++,
-        question: '',
-        topic: 'NA',
-        summary: 'NA',
-        question_order: easyCount + i,
-        points: 1,
-        image_path: '',
-        image_url: '',
-        image: '',
-        difficulty: 'MEDIUM',
-        options: [
-          { id: 1, option_text: '', is_correct: false, option_order: 0 },
-          { id: 2, option_text: '', is_correct: false, option_order: 0 },
-          { id: 3, option_text: '', is_correct: false, option_order: 0 },
-          { id: 4, option_text: '', is_correct: false, option_order: 0 },
-        ],
-      });
-    }
-    
-    // Create high questions
-    for (let i = 0; i < highCount; i++) {
-      newQuestions.push({
-        id: questionId++,
-        question: '',
-        topic: 'NA',
-        summary: 'NA',
-        question_order: easyCount + mediumCount + i,
-        points: 1,
-        image_path: '',
-        image_url: '',
-        image: '',
-        difficulty: 'HIGH',
-        options: [
-          { id: 1, option_text: '', is_correct: false, option_order: 0 },
-          { id: 2, option_text: '', is_correct: false, option_order: 0 },
-          { id: 3, option_text: '', is_correct: false, option_order: 0 },
-          { id: 4, option_text: '', is_correct: false, option_order: 0 },
-        ],
-      });
-    }
-    
-
-    
-    setQuestions(newQuestions);
-    setNumberOfQuestions(totalQuestions);
-  };
-
-  const handleNext = () => {
-    if (currentScreen === 3 && !validateCurrentQuestion()) {
-      toast({
-        title: "Question Required",
-        description: "Please enter a question before proceeding.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (currentScreen === 1) {
-      // Simple approach: Always ensure we have the exact number of questions needed
-      const totalNeeded = metadata.num_easy_questions + metadata.num_medium_questions + metadata.num_high_questions;
-      
-      if (questions.length === 0) {
-        // No existing questions, create all needed questions
-        preloadQuestionsWithDifficulty();
-      } else {
-        // We have existing questions, preserve them and add only what's missing
-        const existingQuestions = [...questions];
-        
-        // Count existing questions by difficulty
-        const existingEasy = existingQuestions.filter(q => q.difficulty === 'LOW').length;
-        const existingMedium = existingQuestions.filter(q => q.difficulty === 'MEDIUM').length;
-        const existingHigh = existingQuestions.filter(q => q.difficulty === 'HIGH').length;
-        
-        // Calculate what we need to add
-        const needEasy = Math.max(0, metadata.num_easy_questions - existingEasy);
-        const needMedium = Math.max(0, metadata.num_medium_questions - existingMedium);
-        const needHigh = Math.max(0, metadata.num_high_questions - existingHigh);
-        
-
-        
-        // Only add questions if we actually need them
-        if (needEasy > 0 || needMedium > 0 || needHigh > 0) {
-          let nextId = Math.max(...existingQuestions.map(q => q.id), 0) + 1;
-          let nextOrder = existingQuestions.length;
-          
-          // Add easy questions
-          for (let i = 0; i < needEasy; i++) {
-            existingQuestions.push({
-              id: nextId++,
-              question: '',
-              topic: 'NA',
-              summary: 'NA',
-              question_order: nextOrder++,
-              points: 1,
-              image_path: '',
-              image_url: '',
-              image: '',
-              difficulty: 'LOW',
-              options: [
-                { id: 1, option_text: '', is_correct: false, option_order: 0 },
-                { id: 2, option_text: '', is_correct: false, option_order: 0 },
-                { id: 3, option_text: '', is_correct: false, option_order: 0 },
-                { id: 4, option_text: '', is_correct: false, option_order: 0 },
-              ],
-            });
-          }
-          
-          // Add medium questions
-          for (let i = 0; i < needMedium; i++) {
-            existingQuestions.push({
-              id: nextId++,
-              question: '',
-              topic: 'NA',
-              summary: 'NA',
-              question_order: nextOrder++,
-              points: 1,
-              image_path: '',
-              image_url: '',
-              image: '',
-              difficulty: 'MEDIUM',
-              options: [
-                { id: 1, option_text: '', is_correct: false, option_order: 0 },
-                { id: 2, option_text: '', is_correct: false, option_order: 0 },
-                { id: 3, option_text: '', is_correct: false, option_order: 0 },
-                { id: 4, option_text: '', is_correct: false, option_order: 0 },
-              ],
-            });
-          }
-          
-          // Add high questions
-          for (let i = 0; i < needHigh; i++) {
-            existingQuestions.push({
-              id: nextId++,
-              question: '',
-              topic: 'NA',
-              summary: 'NA',
-              question_order: nextOrder++,
-              points: 1,
-              image_path: '',
-              image_url: '',
-              image: '',
-              difficulty: 'HIGH',
-              options: [
-                { id: 1, option_text: '', is_correct: false, option_order: 0 },
-                { id: 2, option_text: '', is_correct: false, option_order: 0 },
-                { id: 3, option_text: '', is_correct: false, option_order: 0 },
-                { id: 4, option_text: '', is_correct: false, option_order: 0 },
-              ],
-            });
-          }
-          
-
-          
-          setQuestions(existingQuestions);
-          setNumberOfQuestions(existingQuestions.length);
-        }
-      }
-    }
-    
-    if (currentScreen < 3) {
-      setCurrentScreen(currentScreen + 1);
-    }
-  };
-
-  const checkAllRequiredFieldsFilled = () => {
-    const program = selectedProgram === 'custom' ? customProgram : selectedProgram;
-    const department = selectedDepartment === 'custom' ? customDepartment : selectedDepartment;
-    const sectionStr = selectedSections.includes('custom') ? customSections : selectedSections.join(', ');
-    
-    const totalDifficultyQuestions = metadata.num_easy_questions + metadata.num_medium_questions + metadata.num_high_questions;
-    const difficultySumMatches = totalDifficultyQuestions === metadata.num_displayed_questions;
-    
-    return (
-      metadata.subject_code.trim() !== '' &&
-      metadata.subject.trim() !== '' &&
-      metadata.code.trim() !== '' &&
-      metadata.name.trim() !== '' &&
-      program.trim() !== '' &&
-      department.trim() !== '' &&
-      sectionStr.trim() !== '' &&
-      metadata.year.trim() !== '' &&
-      metadata.instructor.trim() !== '' &&
-      metadata.allowed_time > 0 &&
-      metadata.num_displayed_questions >= 0 &&
-      metadata.num_easy_questions >= 0 &&
-      metadata.num_medium_questions >= 0 &&
-      metadata.num_high_questions >= 0 &&
-      difficultySumMatches
-    );
-  };
-
-  const insertMathSymbol = (questionId: number, symbol: string, cursorPos?: number) => {
-    const currentQuestion = questions.find(q => q.id === questionId);
-    if (currentQuestion) {
-      let formattedSymbol = symbol;
-      
-      if (activeFormatting === 'superscript') {
-        formattedSymbol = `^{${symbol}}`;
-      } else if (activeFormatting === 'subscript') {
-        formattedSymbol = `_{${symbol}}`;
-      }
-      
-      let updatedQuestion = currentQuestion.question;
-      if (typeof cursorPos === 'number') {
-        updatedQuestion =
-          currentQuestion.question.slice(0, cursorPos) +
-          formattedSymbol +
-          currentQuestion.question.slice(cursorPos);
-      } else {
-        updatedQuestion = currentQuestion.question + formattedSymbol;
-      }
-      updateQuestion(questionId, 'question', updatedQuestion);
-    }
-  };
-
-  const handleQuestionTextChange = (questionId: number, value: string, previousValue: string, e?: React.ChangeEvent<HTMLTextAreaElement>) => {
-    let formattedValue = value;
-    if (activeFormatting !== 'none' && e) {
-      const textarea = e.target;
-      const selectionStart = textarea.selectionStart;
-      const selectionEnd = textarea.selectionEnd;
-      if (selectionStart !== null && selectionEnd !== null) {
-        let before = value.slice(0, selectionStart);
-        let after = value.slice(selectionEnd);
-        let selected = value.slice(selectionStart, selectionEnd);
-        // If nothing is selected, wrap the last inserted character(s)
-        if (selectionStart === selectionEnd) {
-          const diff = value.length - previousValue.length;
-          if (diff > 0) {
-            selected = value.slice(selectionStart - diff, selectionStart);
-            before = value.slice(0, selectionStart - diff);
-          } else {
-            selected = '';
-          }
-        }
-        if (selected) {
-          if (activeFormatting === 'superscript') {
-            formattedValue = before + `^{${selected}}` + after;
-          } else if (activeFormatting === 'subscript') {
-            formattedValue = before + `_{${selected}}` + after;
-          }
-          setTimeout(() => {
-            textarea.focus();
-            const newPos = before.length + 3 + selected.length; // 3 for ^{ or _{
-            textarea.setSelectionRange(newPos, newPos);
-          }, 0);
-        }
-      }
-    }
-    updateQuestion(questionId, 'question', formattedValue);
-  };
-
-  const toggleFormatting = (format: 'superscript' | 'subscript') => {
-    if (activeFormatting === format) {
-      setActiveFormatting('none');
-    } else {
-      setActiveFormatting(format);
-    }
-  };
-
-  const renderMathPreview = (text: string) => {
-    let rendered = text;
-    
-    rendered = rendered.replace(/\^{([^}]*)}/g, '<sup>$1</sup>');
-    rendered = rendered.replace(/_{([^}]*)}/g, '<sub>$1</sub>');
-    
-    return rendered;
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Welcome Header */}
-      <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="container flex flex-col justify-center px-4">
-          {/* Desktop Header */}
-          <div className="hidden md:flex items-center justify-between h-20">
-            <div className="flex items-center gap-3">
-              <img src="/logo2.png" alt="PrashnaSetu Logo" className="h-12 w-12 object-contain" />
-            <div className="flex flex-col justify-center">
-                <h1 className="text-lg font-semibold leading-tight">PrashnaSetu</h1>
-                <span className="text-xs text-muted-foreground leading-tight">Think. Compete. Conquer.</span>
-            </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-muted-foreground">
-                Welcome, {user?.displayName || user?.email}
-                        </span>
-                    <Button
-                                    variant="outline"
-                                    size="sm"
-                onClick={logout}
-                className="flex items-center space-x-2"
-                                  >
-                <LogOut className="h-4 w-4" />
-                <span>Logout</span>
-                                  </Button>
-                              </div>
-                                </div>
-
-          {/* Mobile Header */}
-          <div className="md:hidden py-3">
-            <div className="flex items-center justify-between mb-2">
+  // Add this function near the top of the component
+  function normalizeLatexInput(latex) {
+    // Replace quadruple backslashes with double, then double with single
+    return latex.replace(/\\\\\\\\/g, '\\\\').replace(/\\\\/g, '\\');
+  }
+
+  // 1. Mobile sidebar (question circles)
+  const mobileSidebar = (
+    <div className="md:hidden col-span-1">
+      <Card className="shadow-lg border-0 mb-4">
+        <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-t-lg py-2">
+          <CardTitle className="text-sm">Questions</CardTitle>
+        </CardHeader>
+        <CardContent className="p-3 space-y-3">
+          <div className="space-y-2">
+            <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <img src="/logo2.png" alt="PrashnaSetu Logo" className="h-8 w-8 object-contain" />
-                <div className="flex flex-col">
-                  <h1 className="text-sm font-semibold leading-tight">PrashnaSetu</h1>
-                  <span className="text-xs text-muted-foreground leading-tight">Think. Compete. Conquer.</span>
-                      </div>
+                <Label htmlFor="num-questions" className="text-xs">Total:</Label>
+                <Input
+                  id="num-questions"
+                  type="number"
+                  min="1"
+                  max="500"
+                  value={numberOfQuestions}
+                  onChange={(e) => {
+                    const newValue = parseInt(e.target.value) || 1;
+                    setNumberOfQuestions(newValue);
+                    // Debounce the actual adjustment
+                    if (questionAdjustTimeout) {
+                      clearTimeout(questionAdjustTimeout);
+                    }
+                    const timeout = setTimeout(() => {
+                      adjustQuestions(newValue);
+                    }, 500);
+                    setQuestionAdjustTimeout(timeout);
+                  }}
+                  className="w-16 h-6 text-xs"
+                />
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newValue = Math.max(1, numberOfQuestions - 1);
+                      setNumberOfQuestions(newValue);
+                      adjustQuestions(newValue);
+                    }}
+                    className="h-6 w-6 p-0 text-xs"
+                  >
+                    -
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newValue = Math.min(500, numberOfQuestions + 1);
+                      setNumberOfQuestions(newValue);
+                      adjustQuestions(newValue);
+                    }}
+                    className="h-6 w-6 p-0 text-xs"
+                  >
+                    +
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-600">1</span>
+                <input
+                  type="range"
+                  min="1"
+                  max="500"
+                  value={numberOfQuestions}
+                  onChange={(e) => {
+                    const newValue = parseInt(e.target.value);
+                    setNumberOfQuestions(newValue);
+                    adjustQuestions(newValue);
+                  }}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                />
+                <span className="text-xs text-gray-600">500</span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-4 md:grid-cols-4 gap-1">
+              {Array.from({ length: numberOfQuestions }, (_, i) => {
+                const question = questions[i];
+                const difficulty = question?.difficulty || 'MEDIUM';
+                const difficultyLabel = difficulty === 'LOW' ? 'E' : difficulty === 'MEDIUM' ? 'M' : 'H';
+                let diffBg = 'bg-yellow-200';
+                let diffText = 'text-yellow-900';
+                if (difficulty === 'LOW') { diffBg = 'bg-green-200'; diffText = 'text-green-900'; }
+                if (difficulty === 'HIGH') { diffBg = 'bg-red-200'; diffText = 'text-red-900'; }
+                return (
+                  <div key={i} className="relative">
+                    <Button
+                      variant={currentQuestionIndex === i ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentQuestionIndex(i)}
+                      className={`w-8 h-8 md:w-7 md:h-7 rounded-full text-xs p-0 relative ${diffBg} ${diffText}`}
+                    >
+                      {i + 1}
+                    </Button>
+                    <span className="absolute top-0 left-0 text-[8px] font-bold bg-gray-200 text-gray-700 rounded-full w-3 h-3 flex items-center justify-center">
+                      {difficultyLabel}
+                    </span>
                   </div>
+                );
+              })}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  // 2. Main content (question editor)
+  const mainContent = (
+    <div className="col-span-1 md:col-span-4">
+      {currentQuestion && (
+        <Card className="shadow-lg border-0 h-full">
+          <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-t-lg py-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Question {currentQuestionIndex + 1}</CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => deleteQuestion(currentQuestion.id)}
+                className="text-white hover:text-red-200 hover:bg-red-600/20 h-8 w-8 p-0"
+                title="Delete this question"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-3 space-y-2 overflow-y-auto">
+            {/* Desktop Layout */}
+            <div className="hidden md:grid grid-cols-3 gap-3">
+              <div className="col-span-2">
+                <Label htmlFor={`question-${currentQuestion.id}`} className="text-sm">
+                  Question Text <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <Textarea
+                    id={`question-textarea-${currentQuestion.id}`}
+                    value={currentQuestion.question}
+                    onChange={(e) => handleQuestionTextChange(currentQuestion.id, e.target.value, currentQuestion.question, e)}
+                    placeholder="Enter your question..."
+                    className={`min-h-[120px] text-sm pr-32 ${currentQuestion.question.trim() === '' ? 'border-red-300 focus:border-red-500' : ''}`}
+                    required
+                  />
+                  <div className="absolute top-2 right-2 flex flex-col gap-1">
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`h-6 w-6 p-0 hover:bg-gray-100 ${activeFormatting === 'superscript' ? 'bg-blue-100 text-blue-600' : ''}`}
+                        type="button"
+                        onClick={() => toggleFormatting('superscript')}
+                        title="Toggle superscript mode"
+                      >
+                        <Superscript className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`h-6 w-6 p-0 hover:bg-gray-100 ${activeFormatting === 'subscript' ? 'bg-blue-100 text-blue-600' : ''}`}
+                        type="button"
+                        onClick={() => toggleFormatting('subscript')}
+                        title="Toggle subscript mode"
+                      >
+                        <Subscript className="h-3 w-3" />
+                      </Button>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-gray-100"
+                            type="button"
+                          >
+                            <Sigma className="h-3 w-3" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-96 max-h-96 overflow-y-auto">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-medium text-sm">{getPageTitle()}</h4>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => setCurrentSymbolPage(Math.max(1, currentSymbolPage - 1))}
+                                  disabled={currentSymbolPage === 1}
+                                >
+                                  <ChevronLeft className="h-3 w-3" />
+                                </Button>
+                                <span className="text-xs text-gray-600">
+                                  {currentSymbolPage}/3
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => setCurrentSymbolPage(Math.min(3, currentSymbolPage + 1))}
+                                  disabled={currentSymbolPage === 3}
+                                >
+                                  <ChevronRight className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-8 gap-1">
+                              {getCurrentSymbols().map((item, index) => (
+                                <Button
+                                  key={index}
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-sm hover:bg-blue-50"
+                                  onClick={() => {
+                                    const textarea = document.getElementById(`question-textarea-${currentQuestion.id}`) as HTMLTextAreaElement;
+                                    const cursorPos = textarea ? textarea.selectionStart : undefined;
+                                    insertMathSymbol(currentQuestion.id, item.symbol, cursorPos);
+                                  }}
+                                  title={item.name}
+                                >
+                                  {item.symbol}
+                                </Button>
+                              ))}
+                            </div>
+                            {activeFormatting !== 'none' && (
+                              <div className="pt-2 border-t">
+                                <p className="text-xs text-blue-600">
+                                  {activeFormatting === 'superscript' ? 'Superscript mode active' : 'Subscript mode active'} - symbols will be formatted automatically
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <Popover>
+  <PopoverTrigger asChild>
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-6 w-16 p-0 hover:bg-gray-100 mt-2"
+      type="button"
+      title="Insert mathematical construct"
+    >
+      Maths 🧰
+    </Button>
+  </PopoverTrigger>
+  <PopoverContent className="w-44 p-2 space-y-1">
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openMatrixDialog(currentQuestion.id)}>Matrix</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openFractionDialog(currentQuestion.id)}>Fraction</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openBinomialDialog(currentQuestion.id)}>Binomial</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openIntegralDialog(currentQuestion.id)}>Integral</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openDoubleIntegralDialog(currentQuestion.id)}>Double Integral</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openSummationDialog(currentQuestion.id)}>Summation</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openLimitDialog(currentQuestion.id)}>Limit</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openRootDialog(currentQuestion.id)}>Root</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openProductDialog(currentQuestion.id)}>Product</Button>
+  </PopoverContent>
+</Popover>
+
+                  </div>
+                </div>
+                {currentQuestion.question.trim() === '' && (
+                  <p className="text-red-500 text-xs mt-1">Question is required</p>
+                )}
+                {currentQuestion.question && (currentQuestion.question.includes('^{') || currentQuestion.question.includes('_{') || /\n([\w\W]*?)\n/.test(currentQuestion.question)) && (
+                  <div className="mt-2 p-2 bg-gray-50 border rounded-lg">
+                    <Label className="text-xs text-gray-600">Preview:</Label>
+                    <div
+                      className="text-sm mt-1"
+                      ref={el => {
+                        if (el) {
+                          el.textContent = normalizeLatexInput(currentQuestion.question);
+                          if (window.MathJax && window.MathJax.typesetPromise) {
+                            window.MathJax.typesetPromise([el]);
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+              
+              <div className="space-y-1">
+                <div>
+                  <Label htmlFor={`difficulty-${currentQuestion.id}`} className="text-xs">Difficulty</Label>
+                  <Select 
+                    value={currentQuestion.difficulty} 
+                    onValueChange={(value) => updateQuestion(currentQuestion.id, 'difficulty', value)}
+                  >
+                    <SelectTrigger className="h-5 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="LOW">Easy</SelectItem>
+                      <SelectItem value="MEDIUM">Medium</SelectItem>
+                      <SelectItem value="HIGH">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor={`topic-${currentQuestion.id}`} className="text-xs">Topic (Visible only after submission)</Label>
+                  <Input
+                    id={`topic-${currentQuestion.id}`}
+                    value={currentQuestion.topic}
+                    onChange={(e) => updateQuestion(currentQuestion.id, 'topic', e.target.value)}
+                    className="text-xs h-5"
+                    placeholder="Topic"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`summary-${currentQuestion.id}`} className="text-xs">Summary (Visible only after submission)</Label>
+                  <Input
+                    id={`summary-${currentQuestion.id}`}
+                    value={currentQuestion.summary}
+                    onChange={(e) => updateQuestion(currentQuestion.id, 'summary', e.target.value)}
+                    className="text-xs h-5"
+                    placeholder="Summary"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile Layout */}
+            <div className="md:hidden space-y-4">
+              <div>
+                <Label htmlFor={`question-mobile-${currentQuestion.id}`} className="text-sm">
+                  Question Text <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <Textarea
+                    id={`question-mobile-${currentQuestion.id}`}
+                    value={currentQuestion.question}
+                    onChange={(e) => handleQuestionTextChange(currentQuestion.id, e.target.value, currentQuestion.question, e)}
+                    placeholder="Enter your question..."
+                    className={`min-h-[120px] text-sm pr-24 ${currentQuestion.question.trim() === '' ? 'border-red-300 focus:border-red-500' : ''}`}
+                    required
+                  />
+                  <div className="absolute top-2 right-2 flex flex-col gap-1">
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`h-8 w-8 p-0 hover:bg-gray-100 ${activeFormatting === 'superscript' ? 'bg-blue-100 text-blue-600' : ''}`}
+                        type="button"
+                        onClick={() => toggleFormatting('superscript')}
+                        title="Toggle superscript mode"
+                      >
+                        <Superscript className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`h-8 w-8 p-0 hover:bg-gray-100 ${activeFormatting === 'subscript' ? 'bg-blue-100 text-blue-600' : ''}`}
+                        type="button"
+                        onClick={() => toggleFormatting('subscript')}
+                        title="Toggle subscript mode"
+                      >
+                        <Subscript className="h-4 w-4" />
+                      </Button>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:bg-gray-100"
+                            type="button"
+                          >
+                            <Sigma className="h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-96 max-h-96 overflow-y-auto">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-medium text-sm">{getPageTitle()}</h4>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => setCurrentSymbolPage(Math.max(1, currentSymbolPage - 1))}
+                                  disabled={currentSymbolPage === 1}
+                                >
+                                  <ChevronLeft className="h-3 w-3" />
+                                </Button>
+                                <span className="text-xs text-gray-600">
+                                  {currentSymbolPage}/3
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => setCurrentSymbolPage(Math.min(3, currentSymbolPage + 1))}
+                                  disabled={currentSymbolPage === 3}
+                                >
+                                  <ChevronRight className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-8 gap-1">
+                              {getCurrentSymbols().map((item, index) => (
+                                <Button
+                                  key={index}
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-sm hover:bg-blue-50"
+                                  onClick={() => {
+                                    const textarea = document.getElementById(`question-mobile-${currentQuestion.id}`) as HTMLTextAreaElement;
+                                    const cursorPos = textarea ? textarea.selectionStart : undefined;
+                                    insertMathSymbol(currentQuestion.id, item.symbol, cursorPos);
+                                  }}
+                                  title={item.name}
+                                >
+                                  {item.symbol}
+                                </Button>
+                              ))}
+                            </div>
+                            {activeFormatting !== 'none' && (
+                              <div className="pt-2 border-t">
+                                <p className="text-xs text-blue-600">
+                                  {activeFormatting === 'superscript' ? 'Superscript mode active' : 'Subscript mode active'} - symbols will be formatted automatically
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <Popover>
+  <PopoverTrigger asChild>
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-8 w-24 p-0 hover:bg-gray-100 mt-2"
+      type="button"
+      title="Insert math"
+    >
+      Maths 🧰
+    </Button>
+  </PopoverTrigger>
+  <PopoverContent className="w-44 p-2 space-y-1">
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openMatrixDialog(currentQuestion.id)}>Matrix</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openFractionDialog(currentQuestion.id)}>Fraction</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openBinomialDialog(currentQuestion.id)}>Binomial</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openIntegralDialog(currentQuestion.id)}>Integral</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openDoubleIntegralDialog(currentQuestion.id)}>Double Integral</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openSummationDialog(currentQuestion.id)}>Summation</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openLimitDialog(currentQuestion.id)}>Limit</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openRootDialog(currentQuestion.id)}>Root</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openProductDialog(currentQuestion.id)}>Product</Button>
+  </PopoverContent>
+</Popover>
+
+                  </div>
+                </div>
+                {currentQuestion.question.trim() === '' && (
+                  <p className="text-red-500 text-xs mt-1">Question is required</p>
+                )}
+                {currentQuestion.question && (currentQuestion.question.includes('^{') || currentQuestion.question.includes('_{') || /\n([\w\W]*?)\n/.test(currentQuestion.question)) && (
+                  <div className="mt-2 p-2 bg-gray-50 border rounded-lg">
+                    <Label className="text-xs text-gray-600">Preview:</Label>
+                    <div
+                      className="text-sm mt-1"
+                      ref={el => {
+                        if (el) {
+                          el.textContent = normalizeLatexInput(currentQuestion.question);
+                          if (window.MathJax && window.MathJax.typesetPromise) {
+                            window.MathJax.typesetPromise([el]);
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <Label htmlFor={`difficulty-mobile-${currentQuestion.id}`} className="text-sm">Difficulty</Label>
+                  <Select 
+                    value={currentQuestion.difficulty} 
+                    onValueChange={(value) => updateQuestion(currentQuestion.id, 'difficulty', value)}
+                  >
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="LOW">Easy</SelectItem>
+                      <SelectItem value="MEDIUM">Medium</SelectItem>
+                      <SelectItem value="HIGH">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor={`topic-mobile-${currentQuestion.id}`} className="text-sm">Topic (Visible only after submission)</Label>
+                  <Input
+                    id={`topic-mobile-${currentQuestion.id}`}
+                    value={currentQuestion.topic}
+                    onChange={(e) => updateQuestion(currentQuestion.id, 'topic', e.target.value)}
+                    className="text-sm h-9"
+                    placeholder="Topic"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`summary-mobile-${currentQuestion.id}`} className="text-sm">Summary (Visible only after submission)</Label>
+                  <Input
+                    id={`summary-mobile-${currentQuestion.id}`}
+                    value={currentQuestion.summary}
+                    onChange={(e) => updateQuestion(currentQuestion.id, 'summary', e.target.value)}
+                    className="text-sm h-9"
+                    placeholder="Summary"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-sm">Question Image</Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      handleImageUpload(currentQuestion.id, file);
+                    }
+                  }}
+                  className="hidden"
+                  id={`image-${currentQuestion.id}`}
+                />
+                <Label
+                  htmlFor={`image-${currentQuestion.id}`}
+                  className="cursor-pointer flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                >
+                  <Upload className="h-3 w-3" />
+                  Upload
+                </Label>
+                {currentQuestion.imageFile && (
+                  <>
+                    <div className="flex items-center gap-2 text-green-600">
+                      <Check className="h-3 w-3" />
+                      <span className="text-xs">{currentQuestion.imageFile.name}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeImage(currentQuestion.id)}
+                      className="text-red-600 hover:text-red-800 h-6 w-6 p-0"
+                      title="Remove image"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
+              {currentQuestion.imageFile && (
+                <img
+                  src={URL.createObjectURL(currentQuestion.imageFile)}
+                  alt="Question preview"
+                  className="max-w-[200px] h-20 object-cover rounded border"
+                />
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex justify-between items-center">
+                <Label className="text-sm">Answer Options</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addOption(currentQuestion.id)}
+                  className="text-blue-600 border-blue-600 hover:bg-blue-50 h-7 text-xs px-2"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add
+                </Button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {currentQuestion.options.map((option, optionIndex) => {
+                  // Use formatting and symbol page from state objects
+                  const formatting = optionFormatting[option.id] || 'none';
+                  const symbolPage = optionSymbolPage[option.id] || 1;
+
+                  // Helper for inserting symbol into option text
+                  const insertOptionSymbol = (symbol: string) => {
+                    let formattedSymbol = symbol;
+                    if (formatting === 'superscript') {
+                      formattedSymbol = `^{${symbol}}`;
+                    } else if (formatting === 'subscript') {
+                      formattedSymbol = `_{${symbol}}`;
+                    }
+                    const input = document.getElementById(`option-input-${currentQuestion.id}-${option.id}`) as HTMLInputElement;
+                    if (input) {
+                      const cursorPos = input.selectionStart ?? option.option_text.length;
+                      const newText =
+                        option.option_text.slice(0, cursorPos) +
+                        formattedSymbol +
+                        option.option_text.slice(cursorPos);
+                      updateOption(currentQuestion.id, option.id, 'option_text', newText);
+                      // Restore cursor position after update (in next tick)
+                      setTimeout(() => {
+                        input.focus();
+                        input.setSelectionRange(cursorPos + formattedSymbol.length, cursorPos + formattedSymbol.length);
+                      }, 0);
+                    } else {
+                      updateOption(currentQuestion.id, option.id, 'option_text', option.option_text + formattedSymbol);
+                    }
+                  };
+
+                  // Helper for handling text change with formatting
+                  const handleOptionTextChange = (e: React.ChangeEvent<HTMLInputElement>, option: any) => {
+                    let value = e.target.value;
+                    const formatting = optionFormatting[option.id] || 'none';
+                    if (formatting !== 'none') {
+                      const input = e.target;
+                      const selectionStart = input.selectionStart;
+                      const selectionEnd = input.selectionEnd;
+                      if (selectionStart !== null && selectionEnd !== null && value.length > option.option_text.length) {
+                        const diff = value.length - option.option_text.length;
+                        const insertedText = value.slice(selectionStart - diff, selectionStart);
+                        const before = value.slice(0, selectionStart - diff);
+                        const after = value.slice(selectionStart);
+                        if (formatting === 'superscript') {
+                          value = before + `^{${insertedText}}` + after;
+                        } else if (formatting === 'subscript') {
+                          value = before + `_{${insertedText}}` + after;
+                        }
+                        setTimeout(() => {
+                          input.focus();
+                          const newPos = before.length + 3 + insertedText.length;
+                          input.setSelectionRange(newPos, newPos);
+                        }, 0);
+                      }
+                    }
+                    updateOption(currentQuestion.id, option.id, 'option_text', value);
+                  };
+
+                  // Helper for rendering preview
+                  const renderOptionPreview = (text: string) => {
+                    let rendered = text;
+                    rendered = rendered.replace(/\^{([^}]*)}/g, '<sup>$1</sup>');
+                    rendered = rendered.replace(/_{([^}]*)}/g, '<sub>$1</sub>');
+                    return rendered;
+                  };
+
+                  return (
+                    <div key={option.id} className="flex flex-col gap-1 p-2 bg-gray-50 rounded">
+                      <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={option.is_correct}
+                      onCheckedChange={(checked) => updateOption(currentQuestion.id, option.id, 'is_correct', !!checked)}
+                    />
+                    <Input
+                      value={option.option_text}
+                      onChange={(e) => handleOptionTextChange(e, option)}
+                      placeholder={`Option ${optionIndex + 1}`}
+                      className="flex-1 h-8 text-sm"
+                      id={`option-input-${currentQuestion.id}-${option.id}`}
+                    />
                         <Button
+                          variant={formatting === 'superscript' ? 'secondary' : 'ghost'}
+                          size="sm"
+                          className={`h-6 w-6 p-0 hover:bg-gray-100 ${formatting === 'superscript' ? 'bg-blue-100 text-blue-600' : ''}`}
+                          type="button"
+                          onClick={() => setOptionFormatting(prev => ({ ...prev, [option.id]: formatting === 'superscript' ? 'none' : 'superscript' }))}
+                          title="Toggle superscript mode"
+                        >
+                          <Superscript className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant={formatting === 'subscript' ? 'secondary' : 'ghost'}
+                          size="sm"
+                          className={`h-6 w-6 p-0 hover:bg-gray-100 ${formatting === 'subscript' ? 'bg-blue-100 text-blue-600' : ''}`}
+                          type="button"
+                          onClick={() => setOptionFormatting(prev => ({ ...prev, [option.id]: formatting === 'subscript' ? 'none' : 'subscript' }))}
+                          title="Toggle subscript mode"
+                        >
+                          <Subscript className="h-3 w-3" />
+                        </Button>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 hover:bg-gray-100"
+                              type="button"
+                            >
+                              <Sigma className="h-3 w-3" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-96 max-h-96 overflow-y-auto">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h4 className="font-medium text-sm">{getPageTitle()}</h4>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    onClick={() => setOptionSymbolPage(prev => ({ ...prev, [option.id]: Math.max(1, (symbolPage - 1)) }))}
+                                    disabled={symbolPage === 1}
+                                  >
+                                    <ChevronLeft className="h-3 w-3" />
+                                  </Button>
+                                  <span className="text-xs text-gray-600">
+                                    {symbolPage}/3
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    onClick={() => setOptionSymbolPage(prev => ({ ...prev, [option.id]: Math.min(3, (symbolPage + 1)) }))}
+                                    disabled={symbolPage === 3}
+                                  >
+                                    <ChevronRight className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-8 gap-1">
+                                {(() => {
+                                  let symbols = mostFrequentSymbols;
+                                  if (symbolPage === 2) symbols = frequentSymbols;
+                                  if (symbolPage === 3) symbols = rarelyUsedSymbols;
+                                  return symbols;
+                                })().map((item, index) => (
+                                  <Button
+                                    key={index}
                                     variant="outline"
                                     size="sm"
-                onClick={logout}
-                className="flex items-center space-x-1 h-8 px-2"
+                                    className="h-8 w-8 p-0 text-sm hover:bg-blue-50"
+                                    onClick={() => {
+                                      insertOptionSymbol(item.symbol);
+                                    }}
+                                    title={item.name}
                                   >
-                <LogOut className="h-3 w-3" />
-                <span className="text-xs">Logout</span>
+                                    {item.symbol}
                                   </Button>
+                                ))}
                               </div>
-            <div className="text-sm text-muted-foreground">
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Welcome, {user?.displayName || user?.email}
+                              {formatting !== 'none' && (
+                                <div className="pt-2 border-t">
+                                  <p className="text-xs text-blue-600">
+                                    {formatting === 'superscript' ? 'Superscript mode active' : 'Subscript mode active'} - symbols will be formatted automatically
+                                  </p>
                                 </div>
+                              )}
                             </div>
-                      </div>
-                    </div>
-      
-      <div className="p-4">
-        <div className="max-w-6xl mx-auto space-y-6">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2"></h1>
-            <p className="text-lg text-gray-700"></p>
+                          </PopoverContent>
+                        </Popover>
+                    {currentQuestion.options.length > 2 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeOption(currentQuestion.id, option.id)}
+                        className="text-red-600 hover:text-red-800 h-6 w-6 p-0"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
-                  
-          {currentScreen === 0 && (
-            <Screen0
-              loadFromSavedSession={loadFromSavedSession}
-              startNewQuiz={startNewQuiz}
-              importFromZip={importFromZip}
-              importFromMultipleZips={importFromMultipleZips}
-            />
-          )}
-          {currentScreen === 1 && (
-            <>
-              <Screen1
-                metadata={metadata}
-                setMetadata={setMetadata}
-                generateYearOptions={generateYearOptions}
-                selectedProgram={selectedProgram}
-                setSelectedProgram={setSelectedProgram}
-                customProgram={customProgram}
-                setCustomProgram={setCustomProgram}
-                selectedDepartment={selectedDepartment}
-                setSelectedDepartment={setSelectedDepartment}
-                customDepartment={customDepartment}
-                setCustomDepartment={setCustomDepartment}
-                selectedSections={selectedSections}
-                setSelectedSections={setSelectedSections}
-                customSections={customSections}
-                setCustomSections={setCustomSections}
-                checkAllRequiredFieldsFilled={checkAllRequiredFieldsFilled}
-              />
-              {/* Desktop Layout */}
-              <div className="hidden md:flex justify-between items-center mt-6">
-                <div className="flex gap-4">
-                  <Button
-                onClick={() => setCurrentScreen(0)}
-                variant="outline"
-                    className="flex items-center gap-2"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Back to Home
-              </Button>
-                </div>
-                <div className="flex gap-4">
-                  <Button
-                    onClick={saveSession}
-                    variant="outline"
-                    className="flex items-center gap-2"
-                  >
-                    <Save className="h-4 w-4" />
-                    Save Session
-                  </Button>
-                  <AlertDialog open={showFlushDialog} onOpenChange={setShowFlushDialog}>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Flush Data
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                          <AlertTriangle className="h-5 w-5 text-red-500" />
-                          Confirm Data Flush
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action will permanently delete all quiz data including:
-                          <ul className="list-disc list-inside mt-2 space-y-1">
-                            <li>Quiz information and metadata</li>
-                            <li>All instructions</li>
-                            <li>All questions and their options</li>
-                            <li>Uploaded images</li>
-                            <li>Saved session data</li>
-                          </ul>
-                          This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={flushData} className="bg-red-600 hover:bg-red-700">
-                          Yes, Clear All Data
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                      {option.option_text && (option.option_text.includes('^{') || option.option_text.includes('_{')) && (
+                        <div className="mt-1 p-1 bg-gray-100 border rounded">
+                          <Label className="text-xs text-gray-600">Preview:</Label>
+                          <div
+                            className="text-xs mt-0.5"
+                            dangerouslySetInnerHTML={{ __html: renderOptionPreview(option.option_text) }}
+                          />
                         </div>
-                <div>
-                          <Button
-                    onClick={handleNext}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                    disabled={currentScreen === 1 && !checkAllRequiredFieldsFilled()}
-                  >
-                    Next
-                          </Button>
-                        </div>
-                      </div>
-              {/* Mobile Layout - Dynamic Grid */}
-              <div className="md:hidden space-y-3 mt-6">
-                <div className="grid grid-cols-2 gap-3">
-                      <Button
-                    onClick={saveSession}
-                        variant="outline"
-                    className="flex items-center gap-2"
-                  >
-                    <Save className="h-4 w-4" />
-                    Save Session
-                      </Button>
-                  <AlertDialog open={showFlushDialog} onOpenChange={setShowFlushDialog}>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Flush Data
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                          <AlertTriangle className="h-5 w-5 text-red-500" />
-                          Confirm Data Flush
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action will permanently delete all quiz data including:
-                          <ul className="list-disc list-inside mt-2 space-y-1">
-                            <li>Quiz information and metadata</li>
-                            <li>All instructions</li>
-                            <li>All questions and their options</li>
-                            <li>Uploaded images</li>
-                            <li>Saved session data</li>
-                          </ul>
-                          This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={flushData} className="bg-red-600 hover:bg-red-700">
-                          Yes, Clear All Data
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                      )}
                     </div>
-                <div className="grid grid-cols-2 gap-3">
-                    <Button
-                    onClick={() => setCurrentScreen(0)}
-                variant="outline" 
-                    className="flex items-center gap-2"
-              >
-                    <RefreshCw className="h-4 w-4" />
-                    Back to Home
-              </Button>
-              <Button 
-                    onClick={handleNext}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                    disabled={currentScreen === 1 && !checkAllRequiredFieldsFilled()}
-                  >
-                    Next
-              </Button>
+                  );
+                })}
+              </div>
             </div>
-            </div>
-            </>
-          )}
-          {currentScreen === 2 && (
-            <>
-              <Screen2
-                instructions={instructions}
-                setInstructions={setInstructions}
-                newInstruction={newInstruction}
-                setNewInstruction={setNewInstruction}
-                addInstruction={addInstruction}
-                removeInstruction={removeInstruction}
-              />
-            {/* Desktop Layout */}
-              <div className="hidden md:flex justify-between items-center mt-6">
-            <div className="flex gap-4">
-                <Button
-                    onClick={() => setCurrentScreen(1)}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </Button>
+
+            <div className="flex justify-between items-center pt-1 border-t">
               <Button
-                onClick={() => setCurrentScreen(0)}
+                onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
+                disabled={currentQuestionIndex === 0}
                 variant="outline"
-                className="flex items-center gap-2"
+                size="sm"
+                className="flex items-center gap-1 bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200 hover:text-blue-900 disabled:opacity-50"
               >
-                <RefreshCw className="h-4 w-4" />
-                Back to Home
+                <ChevronLeft className="h-3 w-3" />
+                Previous
+              </Button>
+              
+              <span className="text-sm text-gray-600">
+                {currentQuestionIndex + 1} of {numberOfQuestions}
+              </span>
+              
+              <Button
+                onClick={() => setCurrentQuestionIndex(Math.min(numberOfQuestions - 1, currentQuestionIndex + 1))}
+                disabled={currentQuestionIndex === numberOfQuestions - 1}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1 bg-green-100 text-green-700 border-green-300 hover:bg-green-200 hover:text-green-900 disabled:opacity-50"
+              >
+                Next
+                <ChevronLeft className="h-3 w-3 rotate-180" />
               </Button>
             </div>
-            <div className="flex gap-4">
+
+            <div className="flex flex-wrap justify-center gap-2 pt-1 border-t">
+              <Button
+                onClick={() => setCurrentScreen(2)}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1 text-xs px-3 h-8 md:h-7"
+              >
+                <FileText className="h-3 w-3" />
+                Instructions
+              </Button>
+
+              <Button
+            onClick={() => setCurrentScreen(0)}
+            variant="outline"
+                className="flex items-center gap-1 text-xs px-3 h-8 md:h-7"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Back to Home
+          </Button>
+              
               <Button
                 onClick={saveSession}
                 variant="outline"
-                className="flex items-center gap-2"
+                size="sm"
+                className="flex items-center gap-1 text-xs px-3 h-8 md:h-7"
               >
-                <Save className="h-4 w-4" />
+                <Save className="h-3 w-3" />
                 Save Session
               </Button>
+              
               <AlertDialog open={showFlushDialog} onOpenChange={setShowFlushDialog}>
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="outline"
-                    className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
+                    size="sm"
+                    className="flex items-center gap-1 text-red-600 border-red-600 hover:bg-red-50 text-xs px-3 h-8 md:h-7"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3 w-3" />
                     Flush Data
                   </Button>
                 </AlertDialogTrigger>
@@ -1984,15 +1076,7 @@ const QuizCreator = () => {
                       Confirm Data Flush
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      This action will permanently delete all quiz data including:
-                      <ul className="list-disc list-inside mt-2 space-y-1">
-                        <li>Quiz information and metadata</li>
-                        <li>All instructions</li>
-                        <li>All questions and their options</li>
-                        <li>Uploaded images</li>
-                        <li>Saved session data</li>
-                      </ul>
-                      This action cannot be undone.
+                      This action will permanently delete all quiz data. This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -2003,154 +1087,967 @@ const QuizCreator = () => {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+              
+                  <Button
+                    size="sm"
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-xs px-3 h-8 md:h-7"
+                onClick={() => {
+                  // Validate difficulty distribution first
+                  const easyQuestions = questions.filter(q => q.difficulty === 'LOW').length;
+                  const mediumQuestions = questions.filter(q => q.difficulty === 'MEDIUM').length;
+                  const highQuestions = questions.filter(q => q.difficulty === 'HIGH').length;
+                  
+                  if (easyQuestions < metadata.num_easy_questions) {
+                    toast({
+                      title: "Validation Error",
+                      description: `You need ${metadata.num_easy_questions} easy questions, but only have ${easyQuestions}.`,
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  
+                  if (mediumQuestions < metadata.num_medium_questions) {
+                    toast({
+                      title: "Validation Error",
+                      description: `You need ${metadata.num_medium_questions} medium questions, but only have ${mediumQuestions}.`,
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  
+                  if (highQuestions < metadata.num_high_questions) {
+                    toast({
+                      title: "Validation Error",
+                      description: `You need ${metadata.num_high_questions} high questions, but only have ${highQuestions}.`,
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  
+                  // If validation passes, show reminder dialog
+                  setShowReminderDialog(true);
+                }}
+                  >
+                    <Download className="h-3 w-3 mr-1" />
+                    Generate ZIP
+                  </Button>
+              
+              <Dialog open={showReminderDialog} onOpenChange={setShowReminderDialog}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Calendar className="h-5 w-5 text-blue-600" />
+                      Quiz Reminder
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="reminder-date">Date</Label>
+                      <Input
+                        id="reminder-date"
+                        type="date"
+                        value={reminderDate}
+                        onChange={(e) => setReminderDate(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="reminder-time">Time</Label>
+                      <Input
+                        id="reminder-time"
+                        type="time"
+                        value={reminderTime}
+                        onChange={(e) => setReminderTime(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="reminder-email">Email Address</Label>
+                      <Input
+                        id="reminder-email"
+                        type="email"
+                        value={reminderEmail}
+                        onChange={(e) => setReminderEmail(e.target.value)}
+                        placeholder="Enter email address"
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2 pt-4">
+                      <Button
+                        onClick={() => handleReminderSubmit(true)}
+                        className="w-full bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
+                      >
+                        <Mail className="h-4 w-4" />
+                        Yes, Send a Google Calender Link & Generate ZIP
+                      </Button>
+                      <Button
+                        onClick={() => handleReminderSubmit(false)}
+                        variant="outline"
+                        className="w-full flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        Just Generate ZIP
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
-            <div>
-              <Button
-                onClick={handleNext}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-            {/* Mobile Layout - Dynamic Grid */}
-              <div className="md:hidden space-y-3 mt-6">
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  onClick={saveSession}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                >
-                  <Save className="h-4 w-4" />
-                  Save Session
-                </Button>
-                <AlertDialog open={showFlushDialog} onOpenChange={setShowFlushDialog}>
-                  <AlertDialogTrigger asChild>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+
+  // 3. Desktop sidebar (question circles)
+  const desktopSidebar = (
+    <div className="hidden md:block col-span-1">
+      <Card className="shadow-lg border-0 sticky top-6">
+        <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-t-lg py-2">
+          <CardTitle className="text-sm">Questions</CardTitle>
+        </CardHeader>
+        <CardContent className="p-3 space-y-3">
+          <div className="space-y-2">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="num-questions-desktop" className="text-xs">Total:</Label>
+                <Input
+                    id="num-questions-desktop"
+                  type="number"
+                  min="1"
+                  max="500"
+                  value={numberOfQuestions}
+                    onChange={(e) => {
+                      const newValue = parseInt(e.target.value) || 1;
+                      setNumberOfQuestions(newValue);
+                      // Debounce the actual adjustment
+                      if (questionAdjustTimeout) {
+                        clearTimeout(questionAdjustTimeout);
+                      }
+                      const timeout = setTimeout(() => {
+                        adjustQuestions(newValue);
+                      }, 500);
+                      setQuestionAdjustTimeout(timeout);
+                    }}
+                  className="w-16 h-6 text-xs"
+                />
+                  <div className="flex items-center gap-1">
                     <Button
                       variant="outline"
-                      className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
+                      size="sm"
+                      onClick={() => {
+                        const newValue = Math.max(1, numberOfQuestions - 1);
+                        setNumberOfQuestions(newValue);
+                        adjustQuestions(newValue);
+                      }}
+                      className="h-6 w-6 p-0 text-xs"
                     >
-                      <Trash2 className="h-4 w-4" />
-                      Flush Data
+                      -
                     </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="flex items-center gap-2">
-                        <AlertTriangle className="h-5 w-5 text-red-500" />
-                        Confirm Data Flush
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action will permanently delete all quiz data including:
-                        <ul className="list-disc list-inside mt-2 space-y-1">
-                          <li>Quiz information and metadata</li>
-                          <li>All instructions</li>
-                          <li>All questions and their options</li>
-                          <li>Uploaded images</li>
-                          <li>Saved session data</li>
-                        </ul>
-                        This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={flushData} className="bg-red-600 hover:bg-red-700">
-                        Yes, Clear All Data
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    onClick={() => setCurrentScreen(1)}
-                    variant="outline"
-                    className="flex items-center gap-2"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    Previous
-                  </Button>
-                  <Button
-                    onClick={() => setCurrentScreen(0)}
-                    variant="outline"
-                    className="flex items-center gap-2"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    Back to Home
-                  </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const newValue = Math.min(500, numberOfQuestions + 1);
+                        setNumberOfQuestions(newValue);
+                        adjustQuestions(newValue);
+                      }}
+                      className="h-6 w-6 p-0 text-xs"
+                    >
+                      +
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex justify-center">
-                <Button
-                  onClick={handleNext}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                >
-                  Next
-                </Button>
-        </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-600">1</span>
+                  <input
+                    type="range"
+                    min="1"
+                    max="500"
+                    value={numberOfQuestions}
+                    onChange={(e) => {
+                      const newValue = parseInt(e.target.value);
+                      setNumberOfQuestions(newValue);
+                      adjustQuestions(newValue);
+                    }}
+                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                  />
+                  <span className="text-xs text-gray-600">500</span>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-4 gap-1">
+                {Array.from({ length: numberOfQuestions }, (_, i) => {
+                  const question = questions[i];
+                  const difficulty = question?.difficulty || 'MEDIUM';
+                  const difficultyLabel = difficulty === 'LOW' ? 'E' : difficulty === 'MEDIUM' ? 'M' : 'H';
+                  let diffBg = 'bg-yellow-200';
+                  let diffText = 'text-yellow-900';
+                  if (difficulty === 'LOW') { diffBg = 'bg-green-200'; diffText = 'text-green-900'; }
+                  if (difficulty === 'HIGH') { diffBg = 'bg-red-200'; diffText = 'text-red-900'; }
+                  return (
+                    <div key={i} className="relative">
+                  <Button
+                    variant={currentQuestionIndex === i ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentQuestionIndex(i)}
+                        className={`w-8 h-8 md:w-7 md:h-7 rounded-full text-xs p-0 relative ${diffBg} ${diffText}`}
+                  >
+                    {i + 1}
+                  </Button>
+                      <span className="absolute top-0 left-0 text-[8px] font-bold bg-gray-200 text-gray-700 rounded-full w-3 h-3 flex items-center justify-center">
+                        {difficultyLabel}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </>
-        )}
-          {currentScreen === 3 && (
-            <Screen3
-              // Pass all necessary props for Screen3
-              questions={questions}
-              setQuestions={setQuestions}
-              numberOfQuestions={numberOfQuestions}
-              setNumberOfQuestions={setNumberOfQuestions}
-              currentQuestionIndex={currentQuestionIndex}
-              setCurrentQuestionIndex={setCurrentQuestionIndex}
-              questionAdjustTimeout={questionAdjustTimeout}
-              setQuestionAdjustTimeout={setQuestionAdjustTimeout}
-              adjustQuestions={adjustQuestions}
-              updateQuestion={updateQuestion}
-              updateOption={updateOption}
-              addOption={addOption}
-              removeOption={removeOption}
-              handleImageUpload={handleImageUpload}
-              removeImage={removeImage}
-              deleteQuestion={deleteQuestion}
-              saveSession={saveSession}
-              showFlushDialog={showFlushDialog}
-              setShowFlushDialog={setShowFlushDialog}
-              flushData={flushData}
-              activeFormatting={activeFormatting}
-              setActiveFormatting={setActiveFormatting}
-              currentSymbolPage={currentSymbolPage}
-              setCurrentSymbolPage={setCurrentSymbolPage}
-              insertMathSymbol={insertMathSymbol}
-              handleQuestionTextChange={handleQuestionTextChange}
-              toggleFormatting={toggleFormatting}
-              renderMathPreview={renderMathPreview}
-              getPageTitle={getPageTitle}
-              getCurrentSymbols={getCurrentSymbols}
-              optionFormatting={optionFormatting}
-              setOptionFormatting={setOptionFormatting}
-              optionSymbolPage={optionSymbolPage}
-              setOptionSymbolPage={setOptionSymbolPage}
-              mostFrequentSymbols={mostFrequentSymbols}
-              frequentSymbols={frequentSymbols}
-              rarelyUsedSymbols={rarelyUsedSymbols}
-              showReminderDialog={showReminderDialog}
-              setShowReminderDialog={setShowReminderDialog}
-              reminderDate={reminderDate}
-              setReminderDate={setReminderDate}
-              reminderTime={reminderTime}
-              setReminderTime={setReminderTime}
-              reminderEmail={reminderEmail}
-              setReminderEmail={setReminderEmail}
-              handleReminderSubmit={handleReminderSubmit}
-              metadata={metadata}
-              setCurrentScreen={setCurrentScreen}
-              toast={toast}
-              // Add any other props needed for full functionality
-            />
-          )}
-
-          {/* ... navigation and dialogs ... */}
-        </div>
+          </CardContent>
+        </Card>
       </div>
-    </div>
+    );
+
+  // Matrix Dialog rendered at the root
+  const matrixDialog = (
+    <Dialog open={showMatrixDialog} onOpenChange={setShowMatrixDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Insert Matrix</DialogTitle>
+        </DialogHeader>
+        <div className="flex gap-2 mb-2">
+          <Input
+            type="number"
+            min={1}
+            max={10}
+            value={matrixRows}
+            onChange={e => handleMatrixSizeChange(Number(e.target.value), matrixCols)}
+            className="w-20"
+            placeholder="Rows"
+          />
+          <span>x</span>
+          <Input
+            type="number"
+            min={1}
+            max={10}
+            value={matrixCols}
+            onChange={e => handleMatrixSizeChange(matrixRows, Number(e.target.value))}
+            className="w-20"
+            placeholder="Cols"
+          />
+        </div>
+        <div className="overflow-x-auto">
+          <table className="border border-gray-300 rounded w-full text-center bg-white">
+            <tbody>
+              {Array.from({ length: matrixRows }).map((_, i) => (
+                <tr key={i}>
+                  {Array.from({ length: matrixCols }).map((_, j) => (
+                    <td key={j} className="border border-gray-300 p-1">
+                      <Input
+                        value={matrixElements[i]?.[j] || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setMatrixElements(prev => {
+                            const copy = prev.map(row => [...row]);
+                            copy[i][j] = val;
+                            return copy;
+                          });
+                        }}
+                        className="w-16 text-center bg-gray-50 focus:bg-white focus:border-blue-400 rounded shadow-sm"
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex justify-end gap-2 mt-4">
+          <Button onClick={() => setShowMatrixDialog(false)} variant="outline">Cancel</Button>
+          <Button onClick={handleMatrixInsert}>Insert</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  // Scaffold Dialogs for each construct (Fraction, Binomial, etc.) with input fields, labels, and a live LaTeX preview (use MathJax rendering as in matrixDialog). Do not implement insertion yet.
+  const fractionDialog = (
+    <Dialog open={showFractionDialog} onOpenChange={setShowFractionDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Insert Fraction</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="fraction-numerator">Numerator</Label>
+            <Input
+              id="fraction-numerator"
+              value={fractionNumerator}
+              onChange={(e) => setFractionNumerator(e.target.value)}
+              placeholder="e.g., a, x, 1"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="fraction-denominator">Denominator</Label>
+            <Input
+              id="fraction-denominator"
+              value={fractionDenominator}
+              onChange={(e) => setFractionDenominator(e.target.value)}
+              placeholder="e.g., b, y, 2"
+              className="w-full"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setShowFractionDialog(false)} variant="outline">Cancel</Button>
+            <Button onClick={() => {
+              const latex = `\n\\[\\frac{${fractionNumerator}}{${fractionDenominator}}\\]`;
+              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
+              let newValue = currentQuestion.question;
+              if (matrixInsertPos != null) {
+                newValue =
+                  currentQuestion.question.slice(0, matrixInsertPos) +
+                  latex +
+                  currentQuestion.question.slice(matrixInsertPos);
+              } else {
+                newValue = currentQuestion.question + latex;
+              }
+              updateQuestion(matrixTargetId, 'question', newValue);
+              setShowFractionDialog(false);
+            }}>Insert</Button>
+          </div>
+        </div>
+        <div className="mt-4 p-2 bg-gray-50 border rounded">
+          <Label className="text-xs text-gray-600">Preview:</Label>
+          <div
+            className="text-sm mt-1"
+            ref={el => {
+              if (el) {
+                el.textContent = normalizeLatexInput(`\n\\[\\frac{${fractionNumerator}}{${fractionDenominator}}\\]`);
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  window.MathJax.typesetPromise([el]);
+                }
+              }
+            }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const binomialDialog = (
+    <Dialog open={showBinomialDialog} onOpenChange={setShowBinomialDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Insert Binomial</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="binomial-n">N</Label>
+            <Input
+              id="binomial-n"
+              value={binomialN}
+              onChange={(e) => setBinomialN(e.target.value)}
+              placeholder="e.g., 5, n"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="binomial-k">K</Label>
+            <Input
+              id="binomial-k"
+              value={binomialK}
+              onChange={(e) => setBinomialK(e.target.value)}
+              placeholder="e.g., 2, k"
+              className="w-full"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setShowBinomialDialog(false)} variant="outline">Cancel</Button>
+            <Button onClick={() => {
+              const latex = `\n\\[\\binom{${binomialN}}{${binomialK}}\\]`;
+              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
+              let newValue = currentQuestion.question;
+              if (matrixInsertPos != null) {
+                newValue =
+                  currentQuestion.question.slice(0, matrixInsertPos) +
+                  latex +
+                  currentQuestion.question.slice(matrixInsertPos);
+              } else {
+                newValue = currentQuestion.question + latex;
+              }
+              updateQuestion(matrixTargetId, 'question', newValue);
+              setShowBinomialDialog(false);
+            }}>Insert</Button>
+          </div>
+        </div>
+        <div className="mt-4 p-2 bg-gray-50 border rounded">
+          <Label className="text-xs text-gray-600">Preview:</Label>
+          <div
+            className="text-sm mt-1"
+            ref={el => {
+              if (el) {
+                el.textContent = normalizeLatexInput(`\n\\[\\binom{${binomialN}}{${binomialK}}\\]`);
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  window.MathJax.typesetPromise([el]);
+                }
+              }
+            }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const integralDialog = (
+    <Dialog open={showIntegralDialog} onOpenChange={setShowIntegralDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Insert Integral</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="integral-lower">Lower Bound</Label>
+            <Input
+              id="integral-lower"
+              value={integralLower}
+              onChange={(e) => setIntegralLower(e.target.value)}
+              placeholder="e.g., 0, a"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="integral-upper">Upper Bound</Label>
+            <Input
+              id="integral-upper"
+              value={integralUpper}
+              onChange={(e) => setIntegralUpper(e.target.value)}
+              placeholder="e.g., 1, b"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="integral-function">Function</Label>
+            <Input
+              id="integral-function"
+              value={integralFunction}
+              onChange={(e) => setIntegralFunction(e.target.value)}
+              placeholder="e.g., x^2, sin(x)"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="integral-variable">Variable</Label>
+            <Input
+              id="integral-variable"
+              value={integralVariable}
+              onChange={(e) => setIntegralVariable(e.target.value)}
+              placeholder="e.g., x, t"
+              className="w-full"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setShowIntegralDialog(false)} variant="outline">Cancel</Button>
+            <Button onClick={() => {
+              const latex = `\n\\[\\int_{${integralLower}}^{${integralUpper}} ${integralFunction} \\, d${integralVariable}\\]`;
+              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
+              let newValue = currentQuestion.question;
+              if (matrixInsertPos != null) {
+                newValue =
+                  currentQuestion.question.slice(0, matrixInsertPos) +
+                  latex +
+                  currentQuestion.question.slice(matrixInsertPos);
+              } else {
+                newValue = currentQuestion.question + latex;
+              }
+              updateQuestion(matrixTargetId, 'question', newValue);
+              setShowIntegralDialog(false);
+            }}>Insert</Button>
+          </div>
+        </div>
+        <div className="mt-4 p-2 bg-gray-50 border rounded">
+          <Label className="text-xs text-gray-600">Preview:</Label>
+          <div
+            className="text-sm mt-1"
+            ref={el => {
+              if (el) {
+                el.textContent = normalizeLatexInput(`\n\\[\\int_{${integralLower}}^{${integralUpper}} ${integralFunction} \\, d${integralVariable}\\]`);
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  window.MathJax.typesetPromise([el]);
+                }
+              }
+            }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const doubleIntegralDialog = (
+    <Dialog open={showDoubleIntegralDialog} onOpenChange={setShowDoubleIntegralDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Insert Double Integral</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="double-integral-lower">Lower Bound (x)</Label>
+            <Input
+              id="double-integral-lower"
+              value={doubleIntegralLower}
+              onChange={(e) => setDoubleIntegralLower(e.target.value)}
+              placeholder="e.g., 0, a"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="double-integral-upper">Upper Bound (x)</Label>
+            <Input
+              id="double-integral-upper"
+              value={doubleIntegralUpper}
+              onChange={(e) => setDoubleIntegralUpper(e.target.value)}
+              placeholder="e.g., 1, b"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="double-integral-function">Function (y)</Label>
+            <Input
+              id="double-integral-function"
+              value={doubleIntegralFunction}
+              onChange={(e) => setDoubleIntegralFunction(e.target.value)}
+              placeholder="e.g., x^2, sin(y)"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="double-integral-variable">Variable (y)</Label>
+            <Input
+              id="double-integral-variable"
+              value={doubleIntegralVariable}
+              onChange={(e) => setDoubleIntegralVariable(e.target.value)}
+              placeholder="e.g., y, t"
+              className="w-full"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setShowDoubleIntegralDialog(false)} variant="outline">Cancel</Button>
+            <Button onClick={() => {
+              const latex = `\n\\[\\iint_{${doubleIntegralLower}}^{${doubleIntegralUpper}} ${doubleIntegralFunction} \\, d${doubleIntegralVariable}\\]`;
+              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
+              let newValue = currentQuestion.question;
+              if (matrixInsertPos != null) {
+                newValue =
+                  currentQuestion.question.slice(0, matrixInsertPos) +
+                  latex +
+                  currentQuestion.question.slice(matrixInsertPos);
+              } else {
+                newValue = currentQuestion.question + latex;
+              }
+              updateQuestion(matrixTargetId, 'question', newValue);
+              setShowDoubleIntegralDialog(false);
+            }}>Insert</Button>
+          </div>
+        </div>
+        <div className="mt-4 p-2 bg-gray-50 border rounded">
+          <Label className="text-xs text-gray-600">Preview:</Label>
+          <div
+            className="text-sm mt-1"
+            ref={el => {
+              if (el) {
+                el.textContent = normalizeLatexInput(`\n\\[\\iint_{${doubleIntegralLower}}^{${doubleIntegralUpper}} ${doubleIntegralFunction} \\, d${doubleIntegralVariable}\\]`);
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  window.MathJax.typesetPromise([el]);
+                }
+              }
+            }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const summationDialog = (
+    <Dialog open={showSummationDialog} onOpenChange={setShowSummationDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Insert Summation</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="summation-index">Index</Label>
+            <Input
+              id="summation-index"
+              value={summationIndex}
+              onChange={(e) => setSummationIndex(e.target.value)}
+              placeholder="e.g., i, k"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="summation-lower">Lower Bound</Label>
+            <Input
+              id="summation-lower"
+              value={summationLower}
+              onChange={(e) => setSummationLower(e.target.value)}
+              placeholder="e.g., 1, a"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="summation-upper">Upper Bound</Label>
+            <Input
+              id="summation-upper"
+              value={summationUpper}
+              onChange={(e) => setSummationUpper(e.target.value)}
+              placeholder="e.g., n, b"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="summation-function">Function</Label>
+            <Input
+              id="summation-function"
+              value={summationFunction}
+              onChange={(e) => setSummationFunction(e.target.value)}
+              placeholder="e.g., i^2, sin(i)"
+              className="w-full"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setShowSummationDialog(false)} variant="outline">Cancel</Button>
+            <Button onClick={() => {
+              const latex = `\n\\[\\sum_{${summationIndex}=${summationLower}}^{${summationUpper}} ${summationFunction}\\]`;
+              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
+              let newValue = currentQuestion.question;
+              if (matrixInsertPos != null) {
+                newValue =
+                  currentQuestion.question.slice(0, matrixInsertPos) +
+                  latex +
+                  currentQuestion.question.slice(matrixInsertPos);
+              } else {
+                newValue = currentQuestion.question + latex;
+              }
+              updateQuestion(matrixTargetId, 'question', newValue);
+              setShowSummationDialog(false);
+            }}>Insert</Button>
+          </div>
+        </div>
+        <div className="mt-4 p-2 bg-gray-50 border rounded">
+          <Label className="text-xs text-gray-600">Preview:</Label>
+          <div
+            className="text-sm mt-1"
+            ref={el => {
+              if (el) {
+                el.textContent = normalizeLatexInput(`\n\\[\\sum_{${summationIndex}=${summationLower}}^{${summationUpper}} ${summationFunction}\\]`);
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  window.MathJax.typesetPromise([el]);
+                }
+              }
+            }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const limitDialog = (
+    <Dialog open={showLimitDialog} onOpenChange={setShowLimitDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Insert Limit</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="limit-variable">Variable</Label>
+            <Input
+              id="limit-variable"
+              value={limitVariable}
+              onChange={(e) => setLimitVariable(e.target.value)}
+              placeholder="e.g., x, t"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="limit-approaches">Approaches</Label>
+            <Input
+              id="limit-approaches"
+              value={limitApproaches}
+              onChange={(e) => setLimitApproaches(e.target.value)}
+              placeholder="e.g., 0, a"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="limit-function">Function</Label>
+            <Input
+              id="limit-function"
+              value={limitFunction}
+              onChange={(e) => setLimitFunction(e.target.value)}
+              placeholder="e.g., \\frac{1}{x}, \\sin(x)"
+              className="w-full"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setShowLimitDialog(false)} variant="outline">Cancel</Button>
+            <Button onClick={() => {
+              const latex = `\n\\[\\lim_{${limitVariable} \\to ${limitApproaches}} ${limitFunction}\\]`;
+              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
+              let newValue = currentQuestion.question;
+              if (matrixInsertPos != null) {
+                newValue =
+                  currentQuestion.question.slice(0, matrixInsertPos) +
+                  latex +
+                  currentQuestion.question.slice(matrixInsertPos);
+              } else {
+                newValue = currentQuestion.question + latex;
+              }
+              updateQuestion(matrixTargetId, 'question', newValue);
+              setShowLimitDialog(false);
+            }}>Insert</Button>
+          </div>
+        </div>
+        <div className="mt-4 p-2 bg-gray-50 border rounded">
+          <Label className="text-xs text-gray-600">Preview:</Label>
+          <div
+            className="text-sm mt-1"
+            ref={el => {
+              if (el) {
+                el.textContent = normalizeLatexInput(`\n\\[\\lim_{${limitVariable} \\to ${limitApproaches}} ${limitFunction}\\]`);
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  window.MathJax.typesetPromise([el]);
+                }
+              }
+            }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const rootDialog = (
+    <Dialog open={showRootDialog} onOpenChange={setShowRootDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Insert Root</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="root-degree">Degree</Label>
+            <Input
+              id="root-degree"
+              value={rootDegree}
+              onChange={(e) => setRootDegree(e.target.value)}
+              placeholder="e.g., 2, n"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="root-radicand">Radicand</Label>
+            <Input
+              id="root-radicand"
+              value={rootRadicand}
+              onChange={(e) => setRootRadicand(e.target.value)}
+              placeholder="e.g., x, 1"
+              className="w-full"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setShowRootDialog(false)} variant="outline">Cancel</Button>
+            <Button onClick={() => {
+              const latex = `\n\\[\\sqrt[${rootDegree}]{${rootRadicand}}\\]`;
+              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
+              let newValue = currentQuestion.question;
+              if (matrixInsertPos != null) {
+                newValue =
+                  currentQuestion.question.slice(0, matrixInsertPos) +
+                  latex +
+                  currentQuestion.question.slice(matrixInsertPos);
+              } else {
+                newValue = currentQuestion.question + latex;
+              }
+              updateQuestion(matrixTargetId, 'question', newValue);
+              setShowRootDialog(false);
+            }}>Insert</Button>
+          </div>
+        </div>
+        <div className="mt-4 p-2 bg-gray-50 border rounded">
+          <Label className="text-xs text-gray-600">Preview:</Label>
+          <div
+            className="text-sm mt-1"
+            ref={el => {
+              if (el) {
+                el.textContent = normalizeLatexInput(`\n\\[\\sqrt[${rootDegree}]{${rootRadicand}}\\]`);
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  window.MathJax.typesetPromise([el]);
+                }
+              }
+            }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const productDialog = (
+    <Dialog open={showProductDialog} onOpenChange={setShowProductDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Insert Product</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="product-index">Index</Label>
+            <Input
+              id="product-index"
+              value={productIndex}
+              onChange={(e) => setProductIndex(e.target.value)}
+              placeholder="e.g., i, k"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="product-lower">Lower Bound</Label>
+            <Input
+              id="product-lower"
+              value={productLower}
+              onChange={(e) => setProductLower(e.target.value)}
+              placeholder="e.g., 1, a"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="product-upper">Upper Bound</Label>
+            <Input
+              id="product-upper"
+              value={productUpper}
+              onChange={(e) => setProductUpper(e.target.value)}
+              placeholder="e.g., n, b"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="product-function">Function</Label>
+            <Input
+              id="product-function"
+              value={productFunction}
+              onChange={(e) => setProductFunction(e.target.value)}
+              placeholder="e.g., i^2, sin(i)"
+              className="w-full"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setShowProductDialog(false)} variant="outline">Cancel</Button>
+            <Button onClick={() => {
+              const latex = `\n\\[\\prod_{${productIndex}=${productLower}}^{${productUpper}} ${productFunction}\\]`;
+              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
+              let newValue = currentQuestion.question;
+              if (matrixInsertPos != null) {
+                newValue =
+                  currentQuestion.question.slice(0, matrixInsertPos) +
+                  latex +
+                  currentQuestion.question.slice(matrixInsertPos);
+              } else {
+                newValue = currentQuestion.question + latex;
+              }
+              updateQuestion(matrixTargetId, 'question', newValue);
+              setShowProductDialog(false);
+            }}>Insert</Button>
+          </div>
+        </div>
+        <div className="mt-4 p-2 bg-gray-50 border rounded">
+          <Label className="text-xs text-gray-600">Preview:</Label>
+          <div
+            className="text-sm mt-1"
+            ref={el => {
+              if (el) {
+                el.textContent = normalizeLatexInput(`\n\\[\\prod_{${productIndex}=${productLower}}^{${productUpper}} ${productFunction}\\]`);
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  window.MathJax.typesetPromise([el]);
+                }
+              }
+            }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  // Trigger MathJax typeset after preview updates
+  React.useEffect(() => {
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise();
+    }
+  }, [currentQuestion?.question]);
+
+  // Move openXDialog handler function definitions above the JSX where the buttons are rendered
+  const openFractionDialog = (questionId) => {
+    setMatrixTargetId(questionId);
+    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
+    setShowFractionDialog(true);
+  };
+  const openBinomialDialog = (questionId) => {
+    setMatrixTargetId(questionId);
+    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
+    setShowBinomialDialog(true);
+  };
+  const openIntegralDialog = (questionId) => {
+    setMatrixTargetId(questionId);
+    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
+    setShowIntegralDialog(true);
+  };
+  const openDoubleIntegralDialog = (questionId) => {
+    setMatrixTargetId(questionId);
+    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
+    setShowDoubleIntegralDialog(true);
+  };
+  const openSummationDialog = (questionId) => {
+    setMatrixTargetId(questionId);
+    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
+    setShowSummationDialog(true);
+  };
+  const openLimitDialog = (questionId) => {
+    setMatrixTargetId(questionId);
+    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
+    setShowLimitDialog(true);
+  };
+  const openRootDialog = (questionId) => {
+    setMatrixTargetId(questionId);
+    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
+    setShowRootDialog(true);
+  };
+  const openProductDialog = (questionId) => {
+    setMatrixTargetId(questionId);
+    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
+    setShowProductDialog(true);
+  };
+
+  return (
+    <>
+      {matrixDialog}
+      {fractionDialog}
+      {binomialDialog}
+      {integralDialog}
+      {doubleIntegralDialog}
+      {summationDialog}
+      {limitDialog}
+      {rootDialog}
+      {productDialog}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 h-[calc(100vh-14rem)]">
+        {mobileSidebar}
+        {mainContent}
+        {desktopSidebar}
+      </div>
+    </>
   );
 };
 
-export default QuizCreator;
+export default Screen3; 
