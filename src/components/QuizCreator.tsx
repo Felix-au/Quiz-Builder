@@ -1646,20 +1646,40 @@ const QuizCreator = () => {
     }
   };
 
-  const handleQuestionTextChange = (questionId: number, value: string, previousValue: string) => {
+  const handleQuestionTextChange = (questionId: number, value: string, previousValue: string, e?: React.ChangeEvent<HTMLTextAreaElement>) => {
     let formattedValue = value;
-    
-    if (activeFormatting !== 'none' && value.length > previousValue.length) {
-      const newText = value.slice(previousValue.length);
-      const beforeNewText = value.slice(0, previousValue.length);
-      
-      if (activeFormatting === 'superscript') {
-        formattedValue = beforeNewText + `^{${newText}}`;
-      } else if (activeFormatting === 'subscript') {
-        formattedValue = beforeNewText + `_{${newText}}`;
+    if (activeFormatting !== 'none' && e) {
+      const textarea = e.target;
+      const selectionStart = textarea.selectionStart;
+      const selectionEnd = textarea.selectionEnd;
+      if (selectionStart !== null && selectionEnd !== null) {
+        let before = value.slice(0, selectionStart);
+        let after = value.slice(selectionEnd);
+        let selected = value.slice(selectionStart, selectionEnd);
+        // If nothing is selected, wrap the last inserted character(s)
+        if (selectionStart === selectionEnd) {
+          const diff = value.length - previousValue.length;
+          if (diff > 0) {
+            selected = value.slice(selectionStart - diff, selectionStart);
+            before = value.slice(0, selectionStart - diff);
+          } else {
+            selected = '';
+          }
+        }
+        if (selected) {
+          if (activeFormatting === 'superscript') {
+            formattedValue = before + `^{${selected}}` + after;
+          } else if (activeFormatting === 'subscript') {
+            formattedValue = before + `_{${selected}}` + after;
+          }
+          setTimeout(() => {
+            textarea.focus();
+            const newPos = before.length + 3 + selected.length; // 3 for ^{ or _{
+            textarea.setSelectionRange(newPos, newPos);
+          }, 0);
+        }
       }
     }
-    
     updateQuestion(questionId, 'question', formattedValue);
   };
 
