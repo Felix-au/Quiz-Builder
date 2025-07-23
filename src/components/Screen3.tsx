@@ -45,7 +45,7 @@ interface Screen3Props {
   currentSymbolPage: number;
   setCurrentSymbolPage: React.Dispatch<React.SetStateAction<number>>;
   insertMathSymbol: (questionId: number, symbol: string, cursorPos?: number) => void;
-  handleQuestionTextChange: (questionId: number, value: string, previousValue: string) => void;
+  handleQuestionTextChange: (questionId: number, value: string, previousValue: string, e?: React.ChangeEvent<HTMLTextAreaElement>) => void;
   toggleFormatting: (format: 'superscript' | 'subscript') => void;
   renderMathPreview: (text: string) => string;
   getPageTitle: () => string;
@@ -133,6 +133,41 @@ const Screen3: React.FC<Screen3Props> = (props) => {
   const [matrixTargetId, setMatrixTargetId] = useState<number | null>(null);
   const [matrixInsertPos, setMatrixInsertPos] = useState<number | null>(null);
 
+  // Add state for showing each dialog and their input fields
+  const [showFractionDialog, setShowFractionDialog] = useState(false);
+  const [fractionNumerator, setFractionNumerator] = useState('');
+  const [fractionDenominator, setFractionDenominator] = useState('');
+  const [showBinomialDialog, setShowBinomialDialog] = useState(false);
+  const [binomialN, setBinomialN] = useState('');
+  const [binomialK, setBinomialK] = useState('');
+  const [showIntegralDialog, setShowIntegralDialog] = useState(false);
+  const [integralLower, setIntegralLower] = useState('');
+  const [integralUpper, setIntegralUpper] = useState('');
+  const [integralFunction, setIntegralFunction] = useState('');
+  const [integralVariable, setIntegralVariable] = useState('x');
+  const [showDoubleIntegralDialog, setShowDoubleIntegralDialog] = useState(false);
+  const [doubleIntegralLower, setDoubleIntegralLower] = useState('');
+  const [doubleIntegralUpper, setDoubleIntegralUpper] = useState('');
+  const [doubleIntegralFunction, setDoubleIntegralFunction] = useState('');
+  const [doubleIntegralVariable, setDoubleIntegralVariable] = useState('x, y');
+  const [showSummationDialog, setShowSummationDialog] = useState(false);
+  const [summationIndex, setSummationIndex] = useState('k');
+  const [summationLower, setSummationLower] = useState('0');
+  const [summationUpper, setSummationUpper] = useState('n');
+  const [summationFunction, setSummationFunction] = useState('');
+  const [showLimitDialog, setShowLimitDialog] = useState(false);
+  const [limitVariable, setLimitVariable] = useState('x');
+  const [limitApproaches, setLimitApproaches] = useState('0');
+  const [limitFunction, setLimitFunction] = useState('');
+  const [showRootDialog, setShowRootDialog] = useState(false);
+  const [rootDegree, setRootDegree] = useState('n');
+  const [rootRadicand, setRootRadicand] = useState('x');
+  const [showProductDialog, setShowProductDialog] = useState(false);
+  const [productIndex, setProductIndex] = useState('i');
+  const [productLower, setProductLower] = useState('1');
+  const [productUpper, setProductUpper] = useState('n');
+  const [productFunction, setProductFunction] = useState('');
+
   // Open matrix dialog and store cursor position
   const openMatrixDialog = (questionId: number) => {
     setMatrixRows(2);
@@ -165,7 +200,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
       '\n' +
       '\\[\n' +
       '\\begin{bmatrix}\n'  + 
-      matrixElements.map(row => row.join(' & ')).join(' \\\\ ') +
+      matrixElements.map(row => row.join(' & ')).join(' \\\\\\ ') +
       '\n\\end{bmatrix}\n' +
       '\\]\n';
     const q = questions.find(q => q.id === matrixTargetId);
@@ -182,6 +217,12 @@ const Screen3: React.FC<Screen3Props> = (props) => {
     updateQuestion(matrixTargetId, 'question', newValue);
     setShowMatrixDialog(false);
   };
+
+  // Add this function near the top of the component
+  function normalizeLatexInput(latex) {
+    // Replace quadruple backslashes with double, then double with single
+    return latex.replace(/\\\\\\\\/g, '\\\\').replace(/\\\\/g, '\\');
+  }
 
   // 1. Mobile sidebar (question circles)
   const mobileSidebar = (
@@ -322,7 +363,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                   <Textarea
                     id={`question-textarea-${currentQuestion.id}`}
                     value={currentQuestion.question}
-                    onChange={(e) => handleQuestionTextChange(currentQuestion.id, e.target.value, currentQuestion.question)}
+                    onChange={(e) => handleQuestionTextChange(currentQuestion.id, e.target.value, currentQuestion.question, e)}
                     placeholder="Enter your question..."
                     className={`min-h-[120px] text-sm pr-32 ${currentQuestion.question.trim() === '' ? 'border-red-300 focus:border-red-500' : ''}`}
                     required
@@ -417,16 +458,31 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                         </PopoverContent>
                       </Popover>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-16 p-0 hover:bg-gray-100 mt-2"
-                      type="button"
-                      onClick={() => openMatrixDialog(currentQuestion.id)}
-                      title="Insert Matrix"
-                    >
-                      Matrix
-                    </Button>
+                    <Popover>
+  <PopoverTrigger asChild>
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-6 w-16 p-0 hover:bg-gray-100 mt-2"
+      type="button"
+      title="Insert mathematical construct"
+    >
+      Maths 🧰
+    </Button>
+  </PopoverTrigger>
+  <PopoverContent className="w-44 p-2 space-y-1">
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openMatrixDialog(currentQuestion.id)}>Matrix</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openFractionDialog(currentQuestion.id)}>Fraction</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openBinomialDialog(currentQuestion.id)}>Binomial</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openIntegralDialog(currentQuestion.id)}>Integral</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openDoubleIntegralDialog(currentQuestion.id)}>Double Integral</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openSummationDialog(currentQuestion.id)}>Summation</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openLimitDialog(currentQuestion.id)}>Limit</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openRootDialog(currentQuestion.id)}>Root</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openProductDialog(currentQuestion.id)}>Product</Button>
+  </PopoverContent>
+</Popover>
+
                   </div>
                 </div>
                 {currentQuestion.question.trim() === '' && (
@@ -437,7 +493,14 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                     <Label className="text-xs text-gray-600">Preview:</Label>
                     <div
                       className="text-sm mt-1"
-                      dangerouslySetInnerHTML={{ __html: renderMathPreview(currentQuestion.question) }}
+                      ref={el => {
+                        if (el) {
+                          el.textContent = normalizeLatexInput(currentQuestion.question);
+                          if (window.MathJax && window.MathJax.typesetPromise) {
+                            window.MathJax.typesetPromise([el]);
+                          }
+                        }
+                      }}
                     />
                   </div>
                 )}
@@ -493,7 +556,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                   <Textarea
                     id={`question-mobile-${currentQuestion.id}`}
                     value={currentQuestion.question}
-                    onChange={(e) => handleQuestionTextChange(currentQuestion.id, e.target.value, currentQuestion.question)}
+                    onChange={(e) => handleQuestionTextChange(currentQuestion.id, e.target.value, currentQuestion.question, e)}
                     placeholder="Enter your question..."
                     className={`min-h-[120px] text-sm pr-24 ${currentQuestion.question.trim() === '' ? 'border-red-300 focus:border-red-500' : ''}`}
                     required
@@ -588,16 +651,31 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                         </PopoverContent>
                       </Popover>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-16 p-0 hover:bg-gray-100 mt-2"
-                      type="button"
-                      onClick={() => openMatrixDialog(currentQuestion.id)}
-                      title="Insert Matrix"
-                    >
-                      Matrix
-                    </Button>
+                    <Popover>
+  <PopoverTrigger asChild>
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-8 w-24 p-0 hover:bg-gray-100 mt-2"
+      type="button"
+      title="Insert math"
+    >
+      Maths 🧰
+    </Button>
+  </PopoverTrigger>
+  <PopoverContent className="w-44 p-2 space-y-1">
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openMatrixDialog(currentQuestion.id)}>Matrix</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openFractionDialog(currentQuestion.id)}>Fraction</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openBinomialDialog(currentQuestion.id)}>Binomial</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openIntegralDialog(currentQuestion.id)}>Integral</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openDoubleIntegralDialog(currentQuestion.id)}>Double Integral</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openSummationDialog(currentQuestion.id)}>Summation</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openLimitDialog(currentQuestion.id)}>Limit</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openRootDialog(currentQuestion.id)}>Root</Button>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => openProductDialog(currentQuestion.id)}>Product</Button>
+  </PopoverContent>
+</Popover>
+
                   </div>
                 </div>
                 {currentQuestion.question.trim() === '' && (
@@ -608,7 +686,14 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                     <Label className="text-xs text-gray-600">Preview:</Label>
                     <div
                       className="text-sm mt-1"
-                      dangerouslySetInnerHTML={{ __html: renderMathPreview(currentQuestion.question) }}
+                      ref={el => {
+                        if (el) {
+                          el.textContent = normalizeLatexInput(currentQuestion.question);
+                          if (window.MathJax && window.MathJax.typesetPromise) {
+                            window.MathJax.typesetPromise([el]);
+                          }
+                        }
+                      }}
                     />
                   </div>
                 )}
@@ -750,15 +835,28 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                   };
 
                   // Helper for handling text change with formatting
-                  const handleOptionTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                  const handleOptionTextChange = (e: React.ChangeEvent<HTMLInputElement>, option: any) => {
                     let value = e.target.value;
-                    if (formatting !== 'none' && value.length > option.option_text.length) {
-                      const newText = value.slice(option.option_text.length);
-                      const beforeNewText = value.slice(0, option.option_text.length);
-                      if (formatting === 'superscript') {
-                        value = beforeNewText + `^{${newText}}`;
-                      } else if (formatting === 'subscript') {
-                        value = beforeNewText + `_{${newText}}`;
+                    const formatting = optionFormatting[option.id] || 'none';
+                    if (formatting !== 'none') {
+                      const input = e.target;
+                      const selectionStart = input.selectionStart;
+                      const selectionEnd = input.selectionEnd;
+                      if (selectionStart !== null && selectionEnd !== null && value.length > option.option_text.length) {
+                        const diff = value.length - option.option_text.length;
+                        const insertedText = value.slice(selectionStart - diff, selectionStart);
+                        const before = value.slice(0, selectionStart - diff);
+                        const after = value.slice(selectionStart);
+                        if (formatting === 'superscript') {
+                          value = before + `^{${insertedText}}` + after;
+                        } else if (formatting === 'subscript') {
+                          value = before + `_{${insertedText}}` + after;
+                        }
+                        setTimeout(() => {
+                          input.focus();
+                          const newPos = before.length + 3 + insertedText.length;
+                          input.setSelectionRange(newPos, newPos);
+                        }, 0);
                       }
                     }
                     updateOption(currentQuestion.id, option.id, 'option_text', value);
@@ -781,7 +879,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                     />
                     <Input
                       value={option.option_text}
-                      onChange={handleOptionTextChange}
+                      onChange={(e) => handleOptionTextChange(e, option)}
                       placeholder={`Option ${optionIndex + 1}`}
                       className="flex-1 h-8 text-sm"
                       id={`option-input-${currentQuestion.id}-${option.id}`}
@@ -1239,12 +1337,12 @@ const Screen3: React.FC<Screen3Props> = (props) => {
           />
         </div>
         <div className="overflow-x-auto">
-          <table>
+          <table className="border border-gray-300 rounded w-full text-center bg-white">
             <tbody>
               {Array.from({ length: matrixRows }).map((_, i) => (
                 <tr key={i}>
                   {Array.from({ length: matrixCols }).map((_, j) => (
-                    <td key={j}>
+                    <td key={j} className="border border-gray-300 p-1">
                       <Input
                         value={matrixElements[i]?.[j] || ''}
                         onChange={e => {
@@ -1255,7 +1353,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                             return copy;
                           });
                         }}
-                        className="w-16"
+                        className="w-16 text-center bg-gray-50 focus:bg-white focus:border-blue-400 rounded shadow-sm"
                       />
                     </td>
                   ))}
@@ -1272,6 +1370,609 @@ const Screen3: React.FC<Screen3Props> = (props) => {
     </Dialog>
   );
 
+  // Scaffold Dialogs for each construct (Fraction, Binomial, etc.) with input fields, labels, and a live LaTeX preview (use MathJax rendering as in matrixDialog). Do not implement insertion yet.
+  const fractionDialog = (
+    <Dialog open={showFractionDialog} onOpenChange={setShowFractionDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Insert Fraction</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="fraction-numerator">Numerator</Label>
+            <Input
+              id="fraction-numerator"
+              value={fractionNumerator}
+              onChange={(e) => setFractionNumerator(e.target.value)}
+              placeholder="e.g., a, x, 1"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="fraction-denominator">Denominator</Label>
+            <Input
+              id="fraction-denominator"
+              value={fractionDenominator}
+              onChange={(e) => setFractionDenominator(e.target.value)}
+              placeholder="e.g., b, y, 2"
+              className="w-full"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setShowFractionDialog(false)} variant="outline">Cancel</Button>
+            <Button onClick={() => {
+              const latex = `\n\\[\\frac{${fractionNumerator}}{${fractionDenominator}}\\]`;
+              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
+              let newValue = currentQuestion.question;
+              if (matrixInsertPos != null) {
+                newValue =
+                  currentQuestion.question.slice(0, matrixInsertPos) +
+                  latex +
+                  currentQuestion.question.slice(matrixInsertPos);
+              } else {
+                newValue = currentQuestion.question + latex;
+              }
+              updateQuestion(matrixTargetId, 'question', newValue);
+              setShowFractionDialog(false);
+            }}>Insert</Button>
+          </div>
+        </div>
+        <div className="mt-4 p-2 bg-gray-50 border rounded">
+          <Label className="text-xs text-gray-600">Preview:</Label>
+          <div
+            className="text-sm mt-1"
+            ref={el => {
+              if (el) {
+                el.textContent = normalizeLatexInput(`\n\\[\\frac{${fractionNumerator}}{${fractionDenominator}}\\]`);
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  window.MathJax.typesetPromise([el]);
+                }
+              }
+            }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const binomialDialog = (
+    <Dialog open={showBinomialDialog} onOpenChange={setShowBinomialDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Insert Binomial</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="binomial-n">N</Label>
+            <Input
+              id="binomial-n"
+              value={binomialN}
+              onChange={(e) => setBinomialN(e.target.value)}
+              placeholder="e.g., 5, n"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="binomial-k">K</Label>
+            <Input
+              id="binomial-k"
+              value={binomialK}
+              onChange={(e) => setBinomialK(e.target.value)}
+              placeholder="e.g., 2, k"
+              className="w-full"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setShowBinomialDialog(false)} variant="outline">Cancel</Button>
+            <Button onClick={() => {
+              const latex = `\n\\[\\binom{${binomialN}}{${binomialK}}\\]`;
+              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
+              let newValue = currentQuestion.question;
+              if (matrixInsertPos != null) {
+                newValue =
+                  currentQuestion.question.slice(0, matrixInsertPos) +
+                  latex +
+                  currentQuestion.question.slice(matrixInsertPos);
+              } else {
+                newValue = currentQuestion.question + latex;
+              }
+              updateQuestion(matrixTargetId, 'question', newValue);
+              setShowBinomialDialog(false);
+            }}>Insert</Button>
+          </div>
+        </div>
+        <div className="mt-4 p-2 bg-gray-50 border rounded">
+          <Label className="text-xs text-gray-600">Preview:</Label>
+          <div
+            className="text-sm mt-1"
+            ref={el => {
+              if (el) {
+                el.textContent = normalizeLatexInput(`\n\\[\\binom{${binomialN}}{${binomialK}}\\]`);
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  window.MathJax.typesetPromise([el]);
+                }
+              }
+            }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const integralDialog = (
+    <Dialog open={showIntegralDialog} onOpenChange={setShowIntegralDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Insert Integral</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="integral-lower">Lower Bound</Label>
+            <Input
+              id="integral-lower"
+              value={integralLower}
+              onChange={(e) => setIntegralLower(e.target.value)}
+              placeholder="e.g., 0, a"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="integral-upper">Upper Bound</Label>
+            <Input
+              id="integral-upper"
+              value={integralUpper}
+              onChange={(e) => setIntegralUpper(e.target.value)}
+              placeholder="e.g., 1, b"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="integral-function">Function</Label>
+            <Input
+              id="integral-function"
+              value={integralFunction}
+              onChange={(e) => setIntegralFunction(e.target.value)}
+              placeholder="e.g., x^2, sin(x)"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="integral-variable">Variable</Label>
+            <Input
+              id="integral-variable"
+              value={integralVariable}
+              onChange={(e) => setIntegralVariable(e.target.value)}
+              placeholder="e.g., x, t"
+              className="w-full"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setShowIntegralDialog(false)} variant="outline">Cancel</Button>
+            <Button onClick={() => {
+              const latex = `\n\\[\\int_{${integralLower}}^{${integralUpper}} ${integralFunction} \\, d${integralVariable}\\]`;
+              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
+              let newValue = currentQuestion.question;
+              if (matrixInsertPos != null) {
+                newValue =
+                  currentQuestion.question.slice(0, matrixInsertPos) +
+                  latex +
+                  currentQuestion.question.slice(matrixInsertPos);
+              } else {
+                newValue = currentQuestion.question + latex;
+              }
+              updateQuestion(matrixTargetId, 'question', newValue);
+              setShowIntegralDialog(false);
+            }}>Insert</Button>
+          </div>
+        </div>
+        <div className="mt-4 p-2 bg-gray-50 border rounded">
+          <Label className="text-xs text-gray-600">Preview:</Label>
+          <div
+            className="text-sm mt-1"
+            ref={el => {
+              if (el) {
+                el.textContent = normalizeLatexInput(`\n\\[\\int_{${integralLower}}^{${integralUpper}} ${integralFunction} \\, d${integralVariable}\\]`);
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  window.MathJax.typesetPromise([el]);
+                }
+              }
+            }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const doubleIntegralDialog = (
+    <Dialog open={showDoubleIntegralDialog} onOpenChange={setShowDoubleIntegralDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Insert Double Integral</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="double-integral-lower">Lower Bound (x)</Label>
+            <Input
+              id="double-integral-lower"
+              value={doubleIntegralLower}
+              onChange={(e) => setDoubleIntegralLower(e.target.value)}
+              placeholder="e.g., 0, a"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="double-integral-upper">Upper Bound (x)</Label>
+            <Input
+              id="double-integral-upper"
+              value={doubleIntegralUpper}
+              onChange={(e) => setDoubleIntegralUpper(e.target.value)}
+              placeholder="e.g., 1, b"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="double-integral-function">Function (y)</Label>
+            <Input
+              id="double-integral-function"
+              value={doubleIntegralFunction}
+              onChange={(e) => setDoubleIntegralFunction(e.target.value)}
+              placeholder="e.g., x^2, sin(y)"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="double-integral-variable">Variable (y)</Label>
+            <Input
+              id="double-integral-variable"
+              value={doubleIntegralVariable}
+              onChange={(e) => setDoubleIntegralVariable(e.target.value)}
+              placeholder="e.g., y, t"
+              className="w-full"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setShowDoubleIntegralDialog(false)} variant="outline">Cancel</Button>
+            <Button onClick={() => {
+              const latex = `\n\\[\\iint_{${doubleIntegralLower}}^{${doubleIntegralUpper}} ${doubleIntegralFunction} \\, d${doubleIntegralVariable}\\]`;
+              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
+              let newValue = currentQuestion.question;
+              if (matrixInsertPos != null) {
+                newValue =
+                  currentQuestion.question.slice(0, matrixInsertPos) +
+                  latex +
+                  currentQuestion.question.slice(matrixInsertPos);
+              } else {
+                newValue = currentQuestion.question + latex;
+              }
+              updateQuestion(matrixTargetId, 'question', newValue);
+              setShowDoubleIntegralDialog(false);
+            }}>Insert</Button>
+          </div>
+        </div>
+        <div className="mt-4 p-2 bg-gray-50 border rounded">
+          <Label className="text-xs text-gray-600">Preview:</Label>
+          <div
+            className="text-sm mt-1"
+            ref={el => {
+              if (el) {
+                el.textContent = normalizeLatexInput(`\n\\[\\iint_{${doubleIntegralLower}}^{${doubleIntegralUpper}} ${doubleIntegralFunction} \\, d${doubleIntegralVariable}\\]`);
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  window.MathJax.typesetPromise([el]);
+                }
+              }
+            }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const summationDialog = (
+    <Dialog open={showSummationDialog} onOpenChange={setShowSummationDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Insert Summation</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="summation-index">Index</Label>
+            <Input
+              id="summation-index"
+              value={summationIndex}
+              onChange={(e) => setSummationIndex(e.target.value)}
+              placeholder="e.g., i, k"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="summation-lower">Lower Bound</Label>
+            <Input
+              id="summation-lower"
+              value={summationLower}
+              onChange={(e) => setSummationLower(e.target.value)}
+              placeholder="e.g., 1, a"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="summation-upper">Upper Bound</Label>
+            <Input
+              id="summation-upper"
+              value={summationUpper}
+              onChange={(e) => setSummationUpper(e.target.value)}
+              placeholder="e.g., n, b"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="summation-function">Function</Label>
+            <Input
+              id="summation-function"
+              value={summationFunction}
+              onChange={(e) => setSummationFunction(e.target.value)}
+              placeholder="e.g., i^2, sin(i)"
+              className="w-full"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setShowSummationDialog(false)} variant="outline">Cancel</Button>
+            <Button onClick={() => {
+              const latex = `\n\\[\\sum_{${summationIndex}=${summationLower}}^{${summationUpper}} ${summationFunction}\\]`;
+              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
+              let newValue = currentQuestion.question;
+              if (matrixInsertPos != null) {
+                newValue =
+                  currentQuestion.question.slice(0, matrixInsertPos) +
+                  latex +
+                  currentQuestion.question.slice(matrixInsertPos);
+              } else {
+                newValue = currentQuestion.question + latex;
+              }
+              updateQuestion(matrixTargetId, 'question', newValue);
+              setShowSummationDialog(false);
+            }}>Insert</Button>
+          </div>
+        </div>
+        <div className="mt-4 p-2 bg-gray-50 border rounded">
+          <Label className="text-xs text-gray-600">Preview:</Label>
+          <div
+            className="text-sm mt-1"
+            ref={el => {
+              if (el) {
+                el.textContent = normalizeLatexInput(`\n\\[\\sum_{${summationIndex}=${summationLower}}^{${summationUpper}} ${summationFunction}\\]`);
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  window.MathJax.typesetPromise([el]);
+                }
+              }
+            }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const limitDialog = (
+    <Dialog open={showLimitDialog} onOpenChange={setShowLimitDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Insert Limit</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="limit-variable">Variable</Label>
+            <Input
+              id="limit-variable"
+              value={limitVariable}
+              onChange={(e) => setLimitVariable(e.target.value)}
+              placeholder="e.g., x, t"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="limit-approaches">Approaches</Label>
+            <Input
+              id="limit-approaches"
+              value={limitApproaches}
+              onChange={(e) => setLimitApproaches(e.target.value)}
+              placeholder="e.g., 0, a"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="limit-function">Function</Label>
+            <Input
+              id="limit-function"
+              value={limitFunction}
+              onChange={(e) => setLimitFunction(e.target.value)}
+              placeholder="e.g., \\frac{1}{x}, \\sin(x)"
+              className="w-full"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setShowLimitDialog(false)} variant="outline">Cancel</Button>
+            <Button onClick={() => {
+              const latex = `\n\\[\\lim_{${limitVariable} \\to ${limitApproaches}} ${limitFunction}\\]`;
+              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
+              let newValue = currentQuestion.question;
+              if (matrixInsertPos != null) {
+                newValue =
+                  currentQuestion.question.slice(0, matrixInsertPos) +
+                  latex +
+                  currentQuestion.question.slice(matrixInsertPos);
+              } else {
+                newValue = currentQuestion.question + latex;
+              }
+              updateQuestion(matrixTargetId, 'question', newValue);
+              setShowLimitDialog(false);
+            }}>Insert</Button>
+          </div>
+        </div>
+        <div className="mt-4 p-2 bg-gray-50 border rounded">
+          <Label className="text-xs text-gray-600">Preview:</Label>
+          <div
+            className="text-sm mt-1"
+            ref={el => {
+              if (el) {
+                el.textContent = normalizeLatexInput(`\n\\[\\lim_{${limitVariable} \\to ${limitApproaches}} ${limitFunction}\\]`);
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  window.MathJax.typesetPromise([el]);
+                }
+              }
+            }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const rootDialog = (
+    <Dialog open={showRootDialog} onOpenChange={setShowRootDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Insert Root</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="root-degree">Degree</Label>
+            <Input
+              id="root-degree"
+              value={rootDegree}
+              onChange={(e) => setRootDegree(e.target.value)}
+              placeholder="e.g., 2, n"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="root-radicand">Radicand</Label>
+            <Input
+              id="root-radicand"
+              value={rootRadicand}
+              onChange={(e) => setRootRadicand(e.target.value)}
+              placeholder="e.g., x, 1"
+              className="w-full"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setShowRootDialog(false)} variant="outline">Cancel</Button>
+            <Button onClick={() => {
+              const latex = `\n\\[\\sqrt[${rootDegree}]{${rootRadicand}}\\]`;
+              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
+              let newValue = currentQuestion.question;
+              if (matrixInsertPos != null) {
+                newValue =
+                  currentQuestion.question.slice(0, matrixInsertPos) +
+                  latex +
+                  currentQuestion.question.slice(matrixInsertPos);
+              } else {
+                newValue = currentQuestion.question + latex;
+              }
+              updateQuestion(matrixTargetId, 'question', newValue);
+              setShowRootDialog(false);
+            }}>Insert</Button>
+          </div>
+        </div>
+        <div className="mt-4 p-2 bg-gray-50 border rounded">
+          <Label className="text-xs text-gray-600">Preview:</Label>
+          <div
+            className="text-sm mt-1"
+            ref={el => {
+              if (el) {
+                el.textContent = normalizeLatexInput(`\n\\[\\sqrt[${rootDegree}]{${rootRadicand}}\\]`);
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  window.MathJax.typesetPromise([el]);
+                }
+              }
+            }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const productDialog = (
+    <Dialog open={showProductDialog} onOpenChange={setShowProductDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Insert Product</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="product-index">Index</Label>
+            <Input
+              id="product-index"
+              value={productIndex}
+              onChange={(e) => setProductIndex(e.target.value)}
+              placeholder="e.g., i, k"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="product-lower">Lower Bound</Label>
+            <Input
+              id="product-lower"
+              value={productLower}
+              onChange={(e) => setProductLower(e.target.value)}
+              placeholder="e.g., 1, a"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="product-upper">Upper Bound</Label>
+            <Input
+              id="product-upper"
+              value={productUpper}
+              onChange={(e) => setProductUpper(e.target.value)}
+              placeholder="e.g., n, b"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="product-function">Function</Label>
+            <Input
+              id="product-function"
+              value={productFunction}
+              onChange={(e) => setProductFunction(e.target.value)}
+              placeholder="e.g., i^2, sin(i)"
+              className="w-full"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setShowProductDialog(false)} variant="outline">Cancel</Button>
+            <Button onClick={() => {
+              const latex = `\n\\[\\prod_{${productIndex}=${productLower}}^{${productUpper}} ${productFunction}\\]`;
+              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
+              let newValue = currentQuestion.question;
+              if (matrixInsertPos != null) {
+                newValue =
+                  currentQuestion.question.slice(0, matrixInsertPos) +
+                  latex +
+                  currentQuestion.question.slice(matrixInsertPos);
+              } else {
+                newValue = currentQuestion.question + latex;
+              }
+              updateQuestion(matrixTargetId, 'question', newValue);
+              setShowProductDialog(false);
+            }}>Insert</Button>
+          </div>
+        </div>
+        <div className="mt-4 p-2 bg-gray-50 border rounded">
+          <Label className="text-xs text-gray-600">Preview:</Label>
+          <div
+            className="text-sm mt-1"
+            ref={el => {
+              if (el) {
+                el.textContent = normalizeLatexInput(`\n\\[\\prod_{${productIndex}=${productLower}}^{${productUpper}} ${productFunction}\\]`);
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                  window.MathJax.typesetPromise([el]);
+                }
+              }
+            }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
   // Trigger MathJax typeset after preview updates
   React.useEffect(() => {
     if (window.MathJax && window.MathJax.typesetPromise) {
@@ -1279,9 +1980,67 @@ const Screen3: React.FC<Screen3Props> = (props) => {
     }
   }, [currentQuestion?.question]);
 
+  // Move openXDialog handler function definitions above the JSX where the buttons are rendered
+  const openFractionDialog = (questionId) => {
+    setMatrixTargetId(questionId);
+    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
+    setShowFractionDialog(true);
+  };
+  const openBinomialDialog = (questionId) => {
+    setMatrixTargetId(questionId);
+    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
+    setShowBinomialDialog(true);
+  };
+  const openIntegralDialog = (questionId) => {
+    setMatrixTargetId(questionId);
+    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
+    setShowIntegralDialog(true);
+  };
+  const openDoubleIntegralDialog = (questionId) => {
+    setMatrixTargetId(questionId);
+    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
+    setShowDoubleIntegralDialog(true);
+  };
+  const openSummationDialog = (questionId) => {
+    setMatrixTargetId(questionId);
+    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
+    setShowSummationDialog(true);
+  };
+  const openLimitDialog = (questionId) => {
+    setMatrixTargetId(questionId);
+    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
+    setShowLimitDialog(true);
+  };
+  const openRootDialog = (questionId) => {
+    setMatrixTargetId(questionId);
+    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
+    setShowRootDialog(true);
+  };
+  const openProductDialog = (questionId) => {
+    setMatrixTargetId(questionId);
+    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
+    setShowProductDialog(true);
+  };
+
   return (
     <>
       {matrixDialog}
+      {fractionDialog}
+      {binomialDialog}
+      {integralDialog}
+      {doubleIntegralDialog}
+      {summationDialog}
+      {limitDialog}
+      {rootDialog}
+      {productDialog}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 h-[calc(100vh-14rem)]">
         {mobileSidebar}
         {mainContent}
