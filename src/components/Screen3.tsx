@@ -985,7 +985,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                       </Button>
                     )}
                   </div>
-                      {option.option_text && (option.option_text.includes('^{') || option.option_text.includes('_{')) && (
+                      {/* {option.option_text && (option.option_text.includes('^{') || option.option_text.includes('_{')) && (
                         <div className="mt-1 p-1 bg-gray-100 border rounded">
                           <Label className="text-xs text-gray-600">Preview:</Label>
                           <div
@@ -993,7 +993,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                             dangerouslySetInnerHTML={{ __html: renderOptionPreview(option.option_text) }}
                           />
                         </div>
-                      )}
+                      )} */}
                     </div>
                   );
                 })}
@@ -1401,7 +1401,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
           <div className="flex justify-end gap-2">
             <Button onClick={() => setShowFractionDialog(false)} variant="outline">Cancel</Button>
             <Button onClick={() => {
-              const latex = `\n\\[\\frac{${fractionNumerator}}{${fractionDenominator}}\\]`;
+              const latex = `\n\\[\\frac{${fractionNumerator}}{${fractionDenominator}}\\]\n`;
               const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
               let newValue = currentQuestion.question;
               if (matrixInsertPos != null) {
@@ -1423,7 +1423,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             className="text-sm mt-1"
             ref={el => {
               if (el) {
-                el.textContent = normalizeLatexInput(`\n\\[\\frac{${fractionNumerator}}{${fractionDenominator}}\\]`);
+                el.textContent = normalizeLatexInput(`\n\\[\\frac{${fractionNumerator}}{${fractionDenominator}}\\]\n`);
                 if (window.MathJax && window.MathJax.typesetPromise) {
                   window.MathJax.typesetPromise([el]);
                 }
@@ -1465,7 +1465,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
           <div className="flex justify-end gap-2">
             <Button onClick={() => setShowBinomialDialog(false)} variant="outline">Cancel</Button>
             <Button onClick={() => {
-              const latex = `\n\\[\\binom{${binomialN}}{${binomialK}}\\]`;
+              const latex = `\n\\[\\binom{${binomialN}}{${binomialK}}\\]\n`;
               const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
               let newValue = currentQuestion.question;
               if (matrixInsertPos != null) {
@@ -1487,7 +1487,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             className="text-sm mt-1"
             ref={el => {
               if (el) {
-                el.textContent = normalizeLatexInput(`\n\\[\\binom{${binomialN}}{${binomialK}}\\]`);
+                el.textContent = normalizeLatexInput(`\n\\[\\binom{${binomialN}}{${binomialK}}\\]\n`);
                 if (window.MathJax && window.MathJax.typesetPromise) {
                   window.MathJax.typesetPromise([el]);
                 }
@@ -1549,7 +1549,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
           <div className="flex justify-end gap-2">
             <Button onClick={() => setShowIntegralDialog(false)} variant="outline">Cancel</Button>
             <Button onClick={() => {
-              const latex = `\n\\[\\int_{${integralLower}}^{${integralUpper}} ${integralFunction} \\, d${integralVariable}\\]`;
+              const latex = `\n\\[\\int_{${integralLower}}^{${integralUpper}} ${integralFunction} \\, d${integralVariable}\\]\n`;
               const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
               let newValue = currentQuestion.question;
               if (matrixInsertPos != null) {
@@ -1571,7 +1571,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             className="text-sm mt-1"
             ref={el => {
               if (el) {
-                el.textContent = normalizeLatexInput(`\n\\[\\int_{${integralLower}}^{${integralUpper}} ${integralFunction} \\, d${integralVariable}\\]`);
+                el.textContent = normalizeLatexInput(`\n\\[\\int_{${integralLower}}^{${integralUpper}} ${integralFunction} \\, d${integralVariable}\\]\n`);
                 if (window.MathJax && window.MathJax.typesetPromise) {
                   window.MathJax.typesetPromise([el]);
                 }
@@ -1633,7 +1633,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
           <div className="flex justify-end gap-2">
             <Button onClick={() => setShowDoubleIntegralDialog(false)} variant="outline">Cancel</Button>
             <Button onClick={() => {
-              const latex = `\n\\[\\iint_{${doubleIntegralLower}}^{${doubleIntegralUpper}} ${doubleIntegralFunction} \\, d${doubleIntegralVariable}\\]`;
+              const latex = `\n\\[\\iint_{${doubleIntegralLower}}^{${doubleIntegralUpper}} ${doubleIntegralFunction} \\, d${doubleIntegralVariable}\\]\n`;
               const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
               let newValue = currentQuestion.question;
               if (matrixInsertPos != null) {
@@ -1655,7 +1655,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             className="text-sm mt-1"
             ref={el => {
               if (el) {
-                el.textContent = normalizeLatexInput(`\n\\[\\iint_{${doubleIntegralLower}}^{${doubleIntegralUpper}} ${doubleIntegralFunction} \\, d${doubleIntegralVariable}\\]`);
+                el.textContent = normalizeLatexInput(`\n\\[\\iint_{${doubleIntegralLower}}^{${doubleIntegralUpper}} ${doubleIntegralFunction} \\, d${doubleIntegralVariable}\\]\n`);
                 if (window.MathJax && window.MathJax.typesetPromise) {
                   window.MathJax.typesetPromise([el]);
                 }
@@ -1717,7 +1717,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
           <div className="flex justify-end gap-2">
             <Button onClick={() => setShowSummationDialog(false)} variant="outline">Cancel</Button>
             <Button onClick={() => {
-              const latex = `\n\\[\\sum_{${summationIndex}=${summationLower}}^{${summationUpper}} ${summationFunction}\\]`;
+              const latex = `\n\\[\\sum_{${summationIndex}=${summationLower}}^{${summationUpper}} ${summationFunction}\\]\n`;
               const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
               let newValue = currentQuestion.question;
               if (matrixInsertPos != null) {
@@ -1739,7 +1739,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             className="text-sm mt-1"
             ref={el => {
               if (el) {
-                el.textContent = normalizeLatexInput(`\n\\[\\sum_{${summationIndex}=${summationLower}}^{${summationUpper}} ${summationFunction}\\]`);
+                el.textContent = normalizeLatexInput(`\n\\[\\sum_{${summationIndex}=${summationLower}}^{${summationUpper}} ${summationFunction}\\]\n`);
                 if (window.MathJax && window.MathJax.typesetPromise) {
                   window.MathJax.typesetPromise([el]);
                 }
@@ -1791,7 +1791,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
           <div className="flex justify-end gap-2">
             <Button onClick={() => setShowLimitDialog(false)} variant="outline">Cancel</Button>
             <Button onClick={() => {
-              const latex = `\n\\[\\lim_{${limitVariable} \\to ${limitApproaches}} ${limitFunction}\\]`;
+              const latex = `\n\\[\\lim_{${limitVariable} \\to ${limitApproaches}} ${limitFunction}\\]\n`;
               const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
               let newValue = currentQuestion.question;
               if (matrixInsertPos != null) {
@@ -1813,7 +1813,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             className="text-sm mt-1"
             ref={el => {
               if (el) {
-                el.textContent = normalizeLatexInput(`\n\\[\\lim_{${limitVariable} \\to ${limitApproaches}} ${limitFunction}\\]`);
+                el.textContent = normalizeLatexInput(`\n\\[\\lim_{${limitVariable} \\to ${limitApproaches}} ${limitFunction}\\]\n`);
                 if (window.MathJax && window.MathJax.typesetPromise) {
                   window.MathJax.typesetPromise([el]);
                 }
@@ -1855,7 +1855,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
           <div className="flex justify-end gap-2">
             <Button onClick={() => setShowRootDialog(false)} variant="outline">Cancel</Button>
             <Button onClick={() => {
-              const latex = `\n\\[\\sqrt[${rootDegree}]{${rootRadicand}}\\]`;
+              const latex = `\n\\[\\sqrt[${rootDegree}]{${rootRadicand}}\\]\n`;
               const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
               let newValue = currentQuestion.question;
               if (matrixInsertPos != null) {
@@ -1877,7 +1877,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             className="text-sm mt-1"
             ref={el => {
               if (el) {
-                el.textContent = normalizeLatexInput(`\n\\[\\sqrt[${rootDegree}]{${rootRadicand}}\\]`);
+                el.textContent = normalizeLatexInput(`\n\\[\\sqrt[${rootDegree}]{${rootRadicand}}\\]\n`);
                 if (window.MathJax && window.MathJax.typesetPromise) {
                   window.MathJax.typesetPromise([el]);
                 }
@@ -1939,7 +1939,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
           <div className="flex justify-end gap-2">
             <Button onClick={() => setShowProductDialog(false)} variant="outline">Cancel</Button>
             <Button onClick={() => {
-              const latex = `\n\\[\\prod_{${productIndex}=${productLower}}^{${productUpper}} ${productFunction}\\]`;
+              const latex = `\n\\[\\prod_{${productIndex}=${productLower}}^{${productUpper}} ${productFunction}\\]\n`;
               const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
               let newValue = currentQuestion.question;
               if (matrixInsertPos != null) {
@@ -1961,7 +1961,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             className="text-sm mt-1"
             ref={el => {
               if (el) {
-                el.textContent = normalizeLatexInput(`\n\\[\\prod_{${productIndex}=${productLower}}^{${productUpper}} ${productFunction}\\]`);
+                el.textContent = normalizeLatexInput(`\n\\[\\prod_{${productIndex}=${productLower}}^{${productUpper}} ${productFunction}\\]\n`);
                 if (window.MathJax && window.MathJax.typesetPromise) {
                   window.MathJax.typesetPromise([el]);
                 }
