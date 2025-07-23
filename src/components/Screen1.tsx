@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,8 @@ interface Screen1Props {
   setSelectedProgram: (value: string) => void;
   customProgram: string;
   setCustomProgram: (value: string) => void;
+  selectedSemester: string;
+  setSelectedSemester: (value: string) => void;
   selectedDepartment: string;
   setSelectedDepartment: (value: string) => void;
   customDepartment: string;
@@ -51,6 +53,10 @@ const programs = [
   { value: 'custom', label: 'Other (Type your own)', years: 4 }
 ];
 
+const semesters = [
+  'Sem-I', 'Sem-II', 'Sem-III', 'Sem-IV', 'Sem-V', 'Sem-VI', 'Sem-VII', 'Sem-VIII', 'Sem-IX', 'Sem-X'
+];
+
 const Screen1: React.FC<Screen1Props> = ({
   metadata,
   setMetadata,
@@ -59,6 +65,8 @@ const Screen1: React.FC<Screen1Props> = ({
   setSelectedProgram,
   customProgram,
   setCustomProgram,
+  selectedSemester,
+  setSelectedSemester,
   selectedDepartment,
   setSelectedDepartment,
   customDepartment,
@@ -76,6 +84,8 @@ const Screen1: React.FC<Screen1Props> = ({
       setMetadata((prev: any) => ({ ...prev, code: newQuizCode }));
     }
   }, [metadata.code, setMetadata]);
+
+  const [sectionSelectOpen, setSectionSelectOpen] = useState(false);
 
   return (
     <Card className="shadow-lg border-0">
@@ -112,7 +122,7 @@ const Screen1: React.FC<Screen1Props> = ({
             />
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <Label>Program <span className="text-red-500">*</span></Label>
             <Select value={selectedProgram} onValueChange={setSelectedProgram} required>
@@ -136,6 +146,19 @@ const Screen1: React.FC<Screen1Props> = ({
                 required
               />
             )}
+          </div>
+          <div>
+            <Label>Semester <span className="text-red-500">*</span></Label>
+            <Select value={selectedSemester} onValueChange={setSelectedSemester} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Select semester" />
+              </SelectTrigger>
+              <SelectContent>
+                {semesters.map(sem => (
+                  <SelectItem key={sem} value={sem}>{sem}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label>Department <span className="text-red-500">*</span></Label>
@@ -165,21 +188,19 @@ const Screen1: React.FC<Screen1Props> = ({
             <Label>Section <span className="text-red-500">*</span></Label>
             <div className="relative">
               <Input
-                value={selectedSections.length === 0 
-                  ? "" 
-                  : selectedSections.includes('custom')
-                    ? customSections || selectedSections.filter(s => s !== 'custom').join(', ')
+                value={selectedSections.includes('custom')
+                  ? 'Other (Type your own)'
+                  : selectedSections.length === 0
+                    ? ''
                     : selectedSections.join(', ')
                 }
                 placeholder="Select section"
                 readOnly
                 className="cursor-pointer"
-                onClick={() => {
-                  // This will be handled by the select dropdown
-                }}
+                onClick={() => setSectionSelectOpen(true)}
                 required
               />
-              <Select>
+              <Select open={sectionSelectOpen} onOpenChange={setSectionSelectOpen}>
                 <SelectTrigger className="absolute inset-0 opacity-0">
                   <SelectValue />
                 </SelectTrigger>
@@ -192,6 +213,7 @@ const Screen1: React.FC<Screen1Props> = ({
                         onCheckedChange={(checked) => {
                           if (checked) {
                             setSelectedSections([...selectedSections, sec]);
+                            if (sec === 'custom') setSectionSelectOpen(false);
                           } else {
                             setSelectedSections(selectedSections.filter(s => s !== sec));
                           }

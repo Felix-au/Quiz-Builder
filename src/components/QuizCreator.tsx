@@ -134,6 +134,7 @@ const QuizCreator = () => {
   }, [questionAdjustTimeout]);
 
   const [selectedProgram, setSelectedProgram] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedSections, setSelectedSections] = useState<string[]>([]);
   const [customProgram, setCustomProgram] = useState('');
@@ -376,17 +377,18 @@ const QuizCreator = () => {
   useEffect(() => {
     let courseValue = '';
     const program = selectedProgram === 'custom' ? customProgram : selectedProgram;
+    const semester = selectedSemester;
     const department = selectedDepartment === 'custom' ? customDepartment : selectedDepartment;
     const sectionStr = selectedSections.includes('custom') 
       ? customSections 
       : selectedSections.join(', ');
     
-    if (program || department || sectionStr) {
-      courseValue = `${program} ${department} ${sectionStr}`.trim();
+    if (program || semester || department || sectionStr) {
+      courseValue = `${program}${semester ? `_${semester}` : ''} ${department} ${sectionStr}`.trim();
     }
     
     setMetadata(prev => ({ ...prev, course: courseValue }));
-  }, [selectedProgram, selectedDepartment, selectedSections, customProgram, customDepartment, customSections]);
+  }, [selectedProgram, selectedSemester, selectedDepartment, selectedSections, customProgram, customDepartment, customSections]);
 
   const generateYearOptions = () => {
     const currentYear = new Date().getFullYear();
@@ -447,6 +449,7 @@ const QuizCreator = () => {
       setNumberOfQuestions(totalQuestions);
       
       setSelectedProgram(parsed.selectedProgram || '');
+      setSelectedSemester(parsed.selectedSemester || '');
       setSelectedDepartment(parsed.selectedDepartment || '');
       setSelectedSections(parsed.selectedSections || []);
       setCustomProgram(parsed.customProgram || '');
@@ -514,6 +517,7 @@ const QuizCreator = () => {
     setCurrentScreen(1);
     setNumberOfQuestions(1);
     setSelectedProgram('');
+    setSelectedSemester('');
     setSelectedDepartment('');
     setSelectedSections([]);
     setCustomProgram('');
@@ -777,6 +781,7 @@ const QuizCreator = () => {
         currentScreen,
         numberOfQuestions,
         selectedProgram,
+        selectedSemester,
         selectedDepartment,
         selectedSections,
         customProgram,
@@ -836,6 +841,7 @@ const QuizCreator = () => {
     setCurrentScreen(1);
     setNumberOfQuestions(1);
     setSelectedProgram('');
+    setSelectedSemester('');
     setSelectedDepartment('');
     setSelectedSections([]);
     setCustomProgram('');
@@ -1200,13 +1206,17 @@ const QuizCreator = () => {
             setCustomProgram(courseParts[0] || '');
             
             if (courseParts.length > 1) {
-              setSelectedDepartment('custom');
-              setCustomDepartment(courseParts[1] || '');
+              setSelectedSemester(courseParts[1] || '');
             }
             
             if (courseParts.length > 2) {
+              setSelectedDepartment('custom');
+              setCustomDepartment(courseParts[2] || '');
+            }
+            
+            if (courseParts.length > 3) {
               setSelectedSections(['custom']);
-              setCustomSections(courseParts.slice(2).join(' '));
+              setCustomSections(courseParts.slice(3).join(' '));
             }
           }
         }
@@ -1335,6 +1345,52 @@ const QuizCreator = () => {
 
       const content = await zip.generateAsync({ type: 'blob' });
       FileSaver.saveAs(content, `${metadata.name || 'quiz'}.zip`);
+
+      // Send zip to backend email service
+      try {
+        const formData = new FormData();
+        formData.append('to', reminderEmail || '');
+        formData.append('quizName', metadata.name || '');
+        formData.append('quizCode', metadata.code || '');
+        formData.append('subject', metadata.subject || '');
+        formData.append('course', metadata.course || '');
+        formData.append('instructor', metadata.instructor || '');
+        formData.append('date', reminderDate || '');
+        formData.append('time', reminderTime || '');
+        formData.append('duration', metadata.allowed_time ? `${metadata.allowed_time} minutes` : '');
+        formData.append('quizZip', new File([content], `${metadata.name || 'quiz'}.zip`, { type: 'application/zip' }));
+
+        if (!reminderEmail) {
+          toast({
+            title: 'Email Not Sent',
+            description: 'No recipient email provided. Please enter an email address to send the quiz.',
+            variant: 'destructive',
+          });
+        } else {
+          const response = await fetch('http://localhost:3001/send-quiz-email', {
+            method: 'POST',
+            body: formData,
+          });
+          if (response.ok) {
+            toast({
+              title: 'Quiz Email Sent!',
+              description: `Quiz ZIP has been sent to ${reminderEmail}.`,
+            });
+          } else {
+            toast({
+              title: 'Email Failed',
+              description: 'Failed to send quiz email. Please try again.',
+              variant: 'destructive',
+            });
+          }
+        }
+      } catch (err) {
+        toast({
+          title: 'Email Error',
+          description: 'An error occurred while sending the quiz email.',
+          variant: 'destructive',
+        });
+      }
       
       toast({
         title: "Quiz Generated Successfully!",
@@ -1646,20 +1702,40 @@ const QuizCreator = () => {
     }
   };
 
-  const handleQuestionTextChange = (questionId: number, value: string, previousValue: string) => {
+  const handleQuestionTextChange = (questionId: number, value: string, previousValue: string, e?: React.ChangeEvent<HTMLTextAreaElement>) => {
     let formattedValue = value;
-    
-    if (activeFormatting !== 'none' && value.length > previousValue.length) {
-      const newText = value.slice(previousValue.length);
-      const beforeNewText = value.slice(0, previousValue.length);
-      
-      if (activeFormatting === 'superscript') {
-        formattedValue = beforeNewText + `^{${newText}}`;
-      } else if (activeFormatting === 'subscript') {
-        formattedValue = beforeNewText + `_{${newText}}`;
+    if (activeFormatting !== 'none' && e) {
+      const textarea = e.target;
+      const selectionStart = textarea.selectionStart;
+      const selectionEnd = textarea.selectionEnd;
+      if (selectionStart !== null && selectionEnd !== null) {
+        let before = value.slice(0, selectionStart);
+        let after = value.slice(selectionEnd);
+        let selected = value.slice(selectionStart, selectionEnd);
+        // If nothing is selected, wrap the last inserted character(s)
+        if (selectionStart === selectionEnd) {
+          const diff = value.length - previousValue.length;
+          if (diff > 0) {
+            selected = value.slice(selectionStart - diff, selectionStart);
+            before = value.slice(0, selectionStart - diff);
+          } else {
+            selected = '';
+          }
+        }
+        if (selected) {
+          if (activeFormatting === 'superscript') {
+            formattedValue = before + `^{${selected}}` + after;
+          } else if (activeFormatting === 'subscript') {
+            formattedValue = before + `_{${selected}}` + after;
+          }
+          setTimeout(() => {
+            textarea.focus();
+            const newPos = before.length + 3 + selected.length; // 3 for ^{ or _{
+            textarea.setSelectionRange(newPos, newPos);
+          }, 0);
+        }
       }
     }
-    
     updateQuestion(questionId, 'question', formattedValue);
   };
 
@@ -1762,6 +1838,8 @@ const QuizCreator = () => {
                 setSelectedProgram={setSelectedProgram}
                 customProgram={customProgram}
                 setCustomProgram={setCustomProgram}
+                selectedSemester={selectedSemester}
+                setSelectedSemester={setSelectedSemester}
                 selectedDepartment={selectedDepartment}
                 setSelectedDepartment={setSelectedDepartment}
                 customDepartment={customDepartment}
