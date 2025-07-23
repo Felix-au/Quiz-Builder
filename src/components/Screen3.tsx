@@ -731,7 +731,22 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                     } else if (formatting === 'subscript') {
                       formattedSymbol = `_{${symbol}}`;
                     }
-                    updateOption(currentQuestion.id, option.id, 'option_text', option.option_text + formattedSymbol);
+                    const input = document.getElementById(`option-input-${currentQuestion.id}-${option.id}`) as HTMLInputElement;
+                    if (input) {
+                      const cursorPos = input.selectionStart ?? option.option_text.length;
+                      const newText =
+                        option.option_text.slice(0, cursorPos) +
+                        formattedSymbol +
+                        option.option_text.slice(cursorPos);
+                      updateOption(currentQuestion.id, option.id, 'option_text', newText);
+                      // Restore cursor position after update (in next tick)
+                      setTimeout(() => {
+                        input.focus();
+                        input.setSelectionRange(cursorPos + formattedSymbol.length, cursorPos + formattedSymbol.length);
+                      }, 0);
+                    } else {
+                      updateOption(currentQuestion.id, option.id, 'option_text', option.option_text + formattedSymbol);
+                    }
                   };
 
                   // Helper for handling text change with formatting
@@ -766,9 +781,10 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                     />
                     <Input
                       value={option.option_text}
-                          onChange={handleOptionTextChange}
+                      onChange={handleOptionTextChange}
                       placeholder={`Option ${optionIndex + 1}`}
                       className="flex-1 h-8 text-sm"
+                      id={`option-input-${currentQuestion.id}-${option.id}`}
                     />
                         <Button
                           variant={formatting === 'superscript' ? 'secondary' : 'ghost'}
@@ -842,9 +858,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                                     size="sm"
                                     className="h-8 w-8 p-0 text-sm hover:bg-blue-50"
                                     onClick={() => {
-                                      const textarea = document.getElementById(`question-textarea-${currentQuestion.id}`) as HTMLTextAreaElement;
-                                      const cursorPos = textarea ? textarea.selectionStart : undefined;
-                                      insertMathSymbol(currentQuestion.id, item.symbol, cursorPos);
+                                      insertOptionSymbol(item.symbol);
                                     }}
                                     title={item.name}
                                   >
