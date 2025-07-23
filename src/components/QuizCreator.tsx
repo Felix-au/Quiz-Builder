@@ -726,8 +726,8 @@ const QuizCreator = () => {
 
       if (response.status === 200) {
         toast({
-          title: "Reminder Set Successfully!",
-          description: `Quiz reminder email has been sent to ${email} for ${date} at ${time}`,
+          title: "Email Sent Successfully!",
+          description: `Quiz email has been sent to ${email} for ${date} at ${time}`,
         });
       }
     } catch (error) {
