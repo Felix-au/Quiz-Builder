@@ -168,6 +168,102 @@ const Screen3: React.FC<Screen3Props> = (props) => {
   const [productUpper, setProductUpper] = useState('n');
   const [productFunction, setProductFunction] = useState('');
 
+  // Add state for superscript/subscript dialog
+  const [showSuperSubDialog, setShowSuperSubDialog] = useState<false | 'sup' | 'sub'>(false);
+  const [superSubValue, setSuperSubValue] = useState('');
+  const [superSubTargetId, setSuperSubTargetId] = useState<number | null>(null);
+  const [superSubInsertPos, setSuperSubInsertPos] = useState<number | null>(null);
+  // Add to state:
+  const [superSubTargetType, setSuperSubTargetType] = useState<'question' | 'option'>('question');
+  const [superSubOptionId, setSuperSubOptionId] = useState<number | null>(null);
+
+  // Add these arrays near the top of the component:
+  const courseOutcomes = ['N/A', 'CO1', 'CO2', 'CO3', 'CO4', 'CO5', 'CO6'];
+  const bloomsLevels = ['N/A', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Level 6'];
+
+  // Helper to check if cursor is inside a LaTeX math block (\[ ... \])
+  function isCursorInLatexBlock(text: string, cursorPos: number) {
+    const before = text.slice(0, cursorPos);
+    const open = before.lastIndexOf('\\[');
+    const close = before.lastIndexOf('\\]');
+    return open > close;
+  }
+
+  // Handler to open superscript/subscript dialog
+  const openSuperSubDialog = (
+    type: 'sup' | 'sub',
+    targetType: 'question' | 'option',
+    questionId: number,
+    optionId?: number
+  ) => {
+    setSuperSubValue('');
+    setSuperSubTargetType(targetType);
+    setSuperSubTargetId(questionId);
+    setSuperSubOptionId(optionId ?? null);
+    let insertPos = null;
+    if (targetType === 'question') {
+      const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+      insertPos = textarea ? textarea.selectionStart : null;
+    } else if (targetType === 'option' && optionId != null) {
+      const input = document.getElementById(`option-input-${questionId}-${optionId}`) as HTMLInputElement;
+      insertPos = input ? input.selectionStart : null;
+    }
+    setSuperSubInsertPos(insertPos);
+    setShowSuperSubDialog(type);
+  };
+
+  // Handler to insert superscript/subscript at cursor
+  const handleSuperSubInsert = () => {
+    if (superSubTargetId == null || !showSuperSubDialog) return;
+    const latex = showSuperSubDialog === 'sup' ? `^{${superSubValue}}` : `_{${superSubValue}}`;
+    if (superSubTargetType === 'question') {
+      const q = questions.find(q => q.id === superSubTargetId);
+      if (!q) return;
+      let newValue = q.question;
+      const insertPos = superSubInsertPos != null ? superSubInsertPos : q.question.length;
+      const isInLatex = isCursorInLatexBlock(q.question, insertPos);
+      if (!isInLatex) {
+        let left = insertPos;
+        let right = insertPos;
+        while (left > 0 && q.question[left - 1] !== ' ') left--;
+        while (right < q.question.length && q.question[right] !== ' ') right++;
+        newValue =
+          q.question.slice(0, left) +
+          '\\(' +
+          q.question.slice(left, insertPos) +
+          latex +
+          q.question.slice(insertPos, right) +
+          '\\)' +
+          q.question.slice(right);
+      } else {
+        newValue = q.question.slice(0, insertPos) + latex + q.question.slice(insertPos);
+      }
+      updateQuestion(superSubTargetId, 'question', newValue);
+    } else if (superSubTargetType === 'option' && superSubOptionId != null) {
+      const q = questions.find(q => q.id === superSubTargetId);
+      if (!q) return;
+      const option = q.options.find((o: any) => o.id === superSubOptionId);
+      if (!option) return;
+      let newValue = option.option_text;
+      const insertPos = superSubInsertPos != null ? superSubInsertPos : option.option_text.length;
+      // Always use inline delimiters for options
+      let left = insertPos;
+      let right = insertPos;
+      while (left > 0 && option.option_text[left - 1] !== ' ') left--;
+      while (right < option.option_text.length && option.option_text[right] !== ' ') right++;
+      newValue =
+        option.option_text.slice(0, left) +
+        '\\(' +
+        option.option_text.slice(left, insertPos) +
+        latex +
+        option.option_text.slice(insertPos, right) +
+        '\\)' +
+        option.option_text.slice(right);
+      updateOption(superSubTargetId, superSubOptionId, 'option_text', newValue);
+    }
+    setShowSuperSubDialog(false);
+  };
+
   // Open matrix dialog and store cursor position
   const openMatrixDialog = (questionId: number) => {
     setMatrixRows(2);
@@ -375,8 +471,8 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                         size="sm"
                         className={`h-6 w-6 p-0 hover:bg-gray-100 ${activeFormatting === 'superscript' ? 'bg-blue-100 text-blue-600' : ''}`}
                         type="button"
-                        onClick={() => toggleFormatting('superscript')}
-                        title="Toggle superscript mode"
+                        onClick={() => openSuperSubDialog('sup', 'question', currentQuestion.id)}
+                        title="Insert superscript"
                       >
                         <Superscript className="h-3 w-3" />
                       </Button>
@@ -385,8 +481,8 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                         size="sm"
                         className={`h-6 w-6 p-0 hover:bg-gray-100 ${activeFormatting === 'subscript' ? 'bg-blue-100 text-blue-600' : ''}`}
                         type="button"
-                        onClick={() => toggleFormatting('subscript')}
-                        title="Toggle subscript mode"
+                        onClick={() => openSuperSubDialog('sub', 'question', currentQuestion.id)}
+                        title="Insert subscript"
                       >
                         <Subscript className="h-3 w-3" />
                       </Button>
@@ -495,9 +591,30 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                       className="text-sm mt-1"
                       ref={el => {
                         if (el) {
-                          el.textContent = normalizeLatexInput(currentQuestion.question);
-                          if (window.MathJax && window.MathJax.typesetPromise) {
-                            window.MathJax.typesetPromise([el]);
+                          // Custom inline superscript/subscript rendering for \( ... \) blocks
+                          const inlineRegex = /\\\((.*?)\\\)/g;
+                          let html = currentQuestion.question;
+                          let replaced = false;
+                          html = html.replace(inlineRegex, (match, inner) => {
+                            if (/\^\{[^}]+\}|_\{[^}]+\}/.test(inner)) {
+                              replaced = true;
+                              let rendered = inner;
+                              rendered = rendered.replace(/\^\{([^}]*)\}/g, '<sup>$1</sup>');
+                              rendered = rendered.replace(/_\{([^}]*)\}/g, '<sub>$1</sub>');
+                              return rendered;
+                            }
+                            return match;
+                          });
+                          if (replaced) {
+                            // Replace newlines with <br>
+                            html = html.replace(/\n/g, '<br>');
+                            el.innerHTML = html;
+                          } else {
+                            // Replace newlines with <br> for plain text as well
+                            el.innerHTML = normalizeLatexInput(currentQuestion.question).replace(/\n/g, '<br>');
+                            if (window.MathJax && window.MathJax.typesetPromise) {
+                              window.MathJax.typesetPromise([el]);
+                            }
                           }
                         }
                       }}
@@ -524,17 +641,44 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor={`topic-${currentQuestion.id}`} className="text-xs">Topic (Visible only after submission)</Label>
-                  <Input
-                    id={`topic-${currentQuestion.id}`}
-                    value={currentQuestion.topic}
-                    onChange={(e) => updateQuestion(currentQuestion.id, 'topic', e.target.value)}
-                    className="text-xs h-5"
-                    placeholder="Topic"
-                  />
+                  <Label htmlFor={`topic-${currentQuestion.id}`} className="text-xs">Course Outcome & Bloom's Taxonomy <span className="text-red-500">*</span></Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={currentQuestion.topic?.split(' - ')[0] || 'N/A'}
+                      onValueChange={co => {
+                        const bloom = currentQuestion.topic?.split(' - ')[1] || 'N/A';
+                        updateQuestion(currentQuestion.id, 'topic', `${co}${bloom ? ' - ' + bloom : ''}`);
+                      }}
+                    >
+                      <SelectTrigger className="h-5 text-xs w-32">
+                        <SelectValue placeholder="" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {courseOutcomes.map(co => (
+                          <SelectItem key={co} value={co}>{co}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={currentQuestion.topic?.split(' - ')[1] || 'N/A'}
+                      onValueChange={bloom => {
+                        const co = currentQuestion.topic?.split(' - ')[0] || 'N/A';
+                        updateQuestion(currentQuestion.id, 'topic', `${co ? co + ' - ' : ''}${bloom}`);
+                      }}
+                    >
+                      <SelectTrigger className="h-5 text-xs w-40">
+                        <SelectValue placeholder="" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {bloomsLevels.map(level => (
+                          <SelectItem key={level} value={level}>{level}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div>
-                  <Label htmlFor={`summary-${currentQuestion.id}`} className="text-xs">Summary (Visible only after submission)</Label>
+                  <Label htmlFor={`summary-${currentQuestion.id}`} className="text-xs">Topic/Summary (Visible only after submission)</Label>
                   <Input
                     id={`summary-${currentQuestion.id}`}
                     value={currentQuestion.summary}
@@ -568,8 +712,8 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                         size="sm"
                         className={`h-8 w-8 p-0 hover:bg-gray-100 ${activeFormatting === 'superscript' ? 'bg-blue-100 text-blue-600' : ''}`}
                         type="button"
-                        onClick={() => toggleFormatting('superscript')}
-                        title="Toggle superscript mode"
+                        onClick={() => openSuperSubDialog('sup', 'question', currentQuestion.id)}
+                        title="Insert superscript"
                       >
                         <Superscript className="h-4 w-4" />
                       </Button>
@@ -578,8 +722,8 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                         size="sm"
                         className={`h-8 w-8 p-0 hover:bg-gray-100 ${activeFormatting === 'subscript' ? 'bg-blue-100 text-blue-600' : ''}`}
                         type="button"
-                        onClick={() => toggleFormatting('subscript')}
-                        title="Toggle subscript mode"
+                        onClick={() => openSuperSubDialog('sub', 'question', currentQuestion.id)}
+                        title="Insert subscript"
                       >
                         <Subscript className="h-4 w-4" />
                       </Button>
@@ -688,9 +832,30 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                       className="text-sm mt-1"
                       ref={el => {
                         if (el) {
-                          el.textContent = normalizeLatexInput(currentQuestion.question);
-                          if (window.MathJax && window.MathJax.typesetPromise) {
-                            window.MathJax.typesetPromise([el]);
+                          // Custom inline superscript/subscript rendering for \( ... \) blocks
+                          const inlineRegex = /\\\((.*?)\\\)/g;
+                          let html = currentQuestion.question;
+                          let replaced = false;
+                          html = html.replace(inlineRegex, (match, inner) => {
+                            if (/\^\{[^}]+\}|_\{[^}]+\}/.test(inner)) {
+                              replaced = true;
+                              let rendered = inner;
+                              rendered = rendered.replace(/\^\{([^}]*)\}/g, '<sup>$1</sup>');
+                              rendered = rendered.replace(/_\{([^}]*)\}/g, '<sub>$1</sub>');
+                              return rendered;
+                            }
+                            return match;
+                          });
+                          if (replaced) {
+                            // Replace newlines with <br>
+                            html = html.replace(/\n/g, '<br>');
+                            el.innerHTML = html;
+                          } else {
+                            // Replace newlines with <br> for plain text as well
+                            el.innerHTML = normalizeLatexInput(currentQuestion.question).replace(/\n/g, '<br>');
+                            if (window.MathJax && window.MathJax.typesetPromise) {
+                              window.MathJax.typesetPromise([el]);
+                            }
                           }
                         }
                       }}
@@ -717,17 +882,44 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor={`topic-mobile-${currentQuestion.id}`} className="text-sm">Topic (Visible only after submission)</Label>
-                  <Input
-                    id={`topic-mobile-${currentQuestion.id}`}
-                    value={currentQuestion.topic}
-                    onChange={(e) => updateQuestion(currentQuestion.id, 'topic', e.target.value)}
-                    className="text-sm h-9"
-                    placeholder="Topic"
-                  />
+                  <Label htmlFor={`topic-mobile-${currentQuestion.id}`} className="text-sm">Course Outcome & Bloom's Taxonomy <span className="text-red-500">*</span></Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={currentQuestion.topic?.split(' - ')[0] || 'N/A'}
+                      onValueChange={co => {
+                        const bloom = currentQuestion.topic?.split(' - ')[1] || 'N/A';
+                        updateQuestion(currentQuestion.id, 'topic', `${co}${bloom ? ' - ' + bloom : ''}`);
+                      }}
+                    >
+                      <SelectTrigger className="h-5 text-xs w-32">
+                        <SelectValue placeholder="" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {courseOutcomes.map(co => (
+                          <SelectItem key={co} value={co}>{co}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={currentQuestion.topic?.split(' - ')[1] || 'N/A'}
+                      onValueChange={bloom => {
+                        const co = currentQuestion.topic?.split(' - ')[0] || 'N/A';
+                        updateQuestion(currentQuestion.id, 'topic', `${co ? co + ' - ' : ''}${bloom}`);
+                      }}
+                    >
+                      <SelectTrigger className="h-5 text-xs w-40">
+                        <SelectValue placeholder="" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {bloomsLevels.map(level => (
+                          <SelectItem key={level} value={level}>{level}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div>
-                  <Label htmlFor={`summary-mobile-${currentQuestion.id}`} className="text-sm">Summary (Visible only after submission)</Label>
+                  <Label htmlFor={`summary-mobile-${currentQuestion.id}`} className="text-sm">Topic/Summary (Visible only after submission)</Label>
                   <Input
                     id={`summary-mobile-${currentQuestion.id}`}
                     value={currentQuestion.summary}
@@ -864,10 +1056,24 @@ const Screen3: React.FC<Screen3Props> = (props) => {
 
                   // Helper for rendering preview
                   const renderOptionPreview = (text: string) => {
-                    let rendered = text;
-                    rendered = rendered.replace(/\^{([^}]*)}/g, '<sup>$1</sup>');
-                    rendered = rendered.replace(/_{([^}]*)}/g, '<sub>$1</sub>');
-                    return rendered;
+                    const inlineRegex = /\\\((.*?)\\\)/g;
+                    let html = text;
+                    let replaced = false;
+                    html = html.replace(inlineRegex, (match, inner) => {
+                      if (/\^\{[^}]+\}|_\{[^}]+\}/.test(inner)) {
+                        replaced = true;
+                        let rendered = inner;
+                        rendered = rendered.replace(/\^\{([^}]*)\}/g, '<sup>$1</sup>');
+                        rendered = rendered.replace(/_\{([^}]*)\}/g, '<sub>$1</sub>');
+                        return rendered;
+                      }
+                      return match;
+                    });
+                    if (replaced) {
+                      return <span dangerouslySetInnerHTML={{ __html: html }} />;
+                    } else {
+                      return <span>{text}</span>;
+                    }
                   };
 
                   return (
@@ -889,8 +1095,8 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                           size="sm"
                           className={`h-6 w-6 p-0 hover:bg-gray-100 ${formatting === 'superscript' ? 'bg-blue-100 text-blue-600' : ''}`}
                           type="button"
-                          onClick={() => setOptionFormatting(prev => ({ ...prev, [option.id]: formatting === 'superscript' ? 'none' : 'superscript' }))}
-                          title="Toggle superscript mode"
+                          onClick={() => openSuperSubDialog('sup', 'option', currentQuestion.id, option.id)}
+                          title="Insert superscript"
                         >
                           <Superscript className="h-3 w-3" />
                         </Button>
@@ -899,8 +1105,8 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                           size="sm"
                           className={`h-6 w-6 p-0 hover:bg-gray-100 ${formatting === 'subscript' ? 'bg-blue-100 text-blue-600' : ''}`}
                           type="button"
-                          onClick={() => setOptionFormatting(prev => ({ ...prev, [option.id]: formatting === 'subscript' ? 'none' : 'subscript' }))}
-                          title="Toggle subscript mode"
+                          onClick={() => openSuperSubDialog('sub', 'option', currentQuestion.id, option.id)}
+                          title="Insert subscript"
                         >
                           <Subscript className="h-3 w-3" />
                         </Button>
@@ -985,15 +1191,43 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                       </Button>
                     )}
                   </div>
-                      {/* {option.option_text && (option.option_text.includes('^{') || option.option_text.includes('_{')) && (
+                      {option.option_text && (option.option_text.includes('^{') || option.option_text.includes('_{')) && (
                         <div className="mt-1 p-1 bg-gray-100 border rounded">
                           <Label className="text-xs text-gray-600">Preview:</Label>
                           <div
                             className="text-xs mt-0.5"
-                            dangerouslySetInnerHTML={{ __html: renderOptionPreview(option.option_text) }}
+                            ref={el => {
+                              if (el) {
+                                // Custom inline superscript/subscript rendering for \( ... \) blocks
+                                const inlineRegex = /\\\((.*?)\\\)/g;
+                                let html = option.option_text;
+                                let replaced = false;
+                                html = html.replace(inlineRegex, (match, inner) => {
+                                  if (/\^\{[^}]+\}|_\{[^}]+\}/.test(inner)) {
+                                    replaced = true;
+                                    let rendered = inner;
+                                    rendered = rendered.replace(/\^\{([^}]*)\}/g, '<sup>$1</sup>');
+                                    rendered = rendered.replace(/_\{([^}]*)\}/g, '<sub>$1</sub>');
+                                    return rendered;
+                                  }
+                                  return match;
+                                });
+                                if (replaced) {
+                                  // Replace newlines with <br>
+                                  html = html.replace(/\n/g, '<br>');
+                                  el.innerHTML = html;
+                                } else {
+                                  // Replace newlines with <br> for plain text as well
+                                  el.innerHTML = normalizeLatexInput(option.option_text).replace(/\n/g, '<br>');
+                                  if (window.MathJax && window.MathJax.typesetPromise) {
+                                    window.MathJax.typesetPromise([el]);
+                                  }
+                                }
+                              }
+                            }}
                           />
                         </div>
-                      )} */}
+                      )}
                     </div>
                   );
                 })}
@@ -2046,6 +2280,42 @@ const Screen3: React.FC<Screen3Props> = (props) => {
         {mainContent}
         {desktopSidebar}
       </div>
+      {showSuperSubDialog && (
+        <Dialog open={!!showSuperSubDialog} onOpenChange={setShowSuperSubDialog as any}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Insert {showSuperSubDialog === 'sup' ? 'Superscript' : 'Subscript'}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <Input
+                value={superSubValue}
+                onChange={e => setSuperSubValue(e.target.value)}
+                placeholder={`Enter ${showSuperSubDialog === 'sup' ? 'superscript' : 'subscript'} value`}
+                className="w-full"
+              />
+              <div className="flex justify-end gap-2">
+                <Button onClick={() => setShowSuperSubDialog(false)} variant="outline">Cancel</Button>
+                <Button onClick={handleSuperSubInsert} disabled={!superSubValue.trim()}>Insert</Button>
+              </div>
+            </div>
+            <div className="mt-4 p-2 bg-gray-50 border rounded">
+              <Label className="text-xs text-gray-600">Preview:</Label>
+              <div
+                className="text-sm mt-1"
+                ref={el => {
+                  if (el) {
+                    const latex = showSuperSubDialog === 'sup' ? `^{${superSubValue}}` : `_{${superSubValue}}`;
+                    el.textContent = !superSubValue ? '' : `\\[${latex}\\]`;
+                    if (window.MathJax && window.MathJax.typesetPromise) {
+                      window.MathJax.typesetPromise([el]);
+                    }
+                  }
+                }}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 };

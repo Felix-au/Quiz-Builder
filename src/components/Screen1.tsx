@@ -41,9 +41,9 @@ interface Screen1Props {
 }
 
 const departments = [
-  'CSE', 'ME', 'ECE', 'ECOM', 'CE', 'EE', 'IT', 'BT', 'CH', 'custom'
+  'CSE', 'ME', 'ECE', 'ECOM', 'CE', 'EE', 'IT', 'BT', 'CH', 'N/A', 'custom'
 ];
-const sections = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'custom'];
+const sections = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'N/A', 'custom'];
 const programs = [
   { value: 'BTech', label: 'BTech', years: 4 },
   { value: 'BA', label: 'BA', years: 3 },
@@ -142,7 +142,10 @@ const Screen1: React.FC<Screen1Props> = ({
                 className="mt-2"
                 placeholder="Enter custom program"
                 value={customProgram}
-                onChange={(e) => setCustomProgram(e.target.value)}
+                onChange={(e) => {
+                  const trimmed = e.target.value.replace(/\s+/g, '');
+                  setCustomProgram(trimmed);
+                }}
                 required
               />
             )}
@@ -179,7 +182,10 @@ const Screen1: React.FC<Screen1Props> = ({
                 className="mt-2"
                 placeholder="Enter custom department"
                 value={customDepartment}
-                onChange={(e) => setCustomDepartment(e.target.value)}
+                onChange={(e) => {
+                  const trimmed = e.target.value.replace(/\s+/g, '');
+                  setCustomDepartment(trimmed);
+                }}
                 required
               />
             )}
@@ -189,7 +195,7 @@ const Screen1: React.FC<Screen1Props> = ({
             <div className="relative">
               <Input
                 value={selectedSections.includes('custom')
-                  ? 'Other (Type your own)'
+                  ? 'Other: separated by comma if multiple'
                   : selectedSections.length === 0
                     ? ''
                     : selectedSections.join(', ')
@@ -220,7 +226,7 @@ const Screen1: React.FC<Screen1Props> = ({
                         }}
                       />
                       <Label htmlFor={`sec-${sec}`} className="text-sm cursor-pointer">
-                        {sec === 'custom' ? 'Other' : sec}
+                        {sec === 'custom' ? 'Other: separated by comma if multiple' : sec}
                       </Label>
                     </div>
                   ))}
@@ -232,7 +238,14 @@ const Screen1: React.FC<Screen1Props> = ({
                 className="mt-2"
                 placeholder="Enter custom sections"
                 value={customSections}
-                onChange={(e) => setCustomSections(e.target.value)}
+                onChange={(e) => {
+                  // Normalize: only a single space after each comma, no leading/trailing spaces
+                  let value = e.target.value;
+                  value = value.replace(/\s*,\s*/g, ', '); // comma, then single space
+                  value = value.replace(/,{2,}/g, ','); // remove double commas
+                  value = value.replace(/^\s+|\s+$/g, ''); // trim
+                  setCustomSections(value);
+                }}
                 required
               />
             )}

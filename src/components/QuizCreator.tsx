@@ -356,7 +356,7 @@ const QuizCreator = () => {
     const defaultQuestion: Question = {
       id: 1,
       question: '',
-      topic: 'NA',
+      topic: 'N/A - N/A',
       summary: 'NA',
       question_order: 0,
       points: 1,
