@@ -1763,12 +1763,12 @@ const QuizCreator = () => {
         <div className="container flex flex-col justify-center px-4">
           {/* Desktop Header */}
           <div className="hidden md:flex items-center justify-between h-20">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 cursor-pointer" onClick={() => setCurrentScreen(0)}>
               <img src="/logo2.png" alt="PrashnaSetu Logo" className="h-12 w-12 object-contain" />
-            <div className="flex flex-col justify-center">
+              <div className="flex flex-col justify-center">
                 <h1 className="text-lg font-semibold leading-tight">PrashnaSetu</h1>
                 <span className="text-xs text-muted-foreground leading-tight">Think. Compete. Conquer.</span>
-            </div>
+              </div>
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-sm text-muted-foreground">
@@ -1789,14 +1789,14 @@ const QuizCreator = () => {
           {/* Mobile Header */}
           <div className="md:hidden py-3">
             <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentScreen(0)}>
                 <img src="/logo2.png" alt="PrashnaSetu Logo" className="h-8 w-8 object-contain" />
                 <div className="flex flex-col">
                   <h1 className="text-sm font-semibold leading-tight">PrashnaSetu</h1>
                   <span className="text-xs text-muted-foreground leading-tight">Think. Compete. Conquer.</span>
-                      </div>
-                  </div>
-                        <Button
+                </div>
+              </div>
+              <Button
                                     variant="outline"
                                     size="sm"
                 onClick={logout}

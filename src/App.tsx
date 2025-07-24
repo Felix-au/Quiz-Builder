@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import LoginScreen from "@/components/LoginScreen";
 import QuizCreator from "@/components/QuizCreator";
 import NotFound from "./pages/NotFound";
+import Credits from "@/components/Credits";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const AppContent = () => {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<QuizCreator />} />
+        <Route path="/credits" element={<Credits />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
