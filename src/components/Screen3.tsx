@@ -179,7 +179,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
 
   // Add these arrays near the top of the component:
   const courseOutcomes = ['N/A', 'CO1', 'CO2', 'CO3', 'CO4', 'CO5', 'CO6'];
-  const bloomsLevels = ['N/A', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Level 6'];
+  const bloomsLevels = ['N/A', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6'];
 
   // Helper to check if cursor is inside a LaTeX math block (\[ ... \])
   function isCursorInLatexBlock(text: string, cursorPos: number) {
