@@ -9,11 +9,22 @@ import LoginScreen from "@/components/LoginScreen";
 import QuizCreator from "@/components/QuizCreator";
 import NotFound from "./pages/NotFound";
 import Credits from "@/components/Credits";
+import { toast } from "@/components/ui/use-toast";
+import React from "react";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
   const { user, loading } = useAuth();
+
+  React.useEffect(() => {
+    if (!loading && user) {
+      toast({
+        title: "Session loaded",
+        description: "Your session has been loaded successfully.",
+      });
+    }
+  }, [loading, user]);
 
   if (loading) {
     return (
