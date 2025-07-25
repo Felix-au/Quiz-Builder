@@ -45,7 +45,7 @@ const AppContent = () => {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<QuizCreator />} />
-        <Route path="/credit" element={<Credit />} />
+        <Route path="/credits" element={<Credits />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

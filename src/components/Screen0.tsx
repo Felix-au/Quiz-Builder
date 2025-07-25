@@ -84,7 +84,7 @@ const Screen0: React.FC<Screen0Props> = ({ loadFromSavedSession, startNewQuiz, i
             <Button
               variant="outline"
               className="w-full flex items-center gap-2 justify-center bg-gray-100 hover:bg-gray-200 text-gray-800 border-gray-200"
-              onClick={() => window.open('/.pdf', '_blank')}
+              onClick={() => window.open('/tobeaddedlater.pdf', '_blank')}
             >
               <FileUp className="h-5 w-5 mr-2" />
               Open User Manual (PDF)
@@ -92,7 +92,7 @@ const Screen0: React.FC<Screen0Props> = ({ loadFromSavedSession, startNewQuiz, i
             <Button
               variant="outline"
               className="w-full flex items-center gap-1 justify-center bg-gray-100 hover:bg-gray-200 text-gray-800 border-gray-200"
-              onClick={() => navigate('/credits')}
+              onClick={() => navigate('/tobeaddedlater')}
               title="Developer Info / Credits"
             >
               <Info className="h-5 w-5" />
