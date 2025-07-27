@@ -253,7 +253,7 @@ const Screen1: React.FC<Screen1Props> = ({
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <Label htmlFor="year">Academic Year <span className="text-red-500">*</span></Label>
+            <Label htmlFor="year">Batch <span className="text-red-500">*</span></Label>
             <Select value={metadata.year} onValueChange={(value) => setMetadata((prev: any) => ({ ...prev, year: value }))} required>
               <SelectTrigger>
                 <SelectValue placeholder="Select session" />
