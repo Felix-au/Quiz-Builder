@@ -70,6 +70,7 @@ interface Screen3Props {
   setCurrentScreen: React.Dispatch<React.SetStateAction<number>>;
   toast: any;
   subjects: string[];
+  onDistributionSet?: (numDisplayed: number, numEasy: number, numMedium: number, numHigh: number) => void;
 }
 
 const Screen3: React.FC<Screen3Props> = (props) => {
@@ -633,7 +634,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                       value={currentQuestion.difficulty} 
                       onValueChange={(value) => updateQuestion(currentQuestion.id, 'difficulty', value)}
                     >
-                      <SelectTrigger className="h-5 text-xs">
+                      <SelectTrigger className="h-5 text-xs w-32">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -649,7 +650,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                       value={currentQuestion.subject || ''}
                       onValueChange={value => updateQuestion(currentQuestion.id, 'subject', value)}
                     >
-                      <SelectTrigger className="h-5 text-xs w-28">
+                      <SelectTrigger className="h-5 text-xs w-40">
                         <SelectValue placeholder="Select subject" />
                       </SelectTrigger>
                       <SelectContent>
@@ -2313,79 +2314,92 @@ const Screen3: React.FC<Screen3Props> = (props) => {
 
 const distributionDialog = (
   <Dialog open={showDistributionDialog} onOpenChange={setShowDistributionDialog}>
-    <DialogContent className="max-w-2xl">
-      <DialogHeader>
-        <DialogTitle className="text-lg font-bold text-blue-700 flex items-center gap-2">
-          <Download className="h-5 w-5 text-green-600" />
+    <DialogContent className="max-w-3xl p-0">
+      <DialogHeader className="px-6 pt-6 pb-2">
+        <DialogTitle className="text-xl font-bold text-blue-800 flex items-center gap-2">
+          <Download className="h-6 w-6 text-green-600" />
           Set Question Distribution
         </DialogTitle>
-        <p className="text-xs text-gray-500 mt-1">Specify the number of questions per subject and difficulty. The right column shows how many you have added for each.</p>
+        <p className="text-sm text-gray-600 mt-1">Distribute the number of questions per subject and difficulty. <span className='font-semibold text-blue-700'>"To be set"</span> is your target, <span className='font-semibold text-green-700'>"Added"</span> is how many you have created.</p>
       </DialogHeader>
-      <div className="overflow-x-auto mt-2">
-        <table className="min-w-full border text-xs rounded-lg overflow-hidden shadow">
-          <thead>
-            <tr className="bg-gradient-to-r from-blue-100 to-blue-200 text-blue-900">
-              <th className="p-2 border font-semibold">Subject</th>
-              <th className="p-2 border font-semibold">Easy<br/>(to be set | added)</th>
-              <th className="p-2 border font-semibold">Medium<br/>(to be set | added)</th>
-              <th className="p-2 border font-semibold">High<br/>(to be set | added)</th>
-              <th className="p-2 border font-semibold">Total<br/>(to be set | added)</th>
+      <div className="overflow-x-auto px-6 pb-2">
+        <table className="min-w-full border text-sm rounded-lg overflow-hidden shadow">
+          <thead className="sticky top-0 z-10">
+            <tr className="bg-gradient-to-r from-blue-200 to-blue-100 text-blue-900">
+              <th className="p-3 border font-semibold text-left">Subject</th>
+              <th className="p-3 border font-semibold text-center">Easy<br/><span className='text-xs'>(To be shown<span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)</span></th>
+              <th className="p-3 border font-semibold text-center">Medium<br/><span className='text-xs'>(To be shown<span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)</span></th>
+              <th className="p-3 border font-semibold text-center">High<br/><span className='text-xs'>(To be shown<span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)</span></th>
+              <th className="p-3 border font-semibold text-center">Total<br/><span className='text-xs'>(To be shown<span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)</span></th>
             </tr>
           </thead>
           <tbody>
             {subjects.map(subj => (
-              <tr key={subj} className="hover:bg-blue-50">
-                <td className="p-2 border font-semibold text-blue-700">{subj}</td>
+              <tr key={subj} className="hover:bg-blue-50 transition">
+                <td className="p-3 border font-semibold text-blue-800 bg-blue-50">{subj}</td>
                 {['LOW','MEDIUM','HIGH'].map(diff => (
-                  <td className="p-2 border" key={diff}>
+                  <td className="p-3 border text-center" key={diff}>
                     <input
                       type="number"
                       min={0}
                       value={distributionGrid[subj]?.[diff] ?? 0}
                       onChange={e => updateGridCell(subj, diff as any, e.target.value)}
-                      className="w-14 border rounded px-1 text-xs mr-1 focus:ring-2 focus:ring-blue-300"
+                      className="w-16 border rounded px-2 py-1 text-sm mr-2 focus:ring-2 focus:ring-blue-300 bg-white text-blue-900 font-semibold shadow-sm"
                     />
-                    <span className="text-gray-500">| {distributionGrid[subj]?.added?.[diff] ?? 0}</span>
+                    <span className="text-green-700 font-semibold">{distributionGrid[subj]?.added?.[diff] ?? 0}</span>
                   </td>
                 ))}
-                <td className="p-2 border font-semibold bg-blue-50">
-                  <span className="font-semibold">{distributionGrid[subj]?.total ?? 0}</span>
-                  <span className="text-gray-500"> | {distributionGrid[subj]?.added?.total ?? 0}</span>
+                <td className="p-3 border font-bold text-center bg-blue-100">
+                  <span className="text-blue-800">{distributionGrid[subj]?.total ?? 0}</span>
+                  <span className="text-green-700 font-semibold ml-2">{distributionGrid[subj]?.added?.total ?? 0}</span>
                 </td>
               </tr>
             ))}
             {/* Total row */}
-            <tr className="bg-green-100 font-bold">
-              <td className="p-2 border text-green-800">Total</td>
+            <tr className="bg-green-100 font-bold sticky bottom-0">
+              <td className="p-3 border text-green-900">Total</td>
               {['LOW','MEDIUM','HIGH'].map(diff => (
-                <td className="p-2 border text-green-800" key={diff}>
+                <td className="p-3 border text-green-900 text-center" key={diff}>
                   {subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.[diff] ?? 0), 0)}
-                  <span className="text-gray-500"> | {subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.added?.[diff] ?? 0), 0)}</span>
+                  <span className="text-green-700 font-semibold ml-2">{subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.added?.[diff] ?? 0), 0)}</span>
                 </td>
               ))}
-              <td className="p-2 border text-green-900 bg-green-200">
+              <td className="p-3 border text-green-900 text-center bg-green-200">
                 {subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.total ?? 0), 0)}
-                <span className="text-gray-500"> | {subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.added?.total ?? 0), 0)}</span>
+                <span className="text-green-700 font-semibold ml-2">{subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.added?.total ?? 0), 0)}</span>
               </td>
             </tr>
           </tbody>
         </table>
-      </div>
-      <div className="flex flex-col md:flex-row justify-end gap-2 mt-6">
-        <Button variant="outline" onClick={() => setShowDistributionDialog(false)}>
-          Cancel
-        </Button>
-        <Button
-          className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold shadow"
-          onClick={() => {
-            setShowDistributionDialog(false);
-            window.latestQuestionDistribution = buildQuestionDistribution();
-            setShowReminderDialog(true);
-          }}
-        >
-          <Download className="h-4 w-4 mr-1" />
-          Generate ZIP
-        </Button>
+        <div className="flex flex-wrap gap-4 mt-4 justify-between items-center border-t pt-4">
+          <div className="text-sm text-gray-700">
+            <span className="font-semibold text-blue-800">Tip:</span> The <span className="font-semibold text-blue-800">To Be Shown</span> values must be less than the <span className="font-semibold text-green-700">added</span> values for each cell.
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowDistributionDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold shadow"
+              onClick={() => {
+                setShowDistributionDialog(false);
+                // Calculate totals for all subjects
+                const numEasy = subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.LOW || 0), 0);
+                const numMedium = subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.MEDIUM || 0), 0);
+                const numHigh = subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.HIGH || 0), 0);
+                const numDisplayed = subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.total || 0), 0);
+                if (props.onDistributionSet) {
+                  props.onDistributionSet(numDisplayed, numEasy, numMedium, numHigh);
+                }
+                window.latestQuestionDistribution = buildQuestionDistribution();
+                setShowReminderDialog(true);
+              }}
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Generate ZIP
+            </Button>
+          </div>
+        </div>
       </div>
     </DialogContent>
   </Dialog>

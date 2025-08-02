@@ -796,7 +796,8 @@ const QuizCreator = () => {
         selectedSections,
         customProgram,
         customDepartment,
-        customSections
+        customSections,
+        subjects, // Save the subject list from Screen2/Screen3
       };
       
       localStorage.setItem('quizCreatorData', JSON.stringify(dataToSave));
@@ -2215,6 +2216,15 @@ const QuizCreator = () => {
               setCurrentScreen={setCurrentScreen}
               toast={toast}
               subjects={subjects}
+              onDistributionSet={(numDisplayed, numEasy, numMedium, numHigh) => {
+                setMetadata(prev => ({
+                  ...prev,
+                  num_displayed_questions: numDisplayed,
+                  num_easy_questions: numEasy,
+                  num_medium_questions: numMedium,
+                  num_high_questions: numHigh,
+                }));
+              }}
             />
           )}
 
