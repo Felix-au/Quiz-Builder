@@ -645,13 +645,13 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor={`subject-${currentQuestion.id}`} className="text-xs">Subject</Label>
+                    <Label htmlFor={`subject-${currentQuestion.id}`} className="text-xs">Topic</Label>
                     <Select
                       value={currentQuestion.subject || ''}
                       onValueChange={value => updateQuestion(currentQuestion.id, 'subject', value)}
                     >
                       <SelectTrigger className="h-5 text-xs w-40">
-                        <SelectValue placeholder="Select subject" />
+                        <SelectValue placeholder="Select topic" />
                       </SelectTrigger>
                       <SelectContent>
                         {subjects.map(subj => (
@@ -2320,13 +2320,13 @@ const distributionDialog = (
           <Download className="h-6 w-6 text-green-600" />
           Set Question Distribution
         </DialogTitle>
-        <p className="text-sm text-gray-600 mt-1">Distribute the number of questions per subject and difficulty. <span className='font-semibold text-blue-700'>"To be set"</span> is your target, <span className='font-semibold text-green-700'>"Added"</span> is how many you have created.</p>
+        <p className="text-sm text-gray-600 mt-1">Distribute the number of questions per topic and difficulty. <span className='font-semibold text-blue-700'>"To be set"</span> is your target, <span className='font-semibold text-green-700'>"Added"</span> is how many you have created.</p>
       </DialogHeader>
       <div className="overflow-x-auto px-6 pb-2">
         <table className="min-w-full border text-sm rounded-lg overflow-hidden shadow">
           <thead className="sticky top-0 z-10">
             <tr className="bg-gradient-to-r from-blue-200 to-blue-100 text-blue-900">
-              <th className="p-3 border font-semibold text-left">Subject</th>
+              <th className="p-3 border font-semibold text-left">Topic</th>
               <th className="p-3 border font-semibold text-center">Easy<br/><span className='text-xs'>(To be shown<span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)</span></th>
               <th className="p-3 border font-semibold text-center">Medium<br/><span className='text-xs'>(To be shown<span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)</span></th>
               <th className="p-3 border font-semibold text-center">High<br/><span className='text-xs'>(To be shown<span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)</span></th>

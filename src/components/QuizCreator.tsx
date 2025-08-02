@@ -640,6 +640,9 @@ const QuizCreator = () => {
       
       setInstructions(finalInstructions);
 
+      // Load subjects list for Screen2/Screen3
+      setSubjects(quiz.subjects || []);
+
       // Load questions with images
       const questionsWithImages = await Promise.all(
         quiz.questions?.map(async (q: any) => {
@@ -670,6 +673,7 @@ const QuizCreator = () => {
             image_url: q.image_url || '',
             image: q.image || '',
             difficulty: q.difficulty || 'MEDIUM',
+            subject: q.subject || '',
             imageFile,
             originalImageFileName: imageFile?.name,
             options: q.options?.map((opt: any) => ({
@@ -1159,6 +1163,9 @@ const QuizCreator = () => {
             };
             firstInstructions = [fullScreenInstruction, ...firstInstructions];
           }
+          
+          // Load subjects list from first ZIP only (for Screen2/Screen3)
+          setSubjects(quiz.subjects || []);
         }
 
         // Load questions with images from all ZIPs
@@ -1191,6 +1198,7 @@ const QuizCreator = () => {
               image_url: q.image_url || '',
               image: q.image || '',
               difficulty: q.difficulty || 'MEDIUM',
+              subject: q.subject || '',
               imageFile,
               originalImageFileName: imageFile?.name,
               options: q.options?.map((opt: any) => ({
@@ -1340,6 +1348,8 @@ const QuizCreator = () => {
               options: filteredOptions,
             };
           }),
+          // Add subjects list for Screen2/Screen3
+          subjects: subjects,
           // Add question_distribution if set from distribution dialog
           ...(window.latestQuestionDistribution ? { question_distribution: window.latestQuestionDistribution } : {}),
         }

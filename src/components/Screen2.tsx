@@ -89,16 +89,16 @@ const Screen2: React.FC<Screen2Props> = ({
       <div className="w-1/5 min-w-[220px]">
         <Card className="h-full shadow-lg border-0 flex flex-col">
           <CardHeader className="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-t-lg py-2">
-            <CardTitle className="text-lg">Subjects</CardTitle>
+            <CardTitle className="text-lg">Topics</CardTitle>
           </CardHeader>
           <CardContent className="p-4 flex-1 flex flex-col">
-            <span className="text-sm font-medium mb-1">Add Subject</span>
+            <span className="text-sm font-medium mb-1">Add Topic</span>
             <div className="flex gap-2 mb-2">
               <Input
                 id="subject-input"
                 value={newSubject}
                 onChange={(e) => setNewSubject(e.target.value)}
-                placeholder="Enter subject name"
+                placeholder="Enter topic name"
                 className="text-sm flex-1"
                 onKeyDown={e => {
                   if (e.key === 'Enter') handleAddSubject();
@@ -112,7 +112,7 @@ const Screen2: React.FC<Screen2Props> = ({
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
-            <span className="text-xs text-gray-600 mb-1 block">Subjects List</span>
+            <span className="text-xs text-gray-600 mb-1 block">Topics List</span>
             <div className="space-y-2 flex-1 overflow-y-auto">
               {subjects.length === 0 && <p className="text-xs text-gray-500">No subjects added yet.</p>}
               {subjects.map((subject, idx) => (
