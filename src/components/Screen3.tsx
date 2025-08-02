@@ -69,6 +69,7 @@ interface Screen3Props {
   metadata: any;
   setCurrentScreen: React.Dispatch<React.SetStateAction<number>>;
   toast: any;
+  subjects: string[];
 }
 
 const Screen3: React.FC<Screen3Props> = (props) => {
@@ -122,6 +123,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
     metadata,
     setCurrentScreen,
     toast,
+    subjects,
   } = props;
   const currentQuestion = questions[currentQuestionIndex];
 
@@ -624,21 +626,39 @@ const Screen3: React.FC<Screen3Props> = (props) => {
               </div>
               
               <div className="space-y-1">
-                <div>
-                  <Label htmlFor={`difficulty-${currentQuestion.id}`} className="text-xs">Difficulty</Label>
-                  <Select 
-                    value={currentQuestion.difficulty} 
-                    onValueChange={(value) => updateQuestion(currentQuestion.id, 'difficulty', value)}
-                  >
-                    <SelectTrigger className="h-5 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="LOW">Easy</SelectItem>
-                      <SelectItem value="MEDIUM">Medium</SelectItem>
-                      <SelectItem value="HIGH">High</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="flex gap-2 items-end">
+                  <div>
+                    <Label htmlFor={`difficulty-${currentQuestion.id}`} className="text-xs">Difficulty</Label>
+                    <Select 
+                      value={currentQuestion.difficulty} 
+                      onValueChange={(value) => updateQuestion(currentQuestion.id, 'difficulty', value)}
+                    >
+                      <SelectTrigger className="h-5 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="LOW">Easy</SelectItem>
+                        <SelectItem value="MEDIUM">Medium</SelectItem>
+                        <SelectItem value="HIGH">High</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor={`subject-${currentQuestion.id}`} className="text-xs">Subject</Label>
+                    <Select
+                      value={currentQuestion.subject || ''}
+                      onValueChange={value => updateQuestion(currentQuestion.id, 'subject', value)}
+                    >
+                      <SelectTrigger className="h-5 text-xs w-28">
+                        <SelectValue placeholder="Select subject" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subjects.map(subj => (
+                          <SelectItem key={subj} value={subj}>{subj}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor={`topic-${currentQuestion.id}`} className="text-xs">Course Outcome & Bloom's Taxonomy <span className="text-red-500">*</span></Label>
@@ -1325,46 +1345,11 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                   <Button
                     size="sm"
                 className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-xs px-3 h-8 md:h-7"
-                onClick={() => {
-                  // Validate difficulty distribution first
-                  const easyQuestions = questions.filter(q => q.difficulty === 'LOW').length;
-                  const mediumQuestions = questions.filter(q => q.difficulty === 'MEDIUM').length;
-                  const highQuestions = questions.filter(q => q.difficulty === 'HIGH').length;
-                  
-                  if (easyQuestions < metadata.num_easy_questions) {
-                    toast({
-                      title: "Validation Error",
-                      description: `You need ${metadata.num_easy_questions} easy questions, but only have ${easyQuestions}.`,
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-                  
-                  if (mediumQuestions < metadata.num_medium_questions) {
-                    toast({
-                      title: "Validation Error",
-                      description: `You need ${metadata.num_medium_questions} medium questions, but only have ${mediumQuestions}.`,
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-                  
-                  if (highQuestions < metadata.num_high_questions) {
-                    toast({
-                      title: "Validation Error",
-                      description: `You need ${metadata.num_high_questions} high questions, but only have ${highQuestions}.`,
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-                  
-                  // If validation passes, show reminder dialog
-                  setShowReminderDialog(true);
-                }}
-                  >
-                    <Download className="h-3 w-3 mr-1" />
-                    Generate ZIP
-                  </Button>
+                onClick={() => setShowDistributionDialog(true)}
+              >
+                <Download className="h-3 w-3 mr-1" />
+                Set Distribution
+              </Button>
               
               <Dialog open={showReminderDialog} onOpenChange={setShowReminderDialog}>
                 <DialogContent className="sm:max-w-md">
@@ -2264,6 +2249,148 @@ const Screen3: React.FC<Screen3Props> = (props) => {
     setShowProductDialog(true);
   };
 
+  // Set Distribution Dialog
+  const [showDistributionDialog, setShowDistributionDialog] = useState(false);
+  const [distributionGrid, setDistributionGrid] = useState<any>({});
+
+  // Helper: count questions by subject and difficulty
+  function getAddedCounts() {
+    const counts: any = {};
+    subjects.forEach(subj => {
+      counts[subj] = { LOW: 0, MEDIUM: 0, HIGH: 0, total: 0 };
+    });
+    questions.forEach(q => {
+      if (q.subject && counts[q.subject]) {
+        counts[q.subject][q.difficulty] = (counts[q.subject][q.difficulty] || 0) + 1;
+        counts[q.subject].total++;
+      }
+    });
+    return counts;
+  }
+
+  // Open dialog and prepopulate grid
+  useEffect(() => {
+    if (showDistributionDialog) {
+      const added = getAddedCounts();
+      const grid: any = {};
+      subjects.forEach(subj => {
+        grid[subj] = {
+          LOW: added[subj]?.LOW || 0,
+          MEDIUM: added[subj]?.MEDIUM || 0,
+          HIGH: added[subj]?.HIGH || 0,
+          total: added[subj]?.total || 0,
+          added: { ...added[subj] }
+        };
+      });
+      setDistributionGrid(grid);
+    }
+    // eslint-disable-next-line
+  }, [showDistributionDialog]);
+
+  // Update grid cell
+  const updateGridCell = (subj: string, diff: 'LOW'|'MEDIUM'|'HIGH', value: string) => {
+    setDistributionGrid((prev: any) => {
+      const n = parseInt(value) || 0;
+      const updated = { ...prev };
+      updated[subj] = { ...updated[subj], [diff]: n };
+      updated[subj].total = (updated[subj].LOW || 0) + (updated[subj].MEDIUM || 0) + (updated[subj].HIGH || 0);
+      return updated;
+    });
+  };
+
+  // Build question_distribution string
+  function buildQuestionDistribution() {
+    const obj: any = { subjects: {} };
+    subjects.forEach(subj => {
+      obj.subjects[subj] = {
+        LOW: distributionGrid[subj]?.LOW || 0,
+        MEDIUM: distributionGrid[subj]?.MEDIUM || 0,
+        HIGH: distributionGrid[subj]?.HIGH || 0
+      };
+    });
+    return JSON.stringify(obj);
+  }
+
+const distributionDialog = (
+  <Dialog open={showDistributionDialog} onOpenChange={setShowDistributionDialog}>
+    <DialogContent className="max-w-2xl">
+      <DialogHeader>
+        <DialogTitle className="text-lg font-bold text-blue-700 flex items-center gap-2">
+          <Download className="h-5 w-5 text-green-600" />
+          Set Question Distribution
+        </DialogTitle>
+        <p className="text-xs text-gray-500 mt-1">Specify the number of questions per subject and difficulty. The right column shows how many you have added for each.</p>
+      </DialogHeader>
+      <div className="overflow-x-auto mt-2">
+        <table className="min-w-full border text-xs rounded-lg overflow-hidden shadow">
+          <thead>
+            <tr className="bg-gradient-to-r from-blue-100 to-blue-200 text-blue-900">
+              <th className="p-2 border font-semibold">Subject</th>
+              <th className="p-2 border font-semibold">Easy<br/>(to be set | added)</th>
+              <th className="p-2 border font-semibold">Medium<br/>(to be set | added)</th>
+              <th className="p-2 border font-semibold">High<br/>(to be set | added)</th>
+              <th className="p-2 border font-semibold">Total<br/>(to be set | added)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {subjects.map(subj => (
+              <tr key={subj} className="hover:bg-blue-50">
+                <td className="p-2 border font-semibold text-blue-700">{subj}</td>
+                {['LOW','MEDIUM','HIGH'].map(diff => (
+                  <td className="p-2 border" key={diff}>
+                    <input
+                      type="number"
+                      min={0}
+                      value={distributionGrid[subj]?.[diff] ?? 0}
+                      onChange={e => updateGridCell(subj, diff as any, e.target.value)}
+                      className="w-14 border rounded px-1 text-xs mr-1 focus:ring-2 focus:ring-blue-300"
+                    />
+                    <span className="text-gray-500">| {distributionGrid[subj]?.added?.[diff] ?? 0}</span>
+                  </td>
+                ))}
+                <td className="p-2 border font-semibold bg-blue-50">
+                  <span className="font-semibold">{distributionGrid[subj]?.total ?? 0}</span>
+                  <span className="text-gray-500"> | {distributionGrid[subj]?.added?.total ?? 0}</span>
+                </td>
+              </tr>
+            ))}
+            {/* Total row */}
+            <tr className="bg-green-100 font-bold">
+              <td className="p-2 border text-green-800">Total</td>
+              {['LOW','MEDIUM','HIGH'].map(diff => (
+                <td className="p-2 border text-green-800" key={diff}>
+                  {subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.[diff] ?? 0), 0)}
+                  <span className="text-gray-500"> | {subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.added?.[diff] ?? 0), 0)}</span>
+                </td>
+              ))}
+              <td className="p-2 border text-green-900 bg-green-200">
+                {subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.total ?? 0), 0)}
+                <span className="text-gray-500"> | {subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.added?.total ?? 0), 0)}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="flex flex-col md:flex-row justify-end gap-2 mt-6">
+        <Button variant="outline" onClick={() => setShowDistributionDialog(false)}>
+          Cancel
+        </Button>
+        <Button
+          className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold shadow"
+          onClick={() => {
+            setShowDistributionDialog(false);
+            window.latestQuestionDistribution = buildQuestionDistribution();
+            setShowReminderDialog(true);
+          }}
+        >
+          <Download className="h-4 w-4 mr-1" />
+          Generate ZIP
+        </Button>
+      </div>
+    </DialogContent>
+  </Dialog>
+);
+
   return (
     <>
       {matrixDialog}
@@ -2275,6 +2402,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
       {limitDialog}
       {rootDialog}
       {productDialog}
+      {distributionDialog}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 h-[calc(100vh-14rem)]">
         {mobileSidebar}
         {mainContent}
@@ -2320,4 +2448,4 @@ const Screen3: React.FC<Screen3Props> = (props) => {
   );
 };
 
-export default Screen3; 
+export default Screen3;

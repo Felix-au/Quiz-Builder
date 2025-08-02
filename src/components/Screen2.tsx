@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Plus, X } from 'lucide-react';
 
 // Define the props type for Screen2
@@ -12,6 +13,10 @@ interface Screen2Props {
   setNewInstruction: (value: string) => void;
   addInstruction: () => void;
   removeInstruction: (id: number) => void;
+  subjects: string[];
+  setSubjects: (fn: any) => void;
+  newSubject: string;
+  setNewSubject: (value: string) => void;
 }
 
 const Screen2: React.FC<Screen2Props> = ({
@@ -21,6 +26,10 @@ const Screen2: React.FC<Screen2Props> = ({
   setNewInstruction,
   addInstruction,
   removeInstruction,
+  subjects,
+  setSubjects,
+  newSubject,
+  setNewSubject,
 }) => {
   return (
     <Card className="shadow-lg border-0">
@@ -57,6 +66,48 @@ const Screen2: React.FC<Screen2Props> = ({
               </li>
             ))}
           </ol>
+        </div>
+        <div className="mt-6">
+          <h2 className="text-lg font-semibold mb-2">Subjects for this Quiz</h2>
+          <div className="flex gap-2 mb-2">
+            <Input
+              placeholder="Add subject (e.g. Math, Physics)"
+              value={newSubject}
+              onChange={e => setNewSubject(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && newSubject.trim()) {
+                  setSubjects((prev: string[]) => [...prev, newSubject.trim()]);
+                  setNewSubject('');
+                }
+              }}
+              className="w-64"
+            />
+            <Button
+              onClick={() => {
+                if (newSubject.trim()) {
+                  setSubjects((prev: string[]) => [...prev, newSubject.trim()]);
+                  setNewSubject('');
+                }
+              }}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {subjects.map((subj, idx) => (
+              <span key={idx} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full flex items-center gap-1">
+                {subj}
+                <button
+                  type="button"
+                  className="ml-1 text-blue-600 hover:text-red-600"
+                  onClick={() => setSubjects((prev: string[]) => prev.filter((_, i) => i !== idx))}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
         </div>
       </CardContent>
     </Card>

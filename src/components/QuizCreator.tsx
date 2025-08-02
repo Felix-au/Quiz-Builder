@@ -40,10 +40,17 @@ interface Question {
   image_url: string;
   image: string;
   difficulty: 'LOW' | 'MEDIUM' | 'HIGH';
+  subject?: string;
   options: Option[];
   imageFile?: File;
   originalImageFileName?: string;
   imgbbUrl?: string;
+}
+// Extend window type for latestQuestionDistribution
+declare global {
+  interface Window {
+    latestQuestionDistribution?: string;
+  }
 }
 
 interface Instruction {
@@ -76,6 +83,9 @@ interface QuizMetadata {
 }
 
 const QuizCreator = () => {
+  // Subjects state for the quiz
+  const [subjects, setSubjects] = useState<string[]>([]);
+  const [newSubject, setNewSubject] = useState('');
   const { toast } = useToast();
   const { logout, user } = useAuth();
   const [currentScreen, setCurrentScreen] = useState(0);
@@ -1303,7 +1313,6 @@ const QuizCreator = () => {
           })),
           questions: questions.map((q, index) => {
             const { imageFile, originalImageFileName, imgbbUrl, ...cleanQuestion } = q;
-            
             const filteredOptions = cleanQuestion.options
               .filter(opt => opt.option_text.trim() !== '')
               .map((opt, optIndex) => ({
@@ -1313,7 +1322,6 @@ const QuizCreator = () => {
                 is_correct: opt.is_correct,
                 option_order: optIndex + 1,
               }));
-
             return {
               id: cleanQuestion.id,
               quiz_id: metadata.id,
@@ -1326,9 +1334,12 @@ const QuizCreator = () => {
               image_url: cleanQuestion.image_url || null,
               image: cleanQuestion.image || null,
               difficulty: cleanQuestion.difficulty,
+              subject: cleanQuestion.subject || '',
               options: filteredOptions,
             };
           }),
+          // Add question_distribution if set from distribution dialog
+          ...(window.latestQuestionDistribution ? { question_distribution: window.latestQuestionDistribution } : {}),
         }
       };
 
@@ -1995,6 +2006,10 @@ const QuizCreator = () => {
                 setNewInstruction={setNewInstruction}
                 addInstruction={addInstruction}
                 removeInstruction={removeInstruction}
+                subjects={subjects}
+                setSubjects={setSubjects}
+                newSubject={newSubject}
+                setNewSubject={setNewSubject}
               />
             {/* Desktop Layout */}
               <div className="hidden md:flex justify-between items-center mt-6">
@@ -2150,7 +2165,6 @@ const QuizCreator = () => {
         )}
           {currentScreen === 3 && (
             <Screen3
-              // Pass all necessary props for Screen3
               questions={questions}
               setQuestions={setQuestions}
               numberOfQuestions={numberOfQuestions}
@@ -2200,7 +2214,7 @@ const QuizCreator = () => {
               metadata={metadata}
               setCurrentScreen={setCurrentScreen}
               toast={toast}
-              // Add any other props needed for full functionality
+              subjects={subjects}
             />
           )}
 
