@@ -8,7 +8,17 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Mail, Lock, LogIn, UserPlus, KeyRound, Chrome, ChevronDown } from 'lucide-react';
 
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+
 const LoginScreen = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (user) {
+      navigate("/", { replace: true });
+    }
+  }, [user, navigate]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);

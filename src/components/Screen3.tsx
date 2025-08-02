@@ -699,7 +699,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor={`summary-${currentQuestion.id}`} className="text-xs">Topic/Summary (Visible only after submission)</Label>
+                  <Label htmlFor={`summary-${currentQuestion.id}`} className="text-xs">Summary (Visible only after submission)</Label>
                   <Input
                     id={`summary-${currentQuestion.id}`}
                     value={currentQuestion.summary}

@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import HomePage from "@/components/HomePage";
 import LoginScreen from "@/components/LoginScreen";
 import QuizCreator from "@/components/QuizCreator";
 import NotFound from "./pages/NotFound";
@@ -38,17 +39,23 @@ const AppContent = () => {
   }
 
   if (!user) {
-    return <LoginScreen />;
-  }
-
-  return (
-    <BrowserRouter>
+    return (
       <Routes>
-        <Route path="/" element={<QuizCreator />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginScreen />} />
         <Route path="/credits" element={<Credits />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </BrowserRouter>
+    );
+  }
+
+  return (
+    <Routes>
+      <Route path="/" element={<QuizCreator />} />
+      <Route path="/login" element={<LoginScreen />} />
+      <Route path="/credits" element={<Credits />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 };
 
@@ -56,9 +63,11 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <AppContent />
+        <BrowserRouter>
+          <Toaster />
+          <Sonner />
+          <AppContent />
+        </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

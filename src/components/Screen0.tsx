@@ -80,25 +80,7 @@ const Screen0: React.FC<Screen0Props> = ({ loadFromSavedSession, startNewQuiz, i
             </Label>
           </div>
           {/* PDF Manual Button */}
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              className="w-full flex items-center gap-2 justify-center bg-gray-100 hover:bg-gray-200 text-gray-800 border-gray-200"
-              onClick={() => window.open('/tobeaddedlater.pdf', '_blank')}
-            >
-              <FileUp className="h-5 w-5 mr-2" />
-              Open User Manual (PDF)
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full flex items-center gap-1 justify-center bg-gray-100 hover:bg-gray-200 text-gray-800 border-gray-200"
-              onClick={() => navigate('/tobeaddedlater')}
-              title="Developer Info / Credits"
-            >
-              <Info className="h-5 w-5" />
-              Developer Info
-            </Button>
-          </div>
+ 
         </div>
         
         <div className="text-center text-base text-gray-500 mt-8 pt-4 border-t border-gray-200">
