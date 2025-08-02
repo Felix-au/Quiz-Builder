@@ -465,7 +465,7 @@ const QuizCreator = () => {
       setCustomProgram(parsed.customProgram || '');
       setCustomDepartment(parsed.customDepartment || '');
       setCustomSections(parsed.customSections || '');
-      setSubjects(parsed.subjects || []);
+      setSubjects(parsed.subjects || []); // Load the subjects list for Screen2/Screen3
       
       toast({
         title: "Session Loaded",
