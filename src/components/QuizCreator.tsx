@@ -465,6 +465,7 @@ const QuizCreator = () => {
       setCustomProgram(parsed.customProgram || '');
       setCustomDepartment(parsed.customDepartment || '');
       setCustomSections(parsed.customSections || '');
+      setSubjects(parsed.subjects || []);
       
       toast({
         title: "Session Loaded",
