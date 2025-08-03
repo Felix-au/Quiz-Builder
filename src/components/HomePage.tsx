@@ -51,6 +51,12 @@ const manuals = [
   { label: "Instructor Manual", href: "/manuals/instructor.pdf" },
   { label: "Proctor Manual", href: "/manuals/proctor.pdf" },
 ];
+const downloads = [
+  { label: "Faculty Zip", href: "/zip/student.pdf" },
+  { label: "Result Zip", href: "/zip/admin.pdf" },
+  { label: "Faculty Zip BMU", href: "/zip/instructor.pdf" },
+  { label: "Result Zip BMU", href: "/zip/proctor.pdf" },
+];
 
 export default function HomePage() {
   return (
@@ -102,10 +108,10 @@ export default function HomePage() {
             <motion.div whileHover={{ scale: 1.04 }}>
               <details className="group">
                 <summary className="px-4 py-2 rounded-lg bg-blue-100 text-indigo-700 font-medium shadow hover:bg-blue-200 transition border border-indigo-200 cursor-pointer select-none">
-                  Manuals
+                  Downloads
                 </summary>
                 <div className="absolute z-10 mt-2 w-48 bg-white rounded-lg shadow-lg border border-indigo-100 group-open:block hidden">
-                  {manuals.map((m) => (
+                  {downloads.map((m) => (
                     <a
                       key={m.label}
                       href={m.href}
@@ -129,6 +135,28 @@ export default function HomePage() {
               Developer Info
             </motion.button>
           </a>
+          <div className="relative">
+            <motion.div whileHover={{ scale: 1.04 }}>
+              <details className="group">
+                <summary className="px-4 py-2 rounded-lg bg-blue-100 text-indigo-700 font-medium shadow hover:bg-blue-200 transition border border-indigo-200 cursor-pointer select-none">
+                  Manuals
+                </summary>
+                <div className="absolute z-10 mt-2 w-48 bg-white rounded-lg shadow-lg border border-indigo-100 group-open:block hidden">
+                  {manuals.map((m) => (
+                    <a
+                      key={m.label}
+                      href={m.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block px-4 py-2 text-indigo-700 hover:bg-indigo-50 rounded"
+                    >
+                      {m.label}
+                    </a>
+                  ))}
+                </div>
+              </details>
+            </motion.div>
+          </div>
         </motion.div>
         <motion.section
           className="w-full max-w-2xl mx-auto bg-white bg-opacity-80 rounded-xl shadow-lg p-6 mb-8"
