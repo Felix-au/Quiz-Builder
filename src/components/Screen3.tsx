@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { BlockMath, InlineMath } from 'react-katex';
+import 'katex/dist/katex.min.css';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -294,14 +296,13 @@ const Screen3: React.FC<Screen3Props> = (props) => {
   // Insert matrix into question at cursor as LaTeX (double backslashes for row separation)
   const handleMatrixInsert = () => {
     if (matrixTargetId == null) return;
-    // Build LaTeX matrix with double backslashes for row separation
+    // Build LaTeX matrix with double backslashes for row separation, use inline math delimiters
     const latex =
-      '\n' +
-      '\\[\n' +
-      '\\begin{bmatrix}\n'  + 
-      matrixElements.map(row => row.join(' & ')).join(' \\\\\\ ') +
-      '\n\\end{bmatrix}\n' +
-      '\\]\n';
+      '\\(' +
+      '\\begin{bmatrix} ' +
+      matrixElements.map(row => row.join(' & ')).join(' \\\\ ') +
+      ' \\end{bmatrix}' +
+      '\\)';
     const q = questions.find(q => q.id === matrixTargetId);
     if (!q) return;
     let newValue = q.question;
@@ -587,41 +588,11 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                 {currentQuestion.question.trim() === '' && (
                   <p className="text-red-500 text-xs mt-1">Question is required</p>
                 )}
-                {currentQuestion.question && (currentQuestion.question.includes('^{') || currentQuestion.question.includes('_{') || /\n([\w\W]*?)\n/.test(currentQuestion.question)) && (
+                {/* Show preview only if question contains LaTeX delimiters */}
+                {currentQuestion.question && /\\\(|\\\[|\$.*\$/.test(currentQuestion.question) && (
                   <div className="mt-2 p-2 bg-gray-50 border rounded-lg">
                     <Label className="text-xs text-gray-600">Preview:</Label>
-                    <div
-                      className="text-sm mt-1"
-                      ref={el => {
-                        if (el) {
-                          // Custom inline superscript/subscript rendering for \( ... \) blocks
-                          const inlineRegex = /\\\((.*?)\\\)/g;
-                          let html = currentQuestion.question;
-                          let replaced = false;
-                          html = html.replace(inlineRegex, (match, inner) => {
-                            if (/\^\{[^}]+\}|_\{[^}]+\}/.test(inner)) {
-                              replaced = true;
-                              let rendered = inner;
-                              rendered = rendered.replace(/\^\{([^}]*)\}/g, '<sup>$1</sup>');
-                              rendered = rendered.replace(/_\{([^}]*)\}/g, '<sub>$1</sub>');
-                              return rendered;
-                            }
-                            return match;
-                          });
-                          if (replaced) {
-                            // Replace newlines with <br>
-                            html = html.replace(/\n/g, '<br>');
-                            el.innerHTML = html;
-                          } else {
-                            // Replace newlines with <br> for plain text as well
-                            el.innerHTML = normalizeLatexInput(currentQuestion.question).replace(/\n/g, '<br>');
-                            if (window.MathJax && window.MathJax.typesetPromise) {
-                              window.MathJax.typesetPromise([el]);
-                            }
-                          }
-                        }
-                      }}
-                    />
+                    <LatexPreview text={currentQuestion.question} />
                   </div>
                 )}
               </div>
@@ -1212,41 +1183,11 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                       </Button>
                     )}
                   </div>
-                      {option.option_text && (option.option_text.includes('^{') || option.option_text.includes('_{')) && (
+                      {/* Show preview only if option contains LaTeX delimiters */}
+                      {option.option_text && /\\\(|\\\[|\$.*\$/.test(option.option_text) && (
                         <div className="mt-1 p-1 bg-gray-100 border rounded">
                           <Label className="text-xs text-gray-600">Preview:</Label>
-                          <div
-                            className="text-xs mt-0.5"
-                            ref={el => {
-                              if (el) {
-                                // Custom inline superscript/subscript rendering for \( ... \) blocks
-                                const inlineRegex = /\\\((.*?)\\\)/g;
-                                let html = option.option_text;
-                                let replaced = false;
-                                html = html.replace(inlineRegex, (match, inner) => {
-                                  if (/\^\{[^}]+\}|_\{[^}]+\}/.test(inner)) {
-                                    replaced = true;
-                                    let rendered = inner;
-                                    rendered = rendered.replace(/\^\{([^}]*)\}/g, '<sup>$1</sup>');
-                                    rendered = rendered.replace(/_\{([^}]*)\}/g, '<sub>$1</sub>');
-                                    return rendered;
-                                  }
-                                  return match;
-                                });
-                                if (replaced) {
-                                  // Replace newlines with <br>
-                                  html = html.replace(/\n/g, '<br>');
-                                  el.innerHTML = html;
-                                } else {
-                                  // Replace newlines with <br> for plain text as well
-                                  el.innerHTML = normalizeLatexInput(option.option_text).replace(/\n/g, '<br>');
-                                  if (window.MathJax && window.MathJax.typesetPromise) {
-                                    window.MathJax.typesetPromise([el]);
-                                  }
-                                }
-                              }
-                            }}
-                          />
+                          <LatexPreview text={option.option_text} small />
                         </div>
                       )}
                     </div>
@@ -1591,6 +1532,33 @@ const Screen3: React.FC<Screen3Props> = (props) => {
   );
 
   // Scaffold Dialogs for each construct (Fraction, Binomial, etc.) with input fields, labels, and a live LaTeX preview (use MathJax rendering as in matrixDialog). Do not implement insertion yet.
+
+  // Helper: build inline LaTeX for each construct
+  function buildFractionLatex(numerator: string, denominator: string) {
+    return `\\( \\frac{${numerator || '?'}}{${denominator || '?'}} \\)`;
+  }
+  function buildBinomialLatex(n: string, k: string) {
+    return `\\( \\binom{${n || '?'}}{${k || '?'}} \\)`;
+  }
+  function buildIntegralLatex(lower: string, upper: string, func: string, variable: string) {
+    return `\\( \\int_{${lower || '?'}}^{${upper || '?'}} ${func || '?'} \, d${variable || 'x'} \\)`;
+  }
+  function buildDoubleIntegralLatex(lower: string, upper: string, func: string, variable: string) {
+    return `\\( \\iint_{${lower || '?'}}^{${upper || '?'}} ${func || '?'} \, d${variable || 'x, y'} \\)`;
+  }
+  function buildSummationLatex(index: string, lower: string, upper: string, func: string) {
+    return `\\( \\sum_{${index || 'k'}=${lower || '0'}}^{${upper || 'n'}} ${func || '?'} \\)`;
+  }
+  function buildLimitLatex(variable: string, approaches: string, func: string) {
+    return `\\( \\lim_{${variable || 'x'} \\to ${approaches || '0'}} ${func || '?'} \\)`;
+  }
+  function buildRootLatex(degree: string, radicand: string) {
+    return `\\( \\sqrt[${degree || 'n'}]{${radicand || 'x'}} \\)`;
+  }
+  function buildProductLatex(index: string, lower: string, upper: string, func: string) {
+    return `\\( \\prod_{${index || 'i'}=${lower || '1'}}^{${upper || 'n'}} ${func || '?'} \\)`;
+  }
+
   const fractionDialog = (
     <Dialog open={showFractionDialog} onOpenChange={setShowFractionDialog}>
       <DialogContent>
@@ -1621,7 +1589,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
           <div className="flex justify-end gap-2">
             <Button onClick={() => setShowFractionDialog(false)} variant="outline">Cancel</Button>
             <Button onClick={() => {
-              const latex = `\n\\[\\frac{${fractionNumerator}}{${fractionDenominator}}\\]\n`;
+              const latex = buildFractionLatex(fractionNumerator, fractionDenominator);
               const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
               let newValue = currentQuestion.question;
               if (matrixInsertPos != null) {
@@ -1643,7 +1611,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             className="text-sm mt-1"
             ref={el => {
               if (el) {
-                el.textContent = normalizeLatexInput(`\n\\[\\frac{${fractionNumerator}}{${fractionDenominator}}\\]\n`);
+                el.textContent = normalizeLatexInput(buildFractionLatex(fractionNumerator, fractionDenominator));
                 if (window.MathJax && window.MathJax.typesetPromise) {
                   window.MathJax.typesetPromise([el]);
                 }
@@ -1685,7 +1653,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
           <div className="flex justify-end gap-2">
             <Button onClick={() => setShowBinomialDialog(false)} variant="outline">Cancel</Button>
             <Button onClick={() => {
-              const latex = `\n\\[\\binom{${binomialN}}{${binomialK}}\\]\n`;
+              const latex = buildBinomialLatex(binomialN, binomialK);
               const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
               let newValue = currentQuestion.question;
               if (matrixInsertPos != null) {
@@ -1707,7 +1675,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             className="text-sm mt-1"
             ref={el => {
               if (el) {
-                el.textContent = normalizeLatexInput(`\n\\[\\binom{${binomialN}}{${binomialK}}\\]\n`);
+                el.textContent = normalizeLatexInput(buildBinomialLatex(binomialN, binomialK));
                 if (window.MathJax && window.MathJax.typesetPromise) {
                   window.MathJax.typesetPromise([el]);
                 }
@@ -1769,7 +1737,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
           <div className="flex justify-end gap-2">
             <Button onClick={() => setShowIntegralDialog(false)} variant="outline">Cancel</Button>
             <Button onClick={() => {
-              const latex = `\n\\[\\int_{${integralLower}}^{${integralUpper}} ${integralFunction} \\, d${integralVariable}\\]\n`;
+              const latex = buildIntegralLatex(integralLower, integralUpper, integralFunction, integralVariable);
               const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
               let newValue = currentQuestion.question;
               if (matrixInsertPos != null) {
@@ -1791,7 +1759,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             className="text-sm mt-1"
             ref={el => {
               if (el) {
-                el.textContent = normalizeLatexInput(`\n\\[\\int_{${integralLower}}^{${integralUpper}} ${integralFunction} \\, d${integralVariable}\\]\n`);
+                el.textContent = normalizeLatexInput(buildIntegralLatex(integralLower, integralUpper, integralFunction, integralVariable));
                 if (window.MathJax && window.MathJax.typesetPromise) {
                   window.MathJax.typesetPromise([el]);
                 }
@@ -1853,7 +1821,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
           <div className="flex justify-end gap-2">
             <Button onClick={() => setShowDoubleIntegralDialog(false)} variant="outline">Cancel</Button>
             <Button onClick={() => {
-              const latex = `\n\\[\\iint_{${doubleIntegralLower}}^{${doubleIntegralUpper}} ${doubleIntegralFunction} \\, d${doubleIntegralVariable}\\]\n`;
+              const latex = buildDoubleIntegralLatex(doubleIntegralLower, doubleIntegralUpper, doubleIntegralFunction, doubleIntegralVariable);
               const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
               let newValue = currentQuestion.question;
               if (matrixInsertPos != null) {
@@ -1875,7 +1843,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             className="text-sm mt-1"
             ref={el => {
               if (el) {
-                el.textContent = normalizeLatexInput(`\n\\[\\iint_{${doubleIntegralLower}}^{${doubleIntegralUpper}} ${doubleIntegralFunction} \\, d${doubleIntegralVariable}\\]\n`);
+                el.textContent = normalizeLatexInput(buildDoubleIntegralLatex(doubleIntegralLower, doubleIntegralUpper, doubleIntegralFunction, doubleIntegralVariable));
                 if (window.MathJax && window.MathJax.typesetPromise) {
                   window.MathJax.typesetPromise([el]);
                 }
@@ -1937,7 +1905,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
           <div className="flex justify-end gap-2">
             <Button onClick={() => setShowSummationDialog(false)} variant="outline">Cancel</Button>
             <Button onClick={() => {
-              const latex = `\n\\[\\sum_{${summationIndex}=${summationLower}}^{${summationUpper}} ${summationFunction}\\]\n`;
+              const latex = buildSummationLatex(summationIndex, summationLower, summationUpper, summationFunction);
               const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
               let newValue = currentQuestion.question;
               if (matrixInsertPos != null) {
@@ -1959,7 +1927,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             className="text-sm mt-1"
             ref={el => {
               if (el) {
-                el.textContent = normalizeLatexInput(`\n\\[\\sum_{${summationIndex}=${summationLower}}^{${summationUpper}} ${summationFunction}\\]\n`);
+                el.textContent = normalizeLatexInput(buildSummationLatex(summationIndex, summationLower, summationUpper, summationFunction));
                 if (window.MathJax && window.MathJax.typesetPromise) {
                   window.MathJax.typesetPromise([el]);
                 }
@@ -2011,7 +1979,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
           <div className="flex justify-end gap-2">
             <Button onClick={() => setShowLimitDialog(false)} variant="outline">Cancel</Button>
             <Button onClick={() => {
-              const latex = `\n\\[\\lim_{${limitVariable} \\to ${limitApproaches}} ${limitFunction}\\]\n`;
+              const latex = buildLimitLatex(limitVariable, limitApproaches, limitFunction);
               const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
               let newValue = currentQuestion.question;
               if (matrixInsertPos != null) {
@@ -2033,7 +2001,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             className="text-sm mt-1"
             ref={el => {
               if (el) {
-                el.textContent = normalizeLatexInput(`\n\\[\\lim_{${limitVariable} \\to ${limitApproaches}} ${limitFunction}\\]\n`);
+                el.textContent = normalizeLatexInput(buildLimitLatex(limitVariable, limitApproaches, limitFunction));
                 if (window.MathJax && window.MathJax.typesetPromise) {
                   window.MathJax.typesetPromise([el]);
                 }
@@ -2075,7 +2043,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
           <div className="flex justify-end gap-2">
             <Button onClick={() => setShowRootDialog(false)} variant="outline">Cancel</Button>
             <Button onClick={() => {
-              const latex = `\n\\[\\sqrt[${rootDegree}]{${rootRadicand}}\\]\n`;
+              const latex = buildRootLatex(rootDegree, rootRadicand);
               const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
               let newValue = currentQuestion.question;
               if (matrixInsertPos != null) {
@@ -2097,7 +2065,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             className="text-sm mt-1"
             ref={el => {
               if (el) {
-                el.textContent = normalizeLatexInput(`\n\\[\\sqrt[${rootDegree}]{${rootRadicand}}\\]\n`);
+                el.textContent = normalizeLatexInput(buildRootLatex(rootDegree, rootRadicand));
                 if (window.MathJax && window.MathJax.typesetPromise) {
                   window.MathJax.typesetPromise([el]);
                 }
@@ -2159,7 +2127,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
           <div className="flex justify-end gap-2">
             <Button onClick={() => setShowProductDialog(false)} variant="outline">Cancel</Button>
             <Button onClick={() => {
-              const latex = `\n\\[\\prod_{${productIndex}=${productLower}}^{${productUpper}} ${productFunction}\\]\n`;
+              const latex = buildProductLatex(productIndex, productLower, productUpper, productFunction);
               const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
               let newValue = currentQuestion.question;
               if (matrixInsertPos != null) {
@@ -2181,7 +2149,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             className="text-sm mt-1"
             ref={el => {
               if (el) {
-                el.textContent = normalizeLatexInput(`\n\\[\\prod_{${productIndex}=${productLower}}^{${productUpper}} ${productFunction}\\]\n`);
+                el.textContent = normalizeLatexInput(buildProductLatex(productIndex, productLower, productUpper, productFunction));
                 if (window.MathJax && window.MathJax.typesetPromise) {
                   window.MathJax.typesetPromise([el]);
                 }
@@ -2462,4 +2430,63 @@ const distributionDialog = (
   );
 };
 
+
 export default Screen3;
+
+// Utility: Split text into plain, inline, and block math segments
+type LatexSegment = { type: 'inline' | 'block' | 'text'; content: string };
+function parseLatexSegments(text: string): LatexSegment[] {
+  // Support $...$ (inline), $$...$$ (block), \(...\) (inline), \[...\] (block)
+  const regex = /(\$\$[\s\S]+?\$\$|\$[^$]+\$|\\\([\s\S]+?\\\)|\\\[[\s\S]+?\\\])/g;
+  let lastIndex = 0;
+  const segments: LatexSegment[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ type: 'text', content: text.slice(lastIndex, match.index) });
+    }
+    const m = match[0];
+    if (m.startsWith('$$') && m.endsWith('$$')) {
+      segments.push({ type: 'block', content: m.slice(2, -2) });
+    } else if (m.startsWith('\\[') && m.endsWith('\\]')) {
+      segments.push({ type: 'block', content: m.slice(2, -2) });
+    } else if (m.startsWith('$') && m.endsWith('$')) {
+      segments.push({ type: 'inline', content: m.slice(1, -1) });
+    } else if (m.startsWith('\\(') && m.endsWith('\\)')) {
+      segments.push({ type: 'inline', content: m.slice(2, -2) });
+    }
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    segments.push({ type: 'text', content: text.slice(lastIndex) });
+  }
+  return segments;
+}
+
+// LatexPreview component
+interface LatexPreviewProps {
+  text: string;
+  small?: boolean;
+}
+const LatexPreview: React.FC<LatexPreviewProps> = ({ text, small }) => {
+  const segments = parseLatexSegments(text);
+  return (
+    <div className={small ? 'text-xs mt-0.5' : 'text-sm mt-1'}>
+      {segments.map((seg, i) => {
+        if (seg.type === 'inline') {
+          return <InlineMath key={i}>{seg.content}</InlineMath>;
+        } else if (seg.type === 'block') {
+          return <BlockMath key={i}>{seg.content}</BlockMath>;
+        } else {
+          // Replace newlines with <br />
+          return seg.content.split(/\n/).map((line, j, arr) => (
+            <React.Fragment key={j}>
+              {line}
+              {j < arr.length - 1 ? <br /> : null}
+            </React.Fragment>
+          ));
+        }
+      })}
+    </div>
+  );
+};
