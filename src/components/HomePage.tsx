@@ -18,10 +18,10 @@ const faqs = [
 ];
 
 const manuals = [
-  { label: "Student Manual", href: "/manuals/student.pdf" },
-  { label: "Admin Manual", href: "/manuals/admin.pdf" },
-  { label: "Instructor Manual", href: "/manuals/instructor.pdf" },
-  { label: "Proctor Manual", href: "/manuals/proctor.pdf" },
+  { label: "Student Manual", href: "/manuals/PrashnaSetu-Application-User-Guide_Student.pdf" },
+  { label: "Admin Manual", href: "/manuals/PrashnaSetu-Application-User-Guide_Admin.pdf" },
+  { label: "Instructor Manual", href: "/manuals/PrashnaSetu-Application-User-Guide_Instructor.pdf" },
+  { label: "Proctor Manual", href: "/manuals/PrashnaSetu-Application-User-Guide_Proctor.pdf" },
   { label: "Website Manual", href: "/manuals/website.pdf" },
 ];
 
