@@ -22,7 +22,7 @@ const manuals = [
   { label: "Admin Manual", href: "/manuals/PrashnaSetu-Application-User-Guide_Admin.pdf" },
   { label: "Instructor Manual", href: "/manuals/PrashnaSetu-Application-User-Guide_Instructor.pdf" },
   { label: "Proctor Manual", href: "/manuals/PrashnaSetu-Application-User-Guide_Proctor.pdf" },
-  { label: "Website Manual", href: "/manuals/website.pdf" },
+  { label: "Website Manual", href: "/manuals/PrashnaSetu-Application-User-Guide_Proctor.pdf" },
 ];
 
 const downloads = [
