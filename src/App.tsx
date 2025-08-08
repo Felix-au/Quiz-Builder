@@ -15,17 +15,20 @@ import React from "react";
 
 const queryClient = new QueryClient();
 
+import { useLocation } from "react-router-dom";
+
 const AppContent = () => {
   const { user, loading } = useAuth();
 
+  const location = useLocation();
   React.useEffect(() => {
-    if (!loading && user) {
+    if (!loading && user && location.pathname == "/home") {
       toast({
         title: "Session loaded",
         description: "Your session has been loaded successfully.",
       });
     }
-  }, [loading, user]);
+  }, [loading, user, location]);
 
   if (loading) {
     return (
@@ -42,7 +45,7 @@ const AppContent = () => {
     return (
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<LoginScreen />} />
+        <Route path="/home" element={<LoginScreen />} />
         <Route path="/credits" element={<Credits />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -51,8 +54,8 @@ const AppContent = () => {
 
   return (
     <Routes>
-      <Route path="/" element={<QuizCreator />} />
-      <Route path="/login" element={<LoginScreen />} />
+      <Route path="/" element={<HomePage />} />
+      <Route path="/home" element={<QuizCreator />} />
       <Route path="/credits" element={<Credits />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
