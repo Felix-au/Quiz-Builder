@@ -5,16 +5,13 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import VideoGallery from "./VideoGallery";
 
 const faqs = [
-  { q: "What is PrashnaSetu?", a: "A modern quiz platform for competitive learning and exam practice." },
-  { q: "How do I login?", a: "Click the Login button and sign in with your credentials." },
-  { q: "Can I import/export quizzes?", a: "Yes, you can import and export quizzes using ZIP files." },
-  { q: "Who can create quizzes?", a: "Admins, Instructors, and authorized users can create quizzes." },
-  { q: "Are there user manuals?", a: "Yes, find manuals for Students, Admins, Instructors, and Proctors." },
+  { q: "What is PrashnaSetu?", a: "PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity." },
+  { q: "Can I import/export quizzes?", a: "Yes, you can import and export quizzes using ZIP files on the website. Only Instructors and Admin can import quizzes on the PrashnaSetu Application." },
+  { q: "Who can create quizzes?", a: "All users can create quizzes." },
+  { q: "Are there user manuals?", a: "Yes, you can view manuals for the Website as a whole or for the PrashnaSetu Application specified by roles: Students, Admins, Instructors, and Proctors." },
   { q: "Is my data secure?", a: "Yes, your data is securely stored and accessible only to you." },
-  { q: "How do I contact support?", a: "Email us at prashnasetu@gmail.com." },
-  { q: "Does it support images?", a: "Yes, you can add images to your quiz questions." },
-  { q: "Can I use it for exams?", a: "Absolutely! It is built for competitions and exams." },
-  { q: "Is it free?", a: "Yes, PrashnaSetu is free for all users." }
+  { q: "How do I contact support?", a: "Email us at cadcs@bmu.edu.in or harshit.soni.23cse@bmu.edu.in" },
+  { q: "Does it support images?", a: "Yes, you can add images to your quiz questions." }
 ];
 
 const manuals = [

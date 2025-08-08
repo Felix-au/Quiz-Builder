@@ -6,20 +6,35 @@ import "slick-carousel/slick/slick-theme.css";
 
 const videos = [
   {
-    src: "/manual copy.mp4",
-    title: "How to Use PrashnaSetu (Demo)",
-    thumb: "/logo2.png"
+    src: "/takingquiz.mp4",
+    title: "Attempting a Quiz: Student",
+    thumb: "/Attempting.png"
   },
   {
-    src: "/manual copy.mp4",
-    title: "How to Use PrashnaSetu (Demo)",
-    thumb: "/logo23.png"
+    src: "/Registering.mp4",
+    title: "Registering as a Instructor/Proctor",
+    thumb: "/registering.png"
   },
-  ...Array.from({ length: 9 }).map((_, i) => ({
-    src: "",
-    title: `Sample Video ${i + 2}`,
-    thumb: "/logo2.png"
-  }))
+  {
+    src: "/import.mp4",
+    title: "Importing a Quiz",
+    thumb: "/iimport.png"
+  },
+  {
+    src: "/login.mp4",
+    title: "Login: A glance at the Dashboard",
+    thumb: "/login.png"
+  },
+  {
+    src: "/creating.mp4",
+    title: "Creating a Quiz",
+    thumb: "/creating.png"
+  },
+  {
+    src: "/performance.mp4",
+    title: "Accessing Performance Analytics",
+    thumb: "/performance.png"
+  }
 ];
 
 
