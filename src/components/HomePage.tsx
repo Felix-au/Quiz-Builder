@@ -9,7 +9,7 @@ const faqs = [
   { q: "Can I import/export quizzes?", a: "Yes, you can import and export quizzes using ZIP files on the website. Only Instructors and Admin can import quizzes on the PrashnaSetu Application." },
   { q: "Who can create quizzes?", a: "All users can create quizzes." },
   { q: "Are there user manuals?", a: "Yes, you can view manuals for the Website as a whole or for the PrashnaSetu Application specified by roles: Students, Admins, Instructors, and Proctors." },
-  { q: "Is my data secure?", a: "Yes, your data is securely stored and accessible only to you." },
+  { q: "Is my data secure?", a: "Yes, your data is securely stored and accessible only by you." },
   { q: "How do I contact support?", a: "Email us at cadcs@bmu.edu.in or harshit.soni.23cse@bmu.edu.in" },
   { q: "Does it support images?", a: "Yes, you can add images to your quiz questions." }
 ];
