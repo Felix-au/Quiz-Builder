@@ -12,7 +12,6 @@ import NotFound from "./pages/NotFound";
 import Credits from "@/components/Credits";
 import { toast } from "@/components/ui/use-toast";
 import React from "react";
-import Manuals from "@/components/Manuals";
 
 const queryClient = new QueryClient();
 
@@ -47,7 +46,6 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/home" element={<LoginScreen />} />
-        <Route path="/manuals" element={<Manuals />} />
         <Route path="/credits" element={<Credits />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -58,7 +56,6 @@ const AppContent = () => {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/home" element={<QuizCreator />} />
-      <Route path="/manuals" element={<Manuals />} />
       <Route path="/credits" element={<Credits />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
