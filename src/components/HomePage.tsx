@@ -240,7 +240,7 @@ export default function HomePage() {
   };
 
   return (
-    <div onMouseMove={handleMouseMove} className="relative h-screen overflow-y-auto overscroll-contain snap-y snap-mandatory flex flex-col overflow-x-hidden bg-gradient-to-br from-slate-800 via-indigo-900 to-blue-950">
+    <div onMouseMove={handleMouseMove} className="relative h-screen overflow-y-auto overscroll-contain md:snap-y md:snap-mandatory flex flex-col overflow-x-hidden bg-gradient-to-br from-slate-800 via-indigo-900 to-blue-950">
   {/* Enhanced gradient background with subtle animated blobs */}
   <div className="pointer-events-none select-none fixed inset-0 -z-10">
     <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-indigo-900 to-blue-950"></div>
@@ -282,6 +282,13 @@ export default function HomePage() {
                 <BarChart3 className="w-5 h-5" />
                 Result
               </a>
+              <button
+                onClick={handleScrollToVideo}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-50 text-indigo-700 font-semibold shadow hover:bg-indigo-100 focus:ring-2 focus:ring-indigo-300 transition border border-indigo-100 cursor-pointer select-none"
+              >
+                <PlayCircle className="w-5 h-5" />
+                Video Guides
+              </button>
               <div className="relative"
   onMouseEnter={handleManualsEnter}
   onMouseLeave={handleManualsLeave}
@@ -334,6 +341,13 @@ export default function HomePage() {
                 <BarChart3 className="w-4 h-4" />
                 Result
               </a>
+              <button
+                onClick={handleScrollToVideo}
+                className="px-3 py-1 rounded bg-indigo-100 text-indigo-700 font-medium border border-indigo-200 flex items-center gap-1"
+              >
+                <PlayCircle className="w-4 h-4" />
+                Video Guides
+              </button>
               <div className="relative"
   onMouseEnter={handleManualsEnter}
   onMouseLeave={handleManualsLeave}
@@ -356,7 +370,7 @@ export default function HomePage() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center px-4 pt-36 pb-12">
         {/* Hero wrapper: fills the viewport (minus header height) */}
-        <section className="min-h-[calc(100vh-80px)] snap-start snap-always flex flex-col justify-center">
+        <section className="min-h-[calc(100vh-80px)] md:snap-start md:snap-always flex flex-col justify-center">
         {/* Title & Tagline (no card) */}
         <div className="w-full max-w-4xl mx-auto text-center mb-6">
           <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight">PrashnaSetu</h1>
@@ -443,7 +457,7 @@ export default function HomePage() {
         </section>
 
         {/* Salient Features */}
-        <section className="w-full max-w-6xl mx-auto min-h-screen snap-start snap-always flex items-center">
+        <section className="w-full max-w-6xl mx-auto min-h-screen md:snap-start md:snap-always flex items-center">
           <div className="w-full">
             <h3 className="text-3xl font-bold text-white text-center mb-6">Salient Features</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -468,7 +482,8 @@ export default function HomePage() {
         </section>
 
         {/* Video Gallery at the end */}
-        <section id="video-gallery" className="w-full max-w-6xl mx-auto mt-12 snap-start snap-always">
+        <section id="video-gallery" className="w-full max-w-6xl mx-auto mt-12 md:mt-0 md:min-h-[calc(100vh-80px)] md:flex md:flex-col md:justify-center md:snap-center md:snap-always">
+          <h3 className="text-3xl font-bold text-white text-center mb-6">Video Guides</h3>
           <VideoGallery />
         </section>
       </main>
