@@ -52,7 +52,7 @@ const Credits: React.FC = () => {
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500/45 rounded-full blur-3xl" style={{ transform: `translate3d(${mx * -48}px, ${my * -48}px, 0)`, transition: 'transform 0.25s ease-out' }}></div>
     </div>
     {/* Header (lighter) */}
-    <div className="bg-gradient-to-r from-blue-200 via-indigo-100 to-blue-300/90 backdrop-blur-md shadow-lg border-b fixed top-0 left-0 w-full z-40 transition-all duration-300">
+    <div className="bg-gradient-to-br from-white/70 to-indigo-50/60 backdrop-blur-xl shadow-lg border-b border-indigo-200/60 fixed top-0 left-0 w-full z-40 transition-all duration-300">
       <div className="container flex flex-col justify-center px-4">
         <div className="hidden md:flex items-center justify-between h-20">
           <Link to="/" className="flex items-center gap-3 cursor-pointer">
@@ -85,12 +85,12 @@ const Credits: React.FC = () => {
       </div>
     </div>
     {/* Main Content - Split Profile Cards */}
-    <main className="flex-1 flex flex-col items-center justify-center px-4 pt-36 pb-8">
+    <main className="flex-1 flex flex-col items-center px-4 pt-24 pb-24 min-h-[calc(100vh-80px)] justify-center">
       <section className="w-full max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
         {profiles.map((profile, idx) => (
           <div
             key={profile.name || idx}
-            className="h-full flex flex-col items-center rounded-2xl shadow-md p-10 min-h-[440px] md:min-h-[520px] border border-indigo-200/60 bg-gradient-to-br from-white/70 to-indigo-50/60 backdrop-blur-xl overflow-hidden hover:shadow-2xl hover:-translate-y-1 hover:scale-[1.02] ring-0 hover:ring-2 hover:ring-indigo-400/70 transition-all duration-500 ease-out"
+            className="h-full flex flex-col items-center rounded-2xl shadow-md px-8 pt-6 pb-8 min-h-[440px] md:min-h-[520px] border border-indigo-200/60 bg-gradient-to-br from-white/70 to-indigo-50/60 backdrop-blur-xl overflow-hidden hover:shadow-2xl hover:-translate-y-1 hover:scale-[1.02] ring-0 hover:ring-2 hover:ring-indigo-400/70 transition-all duration-500 ease-out"
             style={{ transform: `translate3d(${(idx % 2 === 0 ? 1 : -1) * mx * 12}px, ${(idx % 2 === 0 ? 1 : -1) * my * 12}px, 0)` }}
           >
             {profile.profileUrl ? (
@@ -155,12 +155,12 @@ const Credits: React.FC = () => {
       </section>
     </main>
     {/* Copyright Footer - Desktop */}
-    <div className="hidden md:block fixed bottom-0 left-0 w-full bg-gradient-to-r from-blue-200/70 via-indigo-200/60 to-blue-300/70 backdrop-blur-md border-t border-indigo-200/60 py-3 text-center text-xs text-black z-50">
+    <div className="hidden md:block fixed bottom-0 left-0 w-full bg-gradient-to-br from-white/70 to-indigo-50/60 backdrop-blur-xl border-t border-indigo-200/60 py-3 text-center text-xs text-black z-50">
     <p>© Copyrighted by CAD-CS, BML Munjal University</p>
     <p className="flex items-center justify-center gap-2"><Mail className="h-4 w-4 text-indigo-500" /><a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-blue-700">cadcs@bmu.edu.in</a></p>
     </div>
     {/* Copyright Footer - Mobile */}
-    <div className="md:hidden text-center text-xs text-black py-4 bg-gradient-to-r from-blue-200/70 via-indigo-200/60 to-blue-300/70 backdrop-blur-md border-t border-indigo-200/60">
+    <div className="md:hidden text-center text-xs text-black py-4 bg-gradient-to-br from-white/70 to-indigo-50/60 backdrop-blur-xl border-t border-indigo-200/60">
     <p>© Copyrighted by CAD-CS, BML Munjal University</p>
     <p className="flex items-center justify-center gap-2"><Mail className="h-4 w-4 text-indigo-500" /><a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-blue-700">cadcs@bmu.edu.in</a></p>
     </div>

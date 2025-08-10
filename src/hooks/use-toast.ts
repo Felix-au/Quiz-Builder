@@ -6,7 +6,8 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 3000
+// Delay between setting open=false and actually removing from state (for exit animations)
+const TOAST_REMOVE_DELAY = 200
 
 type ToasterToast = ToastProps & {
   id: string
@@ -160,6 +161,11 @@ function toast({ ...props }: Toast) {
       },
     },
   })
+
+  // Auto-dismiss after 3 seconds
+  setTimeout(() => {
+    dismiss()
+  }, 2000)
 
   return {
     id: id,
