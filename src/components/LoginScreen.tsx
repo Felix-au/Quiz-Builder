@@ -126,7 +126,12 @@ const LoginScreen = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="relative min-h-screen overflow-hidden">
+      {/* Aurora Background Layers */}
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,_rgba(99,102,241,0.16),_transparent_60%),_radial-gradient(ellipse_at_bottom_right,_rgba(59,130,246,0.16),_transparent_60%)]" />
+      <div className="absolute -z-10 w-80 h-80 bg-indigo-300/30 rounded-full blur-3xl -top-16 -left-16" />
+      <div className="absolute -z-10 w-96 h-96 bg-blue-300/30 rounded-full blur-3xl top-1/4 -right-20" />
+      <div className="absolute -z-10 w-72 h-72 bg-purple-300/30 rounded-full blur-3xl bottom-0 left-1/3" />
       {/* Desktop Layout - Original Design */}
       <div className="hidden md:flex flex-col min-h-screen">
         <div className="flex-1 flex items-center justify-center p-4 overflow-y-auto">
@@ -254,16 +259,16 @@ const LoginScreen = () => {
         </div>
         
         {/* Copyright Footer Full-width - Desktop */}
-        <div className="hidden md:block fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 py-3 text-center text-xs text-gray-600 z-50">
+        <div className="hidden md:block fixed bottom-0 left-0 w-full bg-white/60 backdrop-blur-xl border-t border-indigo-200/60 py-3 text-center text-xs text-gray-700 z-50">
           <p>© Copyrighted by CAD-CS, BML Munjal University</p>
-          <p><Mail className="inline-block w-4 h-4 mr-1 -mt-1 align-middle text-gray-500" /><a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-blue-700">cadcs@bmu.edu.in</a></p>
+          <p><Mail className="inline-block w-4 h-4 mr-1 -mt-1 align-middle text-gray-500" /><a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-indigo-700">cadcs@bmu.edu.in</a></p>
         </div>
       </div>
 
       {/* Mobile Layout - Two Screen Design */}
       <div className="md:hidden">
         {/* Screen 1: Logo Screen */}
-        <div className="h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-200 to-gray-400 text-gray-900 p-8 relative">
+        <div className="h-screen flex flex-col items-center justify-center text-gray-900 p-8 relative">
           <div className="text-center max-w-xs mx-auto animate-bounce-slow">
             <img src="/logo23.png" alt="PrashnaSetu Logo" className="mx-auto h-48 w-48 object-contain" />
             <p className="text-sm opacity-80 -mt-2 leading-tight">PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
@@ -283,7 +288,7 @@ const LoginScreen = () => {
         </div>
 
         {/* Screen 2: Login Form Screen */}
-        <div className={`min-h-screen bg-background flex flex-col justify-center p-4 transition-opacity duration-500 ${showLoginForm ? 'opacity-100' : 'opacity-0'}`}>
+        <div className={`min-h-screen flex flex-col justify-center p-4 transition-opacity duration-500 ${showLoginForm ? 'opacity-100' : 'opacity-0'}`}>
           <div className="flex-1 flex items-center justify-center">
           <Card className="w-full max-w-md shadow-none border-0">
             <CardHeader className="text-center pb-2">

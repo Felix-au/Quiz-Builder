@@ -1780,9 +1780,14 @@ const QuizCreator = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="relative min-h-screen overflow-hidden">
+      {/* Aurora Background Layers */}
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,_rgba(99,102,241,0.16),_transparent_60%),_radial-gradient(ellipse_at_bottom_right,_rgba(59,130,246,0.16),_transparent_60%)]" />
+      <div className="absolute -z-10 w-80 h-80 bg-indigo-300/30 rounded-full blur-3xl -top-16 -left-16" />
+      <div className="absolute -z-10 w-96 h-96 bg-blue-300/30 rounded-full blur-3xl top-1/4 -right-20" />
+      <div className="absolute -z-10 w-72 h-72 bg-purple-300/30 rounded-full blur-3xl bottom-0 left-1/3" />
       {/* Welcome Header */}
-      <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+      <div className="bg-white/60 backdrop-blur-xl supports-[backdrop-filter]:bg-white/40 border-b border-indigo-200/60">
         <div className="container flex flex-col justify-center px-4">
           {/* Desktop Header */}
           <div className="hidden md:flex items-center justify-between h-20">
@@ -1830,19 +1835,17 @@ const QuizCreator = () => {
                                   </Button>
                               </div>
             <div className="text-sm text-muted-foreground">
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Welcome, {user?.displayName || user?.email}
-                                </div>
-                            </div>
-                      </div>
-                    </div>
-      
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Welcome, {user?.displayName || user?.email}
+            </div>
+          </div>
+        </div>
+      </div>
       <div className="p-4">
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="text-center">
             <h1 className="text-3xl font-bold text-gray-900 mb-2"></h1>
             <p className="text-lg text-gray-700"></p>
-                  </div>
-                  
+          </div>
           {currentScreen === 0 && (
             <Screen0
               loadFromSavedSession={loadFromSavedSession}
@@ -2241,6 +2244,15 @@ const QuizCreator = () => {
 
           {/* ... navigation and dialogs ... */}
         </div>
+      </div>
+
+      {/* Aurora Footer */}
+      <div className="fixed bottom-0 left-0 w-full bg-white/60 backdrop-blur-xl border-t border-indigo-200/60 py-3 text-center text-xs text-gray-700 z-50">
+        <p>© Copyrighted by CAD-CS, BML Munjal University</p>
+        <p className="flex items-center justify-center gap-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-gray-500"><path d="M1.5 8.67v8.58A2.25 2.25 0 0 0 3.75 19.5h16.5a2.25 2.25 0 0 0 2.25-2.25V8.67l-8.954 5.255a3.75 3.75 0 0 1-3.292 0L1.5 8.67Z"/><path d="M22.5 6.908V6.75A2.25 2.25 0 0 0 20.25 4.5H3.75A2.25 2.25 0 0 0 1.5 6.75v.158l9.318 5.468a2.25 2.25 0 0 0 2.364 0L22.5 6.908Z"/></svg>
+          <a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-indigo-700">cadcs@bmu.edu.in</a>
+        </p>
       </div>
     </div>
   );
