@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useInView } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ChevronDown, ChevronUp, PlusCircle, PlayCircle, BarChart3, ShieldCheck, Brain, Eye, FileDown, Timer } from "lucide-react";
 import VideoGallery from "./VideoGallery";
@@ -240,11 +240,12 @@ export default function HomePage() {
   };
 
   return (
-    <div onMouseMove={handleMouseMove} className="relative min-h-screen flex flex-col overflow-x-hidden bg-gradient-to-br from-slate-200 via-indigo-300 to-blue-400">
+    <div onMouseMove={handleMouseMove} className="relative h-screen overflow-y-auto overscroll-contain snap-y snap-mandatory flex flex-col overflow-x-hidden bg-gradient-to-br from-slate-800 via-indigo-900 to-blue-950">
   {/* Enhanced gradient background with subtle animated blobs */}
   <div className="pointer-events-none select-none fixed inset-0 -z-10">
-    <div className="absolute inset-0 bg-gradient-to-br from-slate-200 via-indigo-300 to-blue-400"></div>
-    <div className="absolute inset-0 opacity-30 bg-[radial-gradient(ellipse_at_center,_rgba(99,102,241,0.45),_transparent_60%)]"></div>
+    <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-indigo-900 to-blue-950"></div>
+    <div className="absolute inset-0 opacity-40 bg-[radial-gradient(ellipse_at_center,_rgba(79,70,229,0.45),_transparent_60%)]"></div>
+    <div className="absolute inset-0 bg-black/20"></div>
     <div className="absolute -top-16 -left-16 w-80 h-80 bg-indigo-500/40 rounded-full blur-3xl"
          style={{ transform: `translate3d(${mx * 40}px, ${my * 40}px, 0)`, transition: 'transform 0.25s ease-out' }}></div>
     <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500/45 rounded-full blur-3xl"
@@ -354,18 +355,20 @@ export default function HomePage() {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center px-4 pt-36 pb-12">
+        {/* Hero wrapper: fills the viewport (minus header height) */}
+        <section className="min-h-[calc(100vh-80px)] snap-start snap-always flex flex-col justify-center">
         {/* Title & Tagline (no card) */}
-        <section className="w-full max-w-4xl mx-auto text-center mb-6">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-black tracking-tight">PrashnaSetu</h1>
-          <h2 className="text-lg md:text-xl font-semibold text-black mt-2">Think. Compete. Conquer.</h2>
-          <p className="text-gray-700 mt-4 max-w-2xl mx-auto">
+        <div className="w-full max-w-4xl mx-auto text-center mb-6">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight">PrashnaSetu</h1>
+          <h2 className="text-lg md:text-xl font-semibold text-slate-100 mt-2">Think. Compete. Conquer.</h2>
+          <p className="text-slate-200 mt-4 max-w-2xl mx-auto">
             PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images,
             and provides real-time monitoring to ensure academic integrity.
           </p>
-        </section>
+        </div>
 
         {/* Two primary cards */}
-        <section className="w-full max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 mt-2">
+        <div className="w-full max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 mt-2">
           {/* Start Creating Quiz Card */}
           <div
             className="bg-gradient-to-br from-white/70 to-indigo-50/60 backdrop-blur-xl rounded-2xl shadow-xl p-8 border border-indigo-200/60 flex flex-col items-center text-center transition-all duration-500 ease-out hover:shadow-2xl hover:-translate-y-1 hover:scale-[1.02] relative overflow-hidden"
@@ -436,20 +439,36 @@ export default function HomePage() {
               </button>
             </div>
           </div>
+        </div>
         </section>
 
         {/* Salient Features */}
-        <section className="w-full max-w-5xl mx-auto mt-10">
-          <h3 className="text-2xl font-bold text-black text-center mb-6">Salient Features</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {features.map((f) => (
-              <FeatureCard key={f.title} title={f.title} desc={f.desc} px={mx} py={my} icon={f.icon} />
-            ))}
+        <section className="w-full max-w-6xl mx-auto min-h-screen snap-start snap-always flex items-center">
+          <div className="w-full">
+            <h3 className="text-3xl font-bold text-white text-center mb-6">Salient Features</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {features.map((f, idx) => {
+                const ref = React.useRef<HTMLDivElement | null>(null);
+                const inView = useInView(ref, { amount: 0.25 });
+                const offX = idx % 2 === 0 ? -80 : 80;
+                return (
+                  <motion.div
+                    key={f.title}
+                    ref={ref}
+                    initial={false}
+                    animate={inView ? { opacity: 1, x: 0 } : { opacity: 0, x: offX }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                  >
+                    <FeatureCard title={f.title} desc={f.desc} px={mx} py={my} icon={f.icon} />
+                  </motion.div>
+                );
+              })}
+            </div>
           </div>
         </section>
 
         {/* Video Gallery at the end */}
-        <section id="video-gallery" className="w-full max-w-6xl mx-auto mt-12">
+        <section id="video-gallery" className="w-full max-w-6xl mx-auto mt-12 snap-start snap-always">
           <VideoGallery />
         </section>
       </main>
