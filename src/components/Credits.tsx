@@ -12,8 +12,7 @@ const profiles = [
       'Head of Center for Advanced Data and Computational Science',
       'BML Munjal University'
     ],
-    email1: 'kiran.sharma@bmu.edu.in',
-    email2: 'cadcs@bmu.edu.in',
+    email1: 'cadcs@bmu.edu.in',
     linkedin: 'https://www.linkedin.com/in/kiran-sharma-754658180/',
     github: 'https://github.com/SharmaKiran',
   },
@@ -25,8 +24,6 @@ const profiles = [
       'BTech CSE 2023-2027',
       'BML Munjal University'
     ],
-    email1: 'harshit.soni.23cse@bmu.edu.in',
-    email2: 'mailtoh.soni@gmail.com',
     linkedin: 'https://www.linkedin.com/in/harshit-soni-781a77274/',
     github: 'https://github.com/Felix-au',
   },
@@ -90,7 +87,7 @@ const Credits: React.FC = () => {
       <section className="w-full max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
         {profiles.map((profile, idx) => (
           <div
-            key={profile.email1}
+            key={profile.name || idx}
             className="h-full flex flex-col items-center rounded-2xl shadow-md p-10 min-h-[440px] md:min-h-[520px] border border-indigo-200/60 bg-gradient-to-br from-white/70 to-indigo-50/60 backdrop-blur-xl overflow-hidden hover:shadow-2xl hover:-translate-y-1 hover:scale-[1.02] ring-0 hover:ring-2 hover:ring-indigo-400/70 transition-all duration-500 ease-out"
             style={{ transform: `translate3d(${(idx % 2 === 0 ? 1 : -1) * mx * 12}px, ${(idx % 2 === 0 ? 1 : -1) * my * 12}px, 0)` }}
           >
@@ -102,16 +99,14 @@ const Credits: React.FC = () => {
                 <div key={i}>{pos}</div>
               ))}
             </div>
-            <div className="flex flex-col gap-1 w-full items-center mb-2">
-              <a href={`mailto:${profile.email1}`} className="flex items-center gap-2 text-sm text-blue-700 underline hover:text-blue-900">
-                <Mail className="h-5 w-5 text-indigo-500" />
-                {profile.email1}
-              </a>
-              <a href={`mailto:${profile.email2}`} className="flex items-center gap-2 text-sm text-blue-700 underline hover:text-blue-900">
-                <Mail className="h-5 w-5 text-indigo-500" />
-                {profile.email2}
-              </a>
-            </div>
+            {profile.email1 && (
+              <div className="flex flex-col gap-1 w-full items-center mb-2">
+                <a href={`mailto:${profile.email1}`} className="flex items-center gap-2 text-sm text-blue-700 underline hover:text-blue-900">
+                  <Mail className="h-5 w-5 text-indigo-500" />
+                  {profile.email1}
+                </a>
+              </div>
+            )}
             <div className="flex gap-4 mt-2">
               {profile.linkedin && (
                 <a href={profile.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-700 hover:text-blue-900 text-sm">

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ChevronDown, ChevronUp, PlusCircle, PlayCircle, User, BarChart3, ShieldCheck, Brain, Eye, FileDown, Timer } from "lucide-react";
+import { ChevronDown, ChevronUp, PlusCircle, PlayCircle, BarChart3, ShieldCheck, Brain, Eye, FileDown, Timer } from "lucide-react";
 import VideoGallery from "./VideoGallery";
 
 const faqs = [
@@ -195,6 +195,19 @@ export default function HomePage() {
   const [mx, setMx] = useState(0); // -0.5..0.5 range
   const [my, setMy] = useState(0);
 
+  // Inline video modal state (for Video Guide buttons)
+  const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const [activeVideo, setActiveVideo] = useState<null | { src: string; title: string }>(null);
+
+  const openVideo = (src: string, title: string) => {
+    setActiveVideo({ src, title });
+    setVideoModalOpen(true);
+  };
+  const closeVideo = () => {
+    setVideoModalOpen(false);
+    setActiveVideo(null);
+  };
+
   // Handlers for Downloads
   const handleDownloadsEnter = () => {
     if (downloadsTimeout.current) clearTimeout(downloadsTimeout.current);
@@ -264,13 +277,17 @@ export default function HomePage() {
     ))}
   </div>
 </div>
+              <a href={downloads[1].href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-100 text-green-700 font-semibold shadow hover:bg-green-200 focus:ring-2 focus:ring-green-300 border border-green-200 transition">
+                <BarChart3 className="w-5 h-5" />
+                Result
+              </a>
               <div className="relative"
   onMouseEnter={handleManualsEnter}
   onMouseLeave={handleManualsLeave}
 >
   <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-50 text-amber-800 font-semibold shadow hover:bg-amber-100 focus:ring-2 focus:ring-amber-300 transition border border-amber-100 cursor-pointer select-none">
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 20h9" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16.5 3.5l2 2-8.5 8.5H8.5v-2l8.5-8.5z" /></svg>
-  Manuals
+  User Manuals
 </button>
   <div className={`absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-indigo-100 z-50 ${manualsOpen ? 'block' : 'hidden'}`}>
     {manuals.map((m) => (
@@ -312,11 +329,15 @@ export default function HomePage() {
     ))}
   </div>
 </div>
+              <a href={downloads[1].href} target="_blank" rel="noopener noreferrer" className="px-3 py-1 rounded bg-green-100 text-green-700 font-medium border border-green-200 flex items-center gap-1">
+                <BarChart3 className="w-4 h-4" />
+                Result
+              </a>
               <div className="relative"
   onMouseEnter={handleManualsEnter}
   onMouseLeave={handleManualsLeave}
 >
-  <button className="px-3 py-1 rounded bg-gray-100 text-black font-medium border border-gray-200 cursor-pointer select-none">Manuals</button>
+  <button className="px-3 py-1 rounded bg-gray-100 text-black font-medium border border-gray-200 cursor-pointer select-none">User Manuals</button>
   <div className={`absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-indigo-100 z-50 ${manualsOpen ? 'block' : 'hidden'}`}>
     {manuals.map((m) => (
       <a key={m.label} href={m.href} target="_blank" rel="noopener noreferrer" className="block px-3 py-1 text-black hover:bg-gray-100 rounded">{m.label}</a>
@@ -373,7 +394,7 @@ export default function HomePage() {
                   </span>
                 </button>
               </Link>
-              <button onClick={handleScrollToVideo} className="px-6 py-3 rounded-xl bg-amber-100 text-amber-800 font-semibold shadow hover:bg-amber-200 focus:ring-2 focus:ring-amber-300 border border-amber-200 transition-transform duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-2">
+              <button onClick={() => openVideo('/creating.mp4', 'Creating a Quiz')} className="px-6 py-3 rounded-xl bg-amber-100 text-amber-800 font-semibold shadow hover:bg-amber-200 focus:ring-2 focus:ring-amber-300 border border-amber-200 transition-transform duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-2">
                 <PlayCircle className="w-5 h-5" />
                 Video Guide
               </button>
@@ -390,14 +411,29 @@ export default function HomePage() {
             <h3 className="text-xl md:text-2xl font-bold text-black">Quiz Proctoring Software</h3>
             <p className="text-gray-700 mt-2">Download the proctoring tools:</p>
             <div className="flex flex-wrap justify-center gap-3 mt-5">
-              <a href={downloads[0].href} target="_blank" rel="noopener noreferrer" className="px-6 py-3 rounded-xl bg-indigo-50 text-indigo-700 font-semibold shadow hover:bg-indigo-100 focus:ring-2 focus:ring-indigo-300 border border-indigo-100 transition-transform duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-2">
-                <User className="w-5 h-5" />
-                Faculty
+              <a
+                href={downloads[0].href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative overflow-hidden px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white font-semibold shadow-lg focus:outline-none transition-transform duration-300 ease-out hover:scale-105 active:scale-95 filter drop-shadow-[0_0_18px_rgba(16,185,129,0.45)]"
+              >
+                <span
+                  className="pointer-events-none absolute -inset-0.5 rounded-[1.25rem] opacity-80 blur-[0.5px] bg-[conic-gradient(from_0deg,theme(colors.emerald.400),theme(colors.teal.400),theme(colors.emerald.400))] animate-[spin_3s_linear_infinite]"
+                  aria-hidden="true"
+                />
+                <span
+                  className="pointer-events-none absolute -inset-1 rounded-[1.35rem] opacity-30 blur-xl bg-[conic-gradient(from_0deg,theme(colors.emerald.400),theme(colors.teal.400),theme(colors.emerald.400))] animate-[spin_3s_linear_infinite]"
+                  aria-hidden="true"
+                />
+                <span className="relative z-10 flex items-center gap-2">
+                  <FileDown className="w-5 h-5" />
+                  Download
+                </span>
               </a>
-              <a href={downloads[1].href} target="_blank" rel="noopener noreferrer" className="px-6 py-3 rounded-xl bg-green-100 text-green-700 font-semibold shadow hover:bg-green-200 focus:ring-2 focus:ring-green-300 border border-green-200 transition-transform duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                Result
-              </a>
+              <button onClick={() => openVideo('/login.mp4', 'Login: A glance at the Dashboard')} className="px-6 py-3 rounded-xl bg-amber-100 text-amber-800 font-semibold shadow hover:bg-amber-200 focus:ring-2 focus:ring-amber-300 border border-amber-200 transition-transform duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-2">
+                <PlayCircle className="w-5 h-5" />
+                Video Guide
+              </button>
             </div>
           </div>
         </section>
@@ -417,6 +453,46 @@ export default function HomePage() {
           <VideoGallery />
         </section>
       </main>
+
+      {/* Inline Video Modal */}
+      <AnimatePresence>
+        {videoModalOpen && activeVideo && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={closeVideo}
+          >
+            <button
+              className="absolute top-4 right-4 text-3xl text-white hover:text-red-500 font-bold z-10 bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center"
+              onClick={closeVideo}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <motion.div
+              className="bg-white rounded-xl shadow-xl p-4 relative flex flex-col items-center"
+              style={{ width: "80vw", maxWidth: 900, height: "80vh", maxHeight: 600 }}
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <video
+                src={activeVideo.src}
+                controls
+                autoPlay
+                className="w-full h-full rounded-lg"
+                style={{ maxHeight: "calc(80vh - 60px)" }}
+              />
+              <div className="text-lg font-semibold text-black mt-2 text-center">
+                {activeVideo.title}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Footer Desktop */}
       <div className="hidden md:block fixed bottom-0 left-0 w-full bg-gradient-to-r from-blue-200 via-indigo-100 to-blue-300/90 border-t border-indigo-100 py-3 text-center text-xs text-gray-700 z-50 shadow-lg">

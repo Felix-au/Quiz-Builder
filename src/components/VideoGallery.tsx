@@ -215,7 +215,7 @@ export default function VideoGallery() {
                 className="w-full h-full rounded-lg"
                 style={{ maxHeight: "calc(80vh - 60px)" }}
               />
-              <div className="text-lg font-semibold text-indigo-700 mt-2 text-center">
+              <div className="text-lg font-semibold text-black mt-2 text-center">
                 {activeVideo.title}
               </div>
             </motion.div>
