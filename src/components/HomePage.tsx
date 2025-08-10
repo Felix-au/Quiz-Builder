@@ -250,7 +250,7 @@ export default function HomePage() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="relative"
+              <div className="relative hidden"
   onMouseEnter={handleDownloadsEnter}
   onMouseLeave={handleDownloadsLeave}
 >
@@ -282,7 +282,7 @@ export default function HomePage() {
                 <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-100 text-green-700 font-semibold shadow hover:bg-green-200 focus:ring-2 focus:ring-green-300 border border-green-200 transition">
   {/* Mail/Contact icon for Credits & Contact */}
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 8.5V18a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 18V8.5m18 0A2.5 2.5 0 0018.5 6h-13A2.5 2.5 0 003 8.5m18 0V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2.5m18 0l-9 6.5-9-6.5" /></svg>
-  Credits & Contact
+  Contact Us
 </button>
               </Link>
               
@@ -301,7 +301,7 @@ export default function HomePage() {
               </div>
             </div>
             <div className="flex items-center gap-2 mt-2">
-              <div className="relative"
+              <div className="relative hidden"
   onMouseEnter={handleDownloadsEnter}
   onMouseLeave={handleDownloadsLeave}
 >
@@ -324,7 +324,7 @@ export default function HomePage() {
   </div>
 </div>
               <Link to="/credits">
-                <button className="px-3 py-1 rounded bg-green-100 text-green-700 font-medium border border-green-200">Credits & Contact</button>
+                <button className="px-3 py-1 rounded bg-green-100 text-green-700 font-medium border border-green-200">Contact Us</button>
               </Link>
             </div>
           </div>
@@ -352,8 +352,8 @@ export default function HomePage() {
           >
             <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-indigo-200/30 blur-3xl"></div>
             <div className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full bg-blue-200/30 blur-3xl"></div>
-            <h3 className="text-xl md:text-2xl font-bold text-black">Start Creating Quiz</h3>
-            <p className="text-gray-700 mt-2">Click on create quiz button and you can create your quiz</p>
+            <h3 className="text-xl md:text-2xl font-bold text-black">Create a Quiz</h3>
+            <p className="text-gray-700 mt-2">Click "Create Quiz" to start building your quiz.</p>
             <div className="flex flex-wrap justify-center gap-3 mt-5">
               <Link to="/home">
                 <button
@@ -388,7 +388,7 @@ export default function HomePage() {
             <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-indigo-200/30 blur-3xl"></div>
             <div className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full bg-blue-200/30 blur-3xl"></div>
             <h3 className="text-xl md:text-2xl font-bold text-black">Quiz Proctoring Software</h3>
-            <p className="text-gray-700 mt-2">Download software for</p>
+            <p className="text-gray-700 mt-2">Download the proctoring tools:</p>
             <div className="flex flex-wrap justify-center gap-3 mt-5">
               <a href={downloads[0].href} target="_blank" rel="noopener noreferrer" className="px-6 py-3 rounded-xl bg-indigo-50 text-indigo-700 font-semibold shadow hover:bg-indigo-100 focus:ring-2 focus:ring-indigo-300 border border-indigo-100 transition-transform duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-2">
                 <User className="w-5 h-5" />
