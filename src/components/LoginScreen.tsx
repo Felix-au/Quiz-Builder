@@ -127,15 +127,17 @@ const LoginScreen = () => {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* Aurora Background Layers */}
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,_rgba(99,102,241,0.16),_transparent_60%),_radial-gradient(ellipse_at_bottom_right,_rgba(59,130,246,0.16),_transparent_60%)]" />
-      <div className="absolute -z-10 w-80 h-80 bg-indigo-300/30 rounded-full blur-3xl -top-16 -left-16" />
-      <div className="absolute -z-10 w-96 h-96 bg-blue-300/30 rounded-full blur-3xl top-1/4 -right-20" />
-      <div className="absolute -z-10 w-72 h-72 bg-purple-300/30 rounded-full blur-3xl bottom-0 left-1/3" />
+      {/* Darker Background Layers (like Home) */}
+      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-slate-800 via-indigo-900 to-blue-950" />
+      <div className="absolute inset-0 -z-10 opacity-40 bg-[radial-gradient(ellipse_at_center,_rgba(79,70,229,0.45),_transparent_60%)]" />
+      <div className="absolute inset-0 -z-10 bg-black/20" />
+      <div className="absolute -z-10 w-80 h-80 bg-indigo-500/40 rounded-full blur-3xl -top-16 -left-16" />
+      <div className="absolute -z-10 w-96 h-96 bg-blue-500/45 rounded-full blur-3xl top-1/4 -right-20" />
+      <div className="absolute -z-10 w-72 h-72 bg-purple-600/30 rounded-full blur-3xl bottom-0 left-1/3" />
       {/* Desktop Layout - Original Design */}
       <div className="hidden md:flex flex-col min-h-screen">
         <div className="flex-1 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="w-full max-w-screen-xl grid grid-cols-2 shadow-xl rounded-lg overflow-hidden bg-white">
+          <div className="w-full max-w-screen-xl grid grid-cols-2 shadow-xl rounded-lg overflow-hidden bg-white/95">
         {/* Left Branding Section */}
             <div className="flex flex-col items-center justify-center bg-gradient-to-br from-gray-200 to-gray-400 text-gray-900 p-8 h-full min-h-screen w-full">
           <div className="text-center max-w-xs mx-auto">

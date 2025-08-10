@@ -83,10 +83,7 @@ const Screen0: React.FC<Screen0Props> = ({ loadFromSavedSession, startNewQuiz, i
  
         </div>
         
-        <div className="text-center text-base text-gray-500 mt-8 pt-4 border-t border-gray-200">
-          <p className="text-base">© Copyrighted by CAD-CS, BML Munjal University</p>
-          <p className="text-base"><Mail className="inline-block w-5 h-5 mr-1 -mt-1 align-middle text-gray-500" /><a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-blue-700">cadcs@bmu.edu.in</a></p>
-        </div>
+        
       </CardContent>
     </Card>
   );

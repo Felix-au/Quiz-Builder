@@ -1781,21 +1781,23 @@ const QuizCreator = () => {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* Aurora Background Layers */}
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,_rgba(99,102,241,0.16),_transparent_60%),_radial-gradient(ellipse_at_bottom_right,_rgba(59,130,246,0.16),_transparent_60%)]" />
-      <div className="absolute -z-10 w-80 h-80 bg-indigo-300/30 rounded-full blur-3xl -top-16 -left-16" />
-      <div className="absolute -z-10 w-96 h-96 bg-blue-300/30 rounded-full blur-3xl top-1/4 -right-20" />
-      <div className="absolute -z-10 w-72 h-72 bg-purple-300/30 rounded-full blur-3xl bottom-0 left-1/3" />
-      {/* Welcome Header */}
-      <div className="bg-white/60 backdrop-blur-xl supports-[backdrop-filter]:bg-white/40 border-b border-indigo-200/60">
+      {/* Darker Background Layers (like Home) */}
+      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-slate-800 via-indigo-900 to-blue-950" />
+      <div className="absolute inset-0 -z-10 opacity-40 bg-[radial-gradient(ellipse_at_center,_rgba(79,70,229,0.45),_transparent_60%)]" />
+      <div className="absolute inset-0 -z-10 bg-black/20" />
+      <div className="absolute -z-10 w-80 h-80 bg-indigo-500/40 rounded-full blur-3xl -top-16 -left-16" />
+      <div className="absolute -z-10 w-96 h-96 bg-blue-500/45 rounded-full blur-3xl top-1/4 -right-20" />
+      <div className="absolute -z-10 w-72 h-72 bg-purple-600/30 rounded-full blur-3xl bottom-0 left-1/3" />
+      {/* Header (match HomePage) */}
+      <div className="bg-gradient-to-r from-blue-200 via-indigo-100 to-blue-300/90 backdrop-blur-md shadow-lg border-b fixed top-0 left-0 w-full z-40 transition-all duration-300">
         <div className="container flex flex-col justify-center px-4">
           {/* Desktop Header */}
           <div className="hidden md:flex items-center justify-between h-20">
             <div className="flex items-center gap-3 cursor-pointer" onClick={() => setCurrentScreen(0)}>
               <img src="/logo2.png" alt="PrashnaSetu Logo" className="h-12 w-12 object-contain" />
               <div className="flex flex-col justify-center">
-                <h1 className="text-lg font-semibold leading-tight">PrashnaSetu</h1>
-                <span className="text-xs text-muted-foreground leading-tight">Think. Compete. Conquer.</span>
+                <h1 className="text-lg font-semibold leading-tight text-black">PrashnaSetu</h1>
+                <span className="text-xs text-black leading-tight">Think. Compete. Conquer.</span>
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -1820,8 +1822,8 @@ const QuizCreator = () => {
               <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentScreen(0)}>
                 <img src="/logo2.png" alt="PrashnaSetu Logo" className="h-8 w-8 object-contain" />
                 <div className="flex flex-col">
-                  <h1 className="text-sm font-semibold leading-tight">PrashnaSetu</h1>
-                  <span className="text-xs text-muted-foreground leading-tight">Think. Compete. Conquer.</span>
+                  <h1 className="text-sm font-semibold leading-tight text-black">PrashnaSetu</h1>
+                  <span className="text-xs text-black leading-tight">Think. Compete. Conquer.</span>
                 </div>
               </div>
               <Button
@@ -1840,7 +1842,8 @@ const QuizCreator = () => {
           </div>
         </div>
       </div>
-      <div className="p-4">
+      {/* Add top padding for header and bottom padding for fixed footer */}
+      <div className="p-4 pt-24 pb-24">
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="text-center">
             <h1 className="text-3xl font-bold text-gray-900 mb-2"></h1>
@@ -2246,14 +2249,18 @@ const QuizCreator = () => {
         </div>
       </div>
 
-      {/* Aurora Footer */}
-      <div className="fixed bottom-0 left-0 w-full bg-white/60 backdrop-blur-xl border-t border-indigo-200/60 py-3 text-center text-xs text-gray-700 z-50">
+      {/* Footer Desktop (match HomePage) */}
+      <div className="hidden md:block fixed bottom-0 left-0 w-full bg-gradient-to-r from-blue-200 via-indigo-100 to-blue-300/90 border-t border-indigo-100 py-3 text-center text-xs text-gray-700 z-50 shadow-lg">
         <p>© Copyrighted by CAD-CS, BML Munjal University</p>
-        <p className="flex items-center justify-center gap-1">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-gray-500"><path d="M1.5 8.67v8.58A2.25 2.25 0 0 0 3.75 19.5h16.5a2.25 2.25 0 0 0 2.25-2.25V8.67l-8.954 5.255a3.75 3.75 0 0 1-3.292 0L1.5 8.67Z"/><path d="M22.5 6.908V6.75A2.25 2.25 0 0 0 20.25 4.5H3.75A2.25 2.25 0 0 0 1.5 6.75v.158l9.318 5.468a2.25 2.25 0 0 0 2.364 0L22.5 6.908Z"/></svg>
-          <a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-indigo-700">cadcs@bmu.edu.in</a>
-        </p>
+        <p className="flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-.96 1.85l-7.29 5.063a2.25 2.25 0 0 1-2.52 0L2.46 8.843a2.25 2.25 0 0 1-.96-1.85V6.75"/></svg><a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-blue-700">cadcs@bmu.edu.in</a></p>
       </div>
+
+      {/* Footer Mobile (match HomePage) */}
+      <div className="md:hidden text-center text-xs text-gray-700 mt-6 mb-2 bg-gradient-to-r from-blue-200 via-indigo-100 to-blue-300/90 py-3 border-t border-indigo-100 shadow">
+        <p>© Copyrighted by CAD-CS, BML Munjal University</p>
+        <p className="flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-.96 1.85l-7.29 5.063a2.25 2.25 0 0 1-2.52 0L2.46 8.843a2.25 2.25 0 0 1-.96-1.85V6.75"/></svg><a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-blue-700">cadcs@bmu.edu.in</a></p>
+      </div>
+
     </div>
   );
 };
