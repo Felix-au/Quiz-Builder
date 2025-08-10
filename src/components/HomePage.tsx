@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, PlusCircle, PlayCircle, User, BarChart3, ShieldCheck, Brain, Eye, FileDown, Timer } from "lucide-react";
 import VideoGallery from "./VideoGallery";
 
 const faqs = [
@@ -26,6 +26,111 @@ const downloads = [
   { label: "Faculty Zip", href: "https://drive.google.com/file/d/1JqiUpxPqR0RhoeikT30keE1qKGKPEQx3/view" },
   { label: "Result Zip", href: "https://drive.google.com/file/d/1PVDmyT1yU--LjglN18fICvkUnl8DWyPx/view" },
 ];
+
+// Salient features to show as flip cards (with icons)
+const features = [
+  {
+    title: "Multi-Role Access Control",
+    desc: "Hierarchical user management with role-based permissions",
+    icon: ShieldCheck,
+  },
+  {
+    title: "Advanced Quiz Engine",
+    desc: "Completely Offline support for various question types including images and mathematical expressions",
+    icon: Brain,
+  },
+  {
+    title: "Real-time Monitoring",
+    desc: "Live surveillance capabilities for proctors during assessments",
+    icon: Eye,
+  },
+  {
+    title: "Performance Analytics",
+    desc: "Detailed reporting and statistical analysis of student performance",
+    icon: BarChart3,
+  },
+  {
+    title: "Export Capabilities",
+    desc: "Support for quiz analytics, and result export in multiple formats",
+    icon: FileDown,
+  },
+  {
+    title: "Academic Integrity Tools",
+    desc: "Time allotment, randomized questions, and monitoring features",
+    icon: Timer,
+  },
+];
+
+function FeatureCard({ title, desc, px = 0, py = 0, icon: Icon }: { title: string; desc: string; px?: number; py?: number; icon?: React.ElementType }) {
+  const [flipped, setFlipped] = useState(false);
+  const hoverTimer = React.useRef<NodeJS.Timeout | null>(null);
+  const flipBackTimer = React.useRef<NodeJS.Timeout | null>(null);
+
+  const scheduleFlipBack = () => {
+    if (flipBackTimer.current) clearTimeout(flipBackTimer.current);
+    flipBackTimer.current = setTimeout(() => setFlipped(false), 3000);
+  };
+
+  const flipTo = (next: boolean) => {
+    setFlipped(next);
+    if (next) scheduleFlipBack();
+    else if (flipBackTimer.current) clearTimeout(flipBackTimer.current);
+  };
+
+  const handleClick = () => {
+    const next = !flipped;
+    flipTo(next);
+  };
+
+  const handleMouseEnter = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => flipTo(true), 400);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+  };
+
+  React.useEffect(() => {
+    return () => {
+      if (hoverTimer.current) clearTimeout(hoverTimer.current);
+      if (flipBackTimer.current) clearTimeout(flipBackTimer.current);
+    };
+  }, []);
+
+  return (
+    <div
+      className="group cursor-pointer select-none [perspective:1200px]"
+      onClick={handleClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      role="button"
+      aria-pressed={flipped}
+    >
+      {/* Rotating card (entire card flips) with parallax */}
+      <div
+        className={"relative w-full h-60 transition-transform duration-500 ease-out [transform-style:preserve-3d]"}
+        style={{ transform: `translate3d(${px * 16}px, ${py * 16}px, 0) rotateY(${flipped ? 180 : 0}deg)` }}
+      >
+        {/* Front Face (styled card) */}
+        <div className="absolute inset-0 rounded-2xl border border-indigo-200/60 bg-gradient-to-br from-white/70 to-indigo-50/60 backdrop-blur-xl overflow-hidden shadow-md group-hover:shadow-2xl group-hover:-translate-y-1 group-hover:scale-[1.02] ring-0 group-hover:ring-2 group-hover:ring-indigo-400/70 transition-all duration-500 ease-out [backface-visibility:hidden]">
+          <div className="absolute inset-0 opacity-30 pointer-events-none bg-[radial-gradient(ellipse_at_top,_rgba(99,102,241,0.15),_transparent_60%)]"></div>
+          <div className="relative z-10 h-full w-full p-6 flex flex-col items-center justify-center text-center text-black">
+            {Icon ? <Icon className="w-7 h-7 mb-2 text-indigo-600" /> : null}
+            <div className="font-semibold">{title}</div>
+          </div>
+        </div>
+        {/* Back Face */}
+        <div className="absolute inset-0 rounded-2xl border border-indigo-300/60 bg-gradient-to-br from-indigo-50/90 to-blue-50/90 backdrop-blur-xl overflow-hidden shadow-xl [transform:rotateY(180deg)] [backface-visibility:hidden]">
+          <div className="absolute inset-0 opacity-40 pointer-events-none bg-[radial-gradient(ellipse_at_bottom,_rgba(99,102,241,0.18),_transparent_60%)]"></div>
+          <div className="relative z-10 h-full w-full p-6 flex items-center justify-center text-center text-black">
+            <span className="text-sm text-gray-800">{desc}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function FAQAccordion({ data }) {
   const [openIndex, setOpenIndex] = useState(null);
@@ -86,6 +191,9 @@ export default function HomePage() {
   const [manualsOpen, setManualsOpen] = useState(false);
   const downloadsTimeout = React.useRef<NodeJS.Timeout | null>(null);
   const manualsTimeout = React.useRef<NodeJS.Timeout | null>(null);
+  // Parallax state
+  const [mx, setMx] = useState(0); // -0.5..0.5 range
+  const [my, setMy] = useState(0);
 
   // Handlers for Downloads
   const handleDownloadsEnter = () => {
@@ -105,11 +213,30 @@ export default function HomePage() {
     manualsTimeout.current = setTimeout(() => setManualsOpen(false), 200);
   };
 
+  const handleScrollToVideo = () => {
+    const el = document.getElementById("video-gallery");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const { innerWidth, innerHeight } = window;
+    const nx = e.clientX / innerWidth - 0.5;
+    const ny = e.clientY / innerHeight - 0.5;
+    setMx(nx);
+    setMy(ny);
+  };
+
   return (
-    <div className="relative min-h-screen flex flex-col overflow-x-hidden bg-gradient-to-br from-blue-100 via-indigo-100 to-blue-300">
-  {/* Main bluish gradient background applied to whole page */}
-  {/* Optionally keep a subtle overlay for depth, but remove color blobs for a cleaner look */}
-  <div className="pointer-events-none select-none fixed inset-0 -z-10 bg-gradient-to-br from-blue-200 via-indigo-100 to-blue-400"></div>
+    <div onMouseMove={handleMouseMove} className="relative min-h-screen flex flex-col overflow-x-hidden bg-gradient-to-br from-slate-200 via-indigo-300 to-blue-400">
+  {/* Enhanced gradient background with subtle animated blobs */}
+  <div className="pointer-events-none select-none fixed inset-0 -z-10">
+    <div className="absolute inset-0 bg-gradient-to-br from-slate-200 via-indigo-300 to-blue-400"></div>
+    <div className="absolute inset-0 opacity-30 bg-[radial-gradient(ellipse_at_center,_rgba(99,102,241,0.45),_transparent_60%)]"></div>
+    <div className="absolute -top-16 -left-16 w-80 h-80 bg-indigo-500/40 rounded-full blur-3xl"
+         style={{ transform: `translate3d(${mx * 40}px, ${my * 40}px, 0)`, transition: 'transform 0.25s ease-out' }}></div>
+    <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500/45 rounded-full blur-3xl"
+         style={{ transform: `translate3d(${mx * -48}px, ${my * -48}px, 0)`, transition: 'transform 0.25s ease-out' }}></div>
+  </div>
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-200 via-indigo-100 to-blue-300/90 backdrop-blur-md shadow-lg border-b fixed top-0 left-0 w-full z-40 transition-all duration-300">
         <div className="container flex flex-col justify-center px-4">
@@ -205,23 +332,91 @@ export default function HomePage() {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 pt-36 pb-8">
-  {/* App Info Section */}
-  <section className="w-full max-w-2xl mx-auto bg-white/60 backdrop-blur-lg rounded-2xl shadow-2xl p-10 mb-10 flex flex-col items-center text-center border border-white/40">
-    <h1 className="text-3xl md:text-4xl font-bold text-black mb-2">PrashnaSetu</h1>
-    <h2 className="text-lg md:text-xl font-semibold text-black mb-3">Think. Compete. Conquer.</h2>
-    <p className="text-gray-700 mb-6">PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
-    <Link to="/home">
-      <button className="flex items-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-indigo-500 via-blue-500 to-indigo-600 text-white font-semibold shadow-lg hover:from-indigo-600 hover:to-blue-700 focus:ring-2 focus:ring-indigo-300 transition text-lg">
-  Start Creating Quiz
-</button>
-    </Link>
-  </section>
-  {/* Video Gallery */}
-  <VideoGallery />
-  {/* FAQ Accordion */}
-  <FAQAccordion data={faqs} />
-</main>
+      <main className="flex-1 flex flex-col items-center px-4 pt-36 pb-12">
+        {/* Title & Tagline (no card) */}
+        <section className="w-full max-w-4xl mx-auto text-center mb-6">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-black tracking-tight">PrashnaSetu</h1>
+          <h2 className="text-lg md:text-xl font-semibold text-black mt-2">Think. Compete. Conquer.</h2>
+          <p className="text-gray-700 mt-4 max-w-2xl mx-auto">
+            PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images,
+            and provides real-time monitoring to ensure academic integrity.
+          </p>
+        </section>
+
+        {/* Two primary cards */}
+        <section className="w-full max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 mt-2">
+          {/* Start Creating Quiz Card */}
+          <div
+            className="bg-gradient-to-br from-white/70 to-indigo-50/60 backdrop-blur-xl rounded-2xl shadow-xl p-8 border border-indigo-200/60 flex flex-col items-center text-center transition-all duration-500 ease-out hover:shadow-2xl hover:-translate-y-1 hover:scale-[1.02] relative overflow-hidden"
+            style={{ transform: `translate3d(${mx * 14}px, ${my * 14}px, 0)` }}
+          >
+            <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-indigo-200/30 blur-3xl"></div>
+            <div className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full bg-blue-200/30 blur-3xl"></div>
+            <h3 className="text-xl md:text-2xl font-bold text-black">Start Creating Quiz</h3>
+            <p className="text-gray-700 mt-2">Click on create quiz button and you can create your quiz</p>
+            <div className="flex flex-wrap justify-center gap-3 mt-5">
+              <Link to="/home">
+                <button
+                  className="relative overflow-hidden px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 text-white font-semibold shadow-lg focus:outline-none transition-transform duration-300 ease-out hover:scale-105 active:scale-95 filter drop-shadow-[0_0_18px_rgba(99,102,241,0.45)]"
+                >
+                  <span
+                    className="pointer-events-none absolute -inset-0.5 rounded-[1.25rem] opacity-80 blur-[0.5px] bg-[conic-gradient(from_0deg,theme(colors.indigo.400),theme(colors.blue.400),theme(colors.indigo.400))] animate-[spin_3s_linear_infinite]"
+                    aria-hidden="true"
+                  />
+                  <span
+                    className="pointer-events-none absolute -inset-1 rounded-[1.35rem] opacity-30 blur-xl bg-[conic-gradient(from_0deg,theme(colors.indigo.400),theme(colors.blue.400),theme(colors.indigo.400))] animate-[spin_3s_linear_infinite]"
+                    aria-hidden="true"
+                  />
+                  <span className="relative z-10 flex items-center gap-2">
+                    <PlusCircle className="w-5 h-5" />
+                    Create Quiz
+                  </span>
+                </button>
+              </Link>
+              <button onClick={handleScrollToVideo} className="px-6 py-3 rounded-xl bg-amber-100 text-amber-800 font-semibold shadow hover:bg-amber-200 focus:ring-2 focus:ring-amber-300 border border-amber-200 transition-transform duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-2">
+                <PlayCircle className="w-5 h-5" />
+                Video Guide
+              </button>
+            </div>
+          </div>
+
+          {/* Quiz Proctoring Software Card */}
+          <div
+            className="bg-gradient-to-br from-white/70 to-indigo-50/60 backdrop-blur-xl rounded-2xl shadow-xl p-8 border border-indigo-200/60 flex flex-col items-center text-center transition-all duration-500 ease-out hover:shadow-2xl hover:-translate-y-1 hover:scale-[1.02] relative overflow-hidden"
+            style={{ transform: `translate3d(${mx * -14}px, ${my * -14}px, 0)` }}
+          >
+            <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-indigo-200/30 blur-3xl"></div>
+            <div className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full bg-blue-200/30 blur-3xl"></div>
+            <h3 className="text-xl md:text-2xl font-bold text-black">Quiz Proctoring Software</h3>
+            <p className="text-gray-700 mt-2">Download software for</p>
+            <div className="flex flex-wrap justify-center gap-3 mt-5">
+              <a href={downloads[0].href} target="_blank" rel="noopener noreferrer" className="px-6 py-3 rounded-xl bg-indigo-50 text-indigo-700 font-semibold shadow hover:bg-indigo-100 focus:ring-2 focus:ring-indigo-300 border border-indigo-100 transition-transform duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-2">
+                <User className="w-5 h-5" />
+                Faculty
+              </a>
+              <a href={downloads[1].href} target="_blank" rel="noopener noreferrer" className="px-6 py-3 rounded-xl bg-green-100 text-green-700 font-semibold shadow hover:bg-green-200 focus:ring-2 focus:ring-green-300 border border-green-200 transition-transform duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5" />
+                Result
+              </a>
+            </div>
+          </div>
+        </section>
+
+        {/* Salient Features */}
+        <section className="w-full max-w-5xl mx-auto mt-10">
+          <h3 className="text-2xl font-bold text-black text-center mb-6">Salient Features</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {features.map((f) => (
+              <FeatureCard key={f.title} title={f.title} desc={f.desc} px={mx} py={my} icon={f.icon} />
+            ))}
+          </div>
+        </section>
+
+        {/* Video Gallery at the end */}
+        <section id="video-gallery" className="w-full max-w-6xl mx-auto mt-12">
+          <VideoGallery />
+        </section>
+      </main>
 
       {/* Footer Desktop */}
       <div className="hidden md:block fixed bottom-0 left-0 w-full bg-gradient-to-r from-blue-200 via-indigo-100 to-blue-300/90 border-t border-indigo-100 py-3 text-center text-xs text-gray-700 z-50 shadow-lg">
