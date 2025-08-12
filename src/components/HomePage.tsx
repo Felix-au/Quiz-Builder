@@ -23,8 +23,8 @@ const manuals = [
 ];
 
 const downloads = [
-  { label: "Faculty Zip", href: "https://drive.google.com/file/d/1JqiUpxPqR0RhoeikT30keE1qKGKPEQx3/view" },
-  { label: "Result Zip", href: "https://drive.google.com/file/d/1PVDmyT1yU--LjglN18fICvkUnl8DWyPx/view" },
+  { label: "Faculty Zip", href: "https://drive.google.com/file/d/1RfUKLSqFVVSjdgm3JXM0joZQBYS7bMQG/view" },
+  { label: "Result Zip", href: "https://drive.google.com/file/d/1eOlyx08BCyI421qCoVurFUuSePAsRKk1/view" },
 ];
 
 // Salient features to show as flip cards (with icons)
