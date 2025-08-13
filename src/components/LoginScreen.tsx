@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { Mail, Lock, LogIn, UserPlus, KeyRound, Chrome, ChevronDown } from 'lucide-react';
+import { Mail, Lock, LogIn, UserPlus, KeyRound, Chrome, ChevronDown, Home as HomeIcon } from 'lucide-react';
 
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,6 +44,18 @@ const LoginScreen = () => {
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Hide scrollbar on this page while keeping scroll functionality
+  useEffect(() => {
+    const htmlEl = document.documentElement;
+    const bodyEl = document.body;
+    htmlEl.classList.add('no-scrollbar');
+    bodyEl.classList.add('no-scrollbar');
+    return () => {
+      htmlEl.classList.remove('no-scrollbar');
+      bodyEl.classList.remove('no-scrollbar');
+    };
   }, []);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
@@ -136,11 +148,11 @@ const LoginScreen = () => {
       <div className="absolute -z-10 w-72 h-72 bg-purple-600/30 rounded-full blur-3xl bottom-0 left-1/3" />
       {/* Desktop Layout - Original Design */}
       <div className="hidden md:flex flex-col min-h-screen">
-        <div className="flex-1 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="flex-1 flex items-center justify-center p-4 overflow-y-auto no-scrollbar">
           <div className="w-full max-w-screen-xl grid grid-cols-2 shadow-xl rounded-lg overflow-hidden bg-white/95">
         {/* Left Branding Section */}
             <div className="flex flex-col items-center justify-center bg-gradient-to-br from-gray-200 to-gray-400 text-gray-900 p-8 h-full min-h-screen w-full">
-          <div className="text-center max-w-xs mx-auto">
+          <div className="text-center max-w-xs mx-auto cursor-pointer" onClick={() => navigate('/') }>
             <img src="/logo23.png" alt="PrashnaSetu Logo" className="mx-auto h-56 w-56 object-contain" />
             <p className="text-base opacity-80 -mt-2 leading-tight">PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
           </div>
@@ -230,6 +242,16 @@ const LoginScreen = () => {
                         Continue with Google
                       </Button>
 
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => navigate('/')}
+                      >
+                        <HomeIcon className="w-4 h-4 mr-2" />
+                        Home
+                      </Button>
+
                       <div className="text-center space-y-2">
                         {!isSignUp && (
                           <Button 
@@ -271,13 +293,13 @@ const LoginScreen = () => {
       <div className="md:hidden">
         {/* Screen 1: Logo Screen */}
         <div className="h-screen flex flex-col items-center justify-center text-gray-900 p-8 relative">
-          <div className="text-center max-w-xs mx-auto animate-bounce-slow">
+          <div className="text-center max-w-xs mx-auto animate-bounce-slow cursor-pointer" onClick={() => navigate('/') }>
             <img src="/logo23.png" alt="PrashnaSetu Logo" className="mx-auto h-48 w-48 object-contain" />
             <p className="text-sm opacity-80 -mt-2 leading-tight">PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
             
             {/* Copyright Footer - Mobile Screen 1 */}
             <div className="text-center text-xs text-gray-600 mt-6">
-              <p>© Copyrighted by CAD-CS, BML Munjal University</p>
+              <p>  Copyrighted by CAD-CS, BML Munjal University</p>
               <p><Mail className="inline-block w-4 h-4 mr-1 -mt-1 align-middle text-gray-500" /> : <a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-blue-700">cadcs@bmu.edu.in</a></p>
             </div>
           </div>
@@ -372,6 +394,16 @@ const LoginScreen = () => {
                   >
                     <Chrome className="w-4 h-4 mr-2" />
                     Continue with Google
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => navigate('/')}
+                  >
+                    <HomeIcon className="w-4 h-4 mr-2" />
+                    Home
                   </Button>
 
                   <div className="text-center space-y-2">
