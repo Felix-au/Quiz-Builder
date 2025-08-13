@@ -28,7 +28,7 @@ app.post('/send-quiz-email', upload.single('quizZip'), async (req, res) => {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'quizbuilder86@gmail.com',
+        user: 'noreply@bmu.edu.in',
         pass: process.env.GMAIL_APP_PASSWORD, // Set this in your .env file
       },
     });
