@@ -148,10 +148,22 @@ const LoginScreen = () => {
       <div className="absolute -z-10 w-72 h-72 bg-purple-600/30 rounded-full blur-3xl bottom-0 left-1/3" />
       {/* Desktop Layout - Original Design */}
       <div className="hidden md:flex flex-col min-h-screen">
-        <div className="flex-1 flex items-center justify-center p-4 overflow-y-auto no-scrollbar">
-          <div className="w-full max-w-screen-xl grid grid-cols-2 shadow-xl rounded-lg overflow-hidden bg-white/95">
+        {/* Top-right Home button (desktop) */}
+        <div className="hidden md:block absolute top-4 right-4 z-50">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate('/')}
+            className="bg-white/70 backdrop-blur hover:bg-white"
+          >
+            <HomeIcon className="w-4 h-4 mr-2" />
+            Home
+          </Button>
+        </div>
+        <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
+          <div className="w-full max-w-screen-xl grid grid-cols-2 shadow-xl rounded-lg overflow-hidden bg-white/95 h-[85vh]">
         {/* Left Branding Section */}
-            <div className="flex flex-col items-center justify-center bg-gradient-to-br from-gray-200 to-gray-400 text-gray-900 p-8 h-full min-h-screen w-full">
+            <div className="flex flex-col items-center justify-center bg-gradient-to-br from-gray-200 to-gray-400 text-gray-900 p-8 h-full w-full">
           <div className="text-center max-w-xs mx-auto cursor-pointer" onClick={() => navigate('/') }>
             <img src="/logo23.png" alt="PrashnaSetu Logo" className="mx-auto h-56 w-56 object-contain" />
             <p className="text-base opacity-80 -mt-2 leading-tight">PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
@@ -242,15 +254,7 @@ const LoginScreen = () => {
                         Continue with Google
                       </Button>
 
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => navigate('/')}
-                      >
-                        <HomeIcon className="w-4 h-4 mr-2" />
-                        Home
-                      </Button>
+                      
 
                       <div className="text-center space-y-2">
                         {!isSignUp && (

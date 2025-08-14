@@ -18,7 +18,7 @@ const profiles = [
     profileUrl: 'https://www.bmu.edu.in/faculty/dr-kiran-sharma/',
   },
   {
-    photo: '/profiles/profile2.jpg',
+    photo: '/profiles/profile.jpg',
     name: 'Harshit Soni',
     role: 'Developer',
     positions: [
