@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { Mail, Lock, LogIn, UserPlus, KeyRound, Chrome, ChevronDown, Home as HomeIcon } from 'lucide-react';
+import { Mail, Lock, LogIn, UserPlus, KeyRound, ChevronDown, Home as HomeIcon } from 'lucide-react';
 
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -243,16 +243,20 @@ const LoginScreen = () => {
 
                       <Separator />
 
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        className="w-full"
+                      <button
+                        type="button"
                         onClick={handleGoogleSignIn}
                         disabled={loading}
+                        className="w-full h-10 rounded-lg bg-white text-gray-800 font-semibold border border-gray-300 hover:bg-gray-50 disabled:opacity-50 flex items-center justify-center gap-2"
                       >
-                        <Chrome className="w-4 h-4 mr-2" />
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-4 h-4">
+                          <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 31.7 29.5 35 24 35 16.8 35 11 29.2 11 22s5.8-13 13-13c3.3 0 6.3 1.2 8.6 3.3l5.7-5.7C34.9 3.3 29.7 1 24 1 11.8 1 2 10.8 2 23s9.8 22 22 22c12.1 0 21-8.6 21-21 0-1.3-.1-2.7-.4-3.5z"/>
+                          <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16.3 18.9 13 24 13c3.3 0 6.3 1.2 8.6 3.3l5.7-5.7C34.9 3.3 29.7 1 24 1 16 1 8.8 5.9 6.3 14.7z"/>
+                          <path fill="#4CAF50" d="M24 45c5.4 0 10.3-1.8 14.1-4.9l-6.5-5.3C29.7 36.3 27 37 24 37c-5.5 0-10.2-3.6-12.1-8.6l-6.6 5.1C8.8 41.6 15.9 45 24 45z"/>
+                          <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1.7 3.2-6.1 6.5-11.3 6.5-7.2 0-13-5.8-13-13 0-2 .5-3.9 1.3-5.6l-6.7-5.1C3.7 13.3 2 17.5 2 22c0 12.2 9.8 22 22 22 12.1 0 21-8.6 21-21 0-1.3-.1-2.7-.4-3.5z"/>
+                        </svg>
                         Continue with Google
-                      </Button>
+                      </button>
 
                       
 
@@ -389,16 +393,20 @@ const LoginScreen = () => {
 
                   <Separator />
 
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    className="w-full"
+                  <button
+                    type="button"
                     onClick={handleGoogleSignIn}
                     disabled={loading}
+                    className="w-full h-10 rounded-lg bg-white text-gray-800 font-semibold border border-gray-300 hover:bg-gray-50 disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    <Chrome className="w-4 h-4 mr-2" />
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-4 h-4">
+                      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 31.7 29.5 35 24 35 16.8 35 11 29.2 11 22s5.8-13 13-13c3.3 0 6.3 1.2 8.6 3.3l5.7-5.7C34.9 3.3 29.7 1 24 1 11.8 1 2 10.8 2 23s9.8 22 22 22c12.1 0 21-8.6 21-21 0-1.3-.1-2.7-.4-3.5z"/>
+                      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16.3 18.9 13 24 13c3.3 0 6.3 1.2 8.6 3.3l5.7-5.7C34.9 3.3 29.7 1 24 1 16 1 8.8 5.9 6.3 14.7z"/>
+                      <path fill="#4CAF50" d="M24 45c5.4 0 10.3-1.8 14.1-4.9l-6.5-5.3C29.7 36.3 27 37 24 37c-5.5 0-10.2-3.6-12.1-8.6l-6.6 5.1C8.8 41.6 15.9 45 24 45z"/>
+                      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1.7 3.2-6.1 6.5-11.3 6.5-7.2 0-13-5.8-13-13 0-2 .5-3.9 1.3-5.6l-6.7-5.1C3.7 13.3 2 17.5 2 22c0 12.2 9.8 22 22 22 12.1 0 21-8.6 21-21 0-1.3-.1-2.7-.4-3.5z"/>
+                    </svg>
                     Continue with Google
-                  </Button>
+                  </button>
 
                   <Button
                     type="button"
