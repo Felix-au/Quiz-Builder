@@ -359,6 +359,15 @@ const QuizCreator = () => {
         
         initializeDefaultQuestion();
       }
+
+      // Always regenerate quiz code on fresh website load (regardless of saved session)
+      const newCode = (() => {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let out = '';
+        for (let i = 0; i < 6; i++) out += chars.charAt(Math.floor(Math.random() * chars.length));
+        return out;
+      })();
+      setMetadata(prev => ({ ...prev, code: newCode }));
     };
     
     loadSavedData();
