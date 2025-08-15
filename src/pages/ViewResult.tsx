@@ -7,7 +7,7 @@ import { auth, googleProvider } from "@/lib/firebase";
 import { BlockMath, InlineMath } from 'react-katex';
 import 'katex/dist/katex.min.css';
 
-const API_BASE = import.meta.env.VITE_RESULTS_API_URL || "http://localhost:3002";
+const API_BASE = import.meta.env.VITE_RESULTS_API_URL || "https://result-xxa7.onrender.com";
 
 type SearchResultItem = {
   _id: string | null;
