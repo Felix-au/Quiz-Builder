@@ -221,15 +221,30 @@ async function main() {
         const qid = asNumberOrLong(quizIdRaw);
         quiz = await quizzesCol.findOne({ quizId: qid });
       } else if (quizName) {
-        quiz = await quizzesCol.findOne({ quizName: quizName.toString() }); // exact match
+        const name = quizName.toString().trim();
+        const matches = await quizzesCol.find({ quizName: name }).limit(2).toArray();
+        if (matches.length === 0) {
+          return res.status(404).json({ error: 'Quiz not found' });
+        }
+        if (matches.length > 1) {
+          return res.status(400).json({ error: 'Multiple quizzes found with the same name. Please select from suggestions to disambiguate.' });
+        }
+        quiz = matches[0];
       } else {
         return res.status(400).json({ error: 'quizId or quizName is required' });
       }
 
       if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
 
-      // strict case-sensitive match (client uppercases to 6 chars)
-      if (quiz.password !== password) {
+      // Password check with normalization to avoid trivial mismatches (trim/case/format)
+      const normalizePwd = (p) => (p == null ? '' : String(p))
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '')
+        .slice(0, 6);
+      const storedPwdNorm = normalizePwd(quiz.password);
+      const enteredPwdNorm = normalizePwd(password);
+      if (!storedPwdNorm || storedPwdNorm !== enteredPwdNorm) {
         return res.status(401).json({ error: 'Invalid password' });
       }
 
