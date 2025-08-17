@@ -110,6 +110,7 @@ export default function ViewResult() {
   const [detail, setDetail] = React.useState<DetailDTO | null>(null);
   const [detailLoading, setDetailLoading] = React.useState(false);
   const [detailError, setDetailError] = React.useState<string | null>(null);
+  const detailRef = React.useRef<HTMLDivElement | null>(null);
 
   // Inline auth form state (for unauthenticated users)
   const [loginEmail, setLoginEmail] = React.useState("");
@@ -126,11 +127,12 @@ export default function ViewResult() {
     }
   }, [user]);
 
-  // Debounced suggestions fetch for quiz name
+  // Debounced suggestions fetch for quiz name (only when no selection is active)
   React.useEffect(() => {
     const q = quizNameInput.trim();
+    // If a selection exists, do not fetch or mutate suggestions
+    if (selectedQuizId != null) return;
     setSuggestions([]);
-    setSelectedQuizId(null);
     if (q.length < 2) return;
     setSuggestLoading(true);
     if (suggestAbortRef.current) suggestAbortRef.current.abort();
@@ -149,7 +151,7 @@ export default function ViewResult() {
       }
     }, 300);
     return () => { clearTimeout(t); controller.abort(); };
-  }, [quizNameInput]);
+  }, [quizNameInput, selectedQuizId]);
 
   const fmtDT = (s: string | null) => {
     if (!s) return "—";
@@ -194,10 +196,10 @@ export default function ViewResult() {
           if (seg.type === 'inline') return <InlineMath key={i}>{seg.content}</InlineMath>;
           if (seg.type === 'block') return <BlockMath key={i}>{seg.content}</BlockMath>;
           return seg.content.split(/\n/).map((line, j, arr) => (
-            <React.Fragment key={`${i}-${j}`}>
+            <span key={`${i}-${j}`}>
               {line}
               {j < arr.length - 1 ? <br /> : null}
-            </React.Fragment>
+            </span>
           ));
         })}
       </span>
@@ -290,10 +292,11 @@ export default function ViewResult() {
         const data = await resp.json();
         setResults(Array.isArray(data?.results) ? data.results : []);
       } else {
-        // Instructor search by quiz
-        const payload: any = { password: quizPassword.trim() };
-        if (selectedQuizId != null) payload.quizId = selectedQuizId;
-        else payload.quizName = quizNameInput.trim();
+        // Instructor search by quiz (selection is compulsory)
+        if (selectedQuizId == null) {
+          throw new Error('Please select a quiz from suggestions.');
+        }
+        const payload: any = { password: quizPassword.trim(), quizId: selectedQuizId };
         const resp = await fetch(`${API_BASE}/api/results/searchByQuiz`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -331,6 +334,14 @@ export default function ViewResult() {
   };
 
   // KaTeX is synchronous; no MathJax typesetting needed
+
+  // Auto-scroll to the detailed section when it becomes available
+  React.useEffect(() => {
+    if (selectedAttemptId !== null && (detail || detailLoading)) {
+      // scroll once the section is on the page
+      detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [selectedAttemptId, detail, detailLoading]);
 
   if (loading) {
     return (
@@ -553,27 +564,45 @@ export default function ViewResult() {
                 <div className="relative">
                   <label className="block text-sm font-medium mb-1">Quiz Name</label>
                   <input
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                    className={`w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none ${selectedQuizId == null ? 'focus:ring-2 focus:ring-indigo-400 bg-white' : 'bg-gray-100 text-gray-700 cursor-not-allowed pr-24'}`}
                     value={quizNameInput}
                     onChange={e => setQuizNameInput(e.target.value)}
+                    readOnly={selectedQuizId != null}
                     placeholder="Type to search quiz by name"
                   />
+                  {selectedQuizId != null && (
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedQuizId(null); setQuizNameInput(''); setSuggestions([]); }}
+                      className="absolute inset-y-0 my-auto right-2 h-8 px-2.5 flex items-center gap-1 rounded-full bg-gray-200 hover:bg-gray-300 border border-gray-300 text-gray-700 shadow-sm translate-y-[10px]"
+                      title="Clear selection"
+                      aria-label="Clear selected quiz"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                        <path fillRule="evenodd" d="M10 8.586L5.707 4.293a1 1 0 10-1.414 1.414L8.586 10l-4.293 4.293a1 1 0 101.414 1.414L10 11.414l4.293 4.293a1 1 0 001.414-1.414L11.414 10l4.293-4.293a1 1 0 00-1.414-1.414L10 8.586z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-xs font-medium">Clear</span>
+                    </button>
+                  )}
                   {suggestLoading && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">...</div>
                   )}
-                  {suggestions.length > 0 && quizNameInput.trim().length >= 2 && (
+                  {selectedQuizId == null && suggestions.length > 0 && quizNameInput.trim().length >= 2 && (
                     <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow">
                       {suggestions.map(s => (
                         <button
                           key={s.quizId}
                           type="button"
-                          onClick={() => { setSelectedQuizId(s.quizId); setQuizNameInput(s.quizName); setSuggestions([]); }}
+                          onClick={() => { setSelectedQuizId(s.quizId); setQuizNameInput(`${s.quizName} (${s.quizCode})`); setSuggestions([]); }}
                           className="w-full text-left px-3 py-2 hover:bg-gray-50"
                         >
                           <span className="font-medium">{s.quizName}</span> <span className="text-gray-500">({s.quizCode})</span>
                         </button>
                       ))}
                     </div>
+                  )}
+                  {selectedQuizId == null && quizNameInput.trim().length >= 2 && !suggestLoading && (
+                    <div className="text-xs text-amber-700 mt-1">Please select a quiz from the suggestions list.</div>
                   )}
                 </div>
                 <div>
@@ -593,7 +622,7 @@ export default function ViewResult() {
             <div>
               <button
                 onClick={doSearch}
-                disabled={searchLoading || (!isInstructorView && (!enrollmentNumber.trim() || !email.trim())) || (isInstructorView && ((!quizNameInput.trim() && selectedQuizId == null) || quizPassword.trim().length !== 6))}
+                disabled={searchLoading || (!isInstructorView && (!enrollmentNumber.trim() || !email.trim())) || (isInstructorView && (selectedQuizId == null || quizPassword.trim().length !== 6))}
                 className="w-full h-10 rounded-lg bg-indigo-600 text-white font-semibold shadow hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {searchLoading ? 'Searching...' : 'Search'}
@@ -655,7 +684,7 @@ export default function ViewResult() {
 
           {/* Detail section */}
           {selectedAttemptId !== null && (
-            <div className="mt-8">
+            <div ref={detailRef} className="mt-8 scroll-mt-28">
               <h2 className="text-lg font-semibold mb-2">Detailed Result</h2>
               {detailLoading && <div className="text-sm text-gray-700">Loading result...</div>}
               {detailError && <div className="text-sm text-red-700 bg-red-100 border border-red-200 rounded-lg px-3 py-2">{detailError}</div>}
@@ -693,7 +722,7 @@ export default function ViewResult() {
                   </div>
 
                   {/* Questions or Publication Notice */}
-                  {detail.summary.meta?.showDetailedResult === false ? (
+                  {!isInstructorView && detail.summary.meta?.showDetailedResult === false ? (
                     <div className="mt-6 text-sm text-rose-800 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
                       Detailed result has not been published. Please contact Instructor.
                     </div>

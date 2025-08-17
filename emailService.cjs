@@ -132,7 +132,12 @@ app.post('/send-quiz-email', upload.single('quizZip'), async (req, res) => {
   }
 });
 
+// Health check endpoint
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true });
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Email service running on port ${PORT}`);
-}); 
+});

@@ -210,6 +210,32 @@ export default function HomePage() {
     setActiveVideo(null);
   };
 
+  // Warm up backend services on first load
+  React.useEffect(() => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const ping = async (url: string, label: string) => {
+      try {
+        const resp = await fetch(`${url}/api/health`, { method: 'GET', signal: controller.signal, cache: 'no-store' });
+        if (resp.ok) {
+          const data = await resp.json().catch(() => ({}));
+          if (data && data.ok) {
+            console.log(`${label}: ok`);
+          }
+        }
+      } catch (_) {
+        // ignore warming failures silently
+      }
+    };
+    // Render services
+    ping('https://quiz-builder-9afc.onrender.com', 'Email'); // email service
+    ping('https://result-xxa7.onrender.com', 'Result'); // results service
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, []);
+
   // Handlers for Downloads
   const handleDownloadsEnter = () => {
     if (downloadsTimeout.current) clearTimeout(downloadsTimeout.current);
