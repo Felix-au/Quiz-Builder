@@ -54,11 +54,18 @@ type DetailDTO = {
       marksObtained: number | null;
       totalMarks: number | null;
       percentage: number | null;
+      easyCorrect?: number | null;
+      mediumCorrect?: number | null;
+      highCorrect?: number | null;
+      easyTotal?: number | null;
+      mediumTotal?: number | null;
+      highTotal?: number | null;
     };
     meta: {
       systemName: string | null;
       fullScreenFaults: number | null;
       status: string | null;
+      showDetailedResult?: boolean | null;
     };
   };
   questions: Array<{
@@ -86,6 +93,14 @@ export default function ViewResult() {
   const { user, loading } = useAuth();
   const [enrollmentNumber, setEnrollmentNumber] = React.useState("");
   const [email, setEmail] = React.useState("");
+  // Instructor view toggle and fields
+  const [isInstructorView, setIsInstructorView] = React.useState(false);
+  const [quizNameInput, setQuizNameInput] = React.useState("");
+  const [selectedQuizId, setSelectedQuizId] = React.useState<number | null>(null);
+  const [quizPassword, setQuizPassword] = React.useState("");
+  const [suggestions, setSuggestions] = React.useState<Array<{ quizId: number; quizName: string; quizCode: string }>>([]);
+  const [suggestLoading, setSuggestLoading] = React.useState(false);
+  const suggestAbortRef = React.useRef<AbortController | null>(null);
 
   const [searchLoading, setSearchLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -110,6 +125,31 @@ export default function ViewResult() {
       setEmail(user.email);
     }
   }, [user]);
+
+  // Debounced suggestions fetch for quiz name
+  React.useEffect(() => {
+    const q = quizNameInput.trim();
+    setSuggestions([]);
+    setSelectedQuizId(null);
+    if (q.length < 2) return;
+    setSuggestLoading(true);
+    if (suggestAbortRef.current) suggestAbortRef.current.abort();
+    const controller = new AbortController();
+    suggestAbortRef.current = controller;
+    const t = setTimeout(async () => {
+      try {
+        const resp = await fetch(`${API_BASE}/api/quizzes/suggest?query=${encodeURIComponent(q)}`, { signal: controller.signal });
+        if (!resp.ok) throw new Error("Suggest failed");
+        const data = await resp.json();
+        setSuggestions(Array.isArray(data?.quizzes) ? data.quizzes.slice(0, 10) : []);
+      } catch (_) {
+        // ignore
+      } finally {
+        setSuggestLoading(false);
+      }
+    }, 300);
+    return () => { clearTimeout(t); controller.abort(); };
+  }, [quizNameInput]);
 
   const fmtDT = (s: string | null) => {
     if (!s) return "—";
@@ -240,14 +280,32 @@ export default function ViewResult() {
     setDetail(null);
     setSelectedAttemptId(null);
     try {
-      const resp = await fetch(`${API_BASE}/api/results/search`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enrollmentNumber: enrollmentNumber.trim(), email: email.trim() }),
-      });
-      if (!resp.ok) throw new Error(`Search failed (${resp.status})`);
-      const data = await resp.json();
-      setResults(Array.isArray(data?.results) ? data.results : []);
+      if (!isInstructorView) {
+        const resp = await fetch(`${API_BASE}/api/results/search`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enrollmentNumber: enrollmentNumber.trim(), email: email.trim() }),
+        });
+        if (!resp.ok) throw new Error(`Search failed (${resp.status})`);
+        const data = await resp.json();
+        setResults(Array.isArray(data?.results) ? data.results : []);
+      } else {
+        // Instructor search by quiz
+        const payload: any = { password: quizPassword.trim() };
+        if (selectedQuizId != null) payload.quizId = selectedQuizId;
+        else payload.quizName = quizNameInput.trim();
+        const resp = await fetch(`${API_BASE}/api/results/searchByQuiz`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!resp.ok) {
+          const txt = await resp.text();
+          try { const j = JSON.parse(txt); throw new Error(j?.error || `Search failed (${resp.status})`); } catch { throw new Error(`Search failed (${resp.status})`); }
+        }
+        const data = await resp.json();
+        setResults(Array.isArray(data?.results) ? data.results : []);
+      }
     } catch (e: any) {
       setError(e?.message || "Failed to search");
     } finally {
@@ -302,6 +360,17 @@ export default function ViewResult() {
                   <div className="text-sm font-semibold">Welcome {user.displayName || user.email}</div>
                 </div>
               )}
+              {/* Toggle button: to the right of Welcome */}
+              <button
+                onClick={() => setIsInstructorView(v => !v)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-100 text-amber-800 font-semibold shadow hover:bg-amber-200 focus:ring-2 focus:ring-amber-300 border border-amber-200 transition"
+                title={isInstructorView ? 'Switch to Student View' : 'Switch to Instructor View'}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12M8 7l3-3m-3 3l3 3M16 17H4m12 0l-3-3m3 3l-3 3" />
+                </svg>
+                {isInstructorView ? 'Switch to Student View' : 'Switch to Instructor View'}
+              </button>
               <Link to="/credits">
                 <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-100 text-green-700 font-semibold shadow hover:bg-green-200 focus:ring-2 focus:ring-green-300 border border-green-200 transition">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 8.5V18a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 18V8.5m18 0A2.5 2.5 0 0018.5 6h-13A2.5 2.5 0 003 8.5m18 0V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2.5m18 0l-9 6.5-9-6.5" /></svg>
@@ -342,6 +411,16 @@ export default function ViewResult() {
                   <div className="text-sm font-semibold">Welcome {user.displayName || user.email}</div>
                 </div>
               )}
+              <button
+                onClick={() => setIsInstructorView(v => !v)}
+                className="px-3 py-1 rounded bg-amber-100 text-amber-800 font-medium border border-amber-200 flex items-center gap-2"
+                title={isInstructorView ? 'Switch to Student View' : 'Switch to Instructor View'}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12M8 7l3-3m-3 3l3 3M16 17H4m12 0l-3-3m3 3l-3 3" />
+                </svg>
+                {isInstructorView ? 'Switch to Student View' : 'Switch to Instructor View'}
+              </button>
               <Link to="/credits">
                 <button className="px-3 py-1 rounded bg-green-100 text-green-700 font-medium border border-green-200">Contact Us</button>
               </Link>
@@ -448,28 +527,73 @@ export default function ViewResult() {
             </div>
           ) : (
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Enrollment Number</label>
-              <input
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
-                value={enrollmentNumber}
-                onChange={e => setEnrollmentNumber(e.target.value)}
-                placeholder="e.g. 415874"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Email</label>
-              <input
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none bg-gray-100 text-gray-700"
-                value={email}
-                readOnly
-                placeholder="e.g. student@example.com"
-              />
-            </div>
+            {!isInstructorView ? (
+              <>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Enrollment Number</label>
+                  <input
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                    value={enrollmentNumber}
+                    onChange={e => setEnrollmentNumber(e.target.value)}
+                    placeholder="e.g. 415874"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Email</label>
+                  <input
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none bg-gray-100 text-gray-700"
+                    value={email}
+                    readOnly
+                    placeholder="e.g. student@example.com"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="relative">
+                  <label className="block text-sm font-medium mb-1">Quiz Name</label>
+                  <input
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                    value={quizNameInput}
+                    onChange={e => setQuizNameInput(e.target.value)}
+                    placeholder="Type to search quiz by name"
+                  />
+                  {suggestLoading && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">...</div>
+                  )}
+                  {suggestions.length > 0 && quizNameInput.trim().length >= 2 && (
+                    <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow">
+                      {suggestions.map(s => (
+                        <button
+                          key={s.quizId}
+                          type="button"
+                          onClick={() => { setSelectedQuizId(s.quizId); setQuizNameInput(s.quizName); setSuggestions([]); }}
+                          className="w-full text-left px-3 py-2 hover:bg-gray-50"
+                        >
+                          <span className="font-medium">{s.quizName}</span> <span className="text-gray-500">({s.quizCode})</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Password</label>
+                  <input
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white tracking-widest uppercase"
+                    value={quizPassword}
+                    onChange={e => {
+                      const v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+                      setQuizPassword(v);
+                    }}
+                    placeholder="Enter 6-char password"
+                  />
+                </div>
+              </>
+            )}
             <div>
               <button
                 onClick={doSearch}
-                disabled={searchLoading || !enrollmentNumber.trim() || !email.trim()}
+                disabled={searchLoading || (!isInstructorView && (!enrollmentNumber.trim() || !email.trim())) || (isInstructorView && ((!quizNameInput.trim() && selectedQuizId == null) || quizPassword.trim().length !== 6))}
                 className="w-full h-10 rounded-lg bg-indigo-600 text-white font-semibold shadow hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {searchLoading ? 'Searching...' : 'Search'}
@@ -484,7 +608,7 @@ export default function ViewResult() {
 
           {/* Results list */}
           <div className="mt-6">
-            <h2 className="text-lg font-semibold">Your Attempts</h2>
+            <h2 className="text-lg font-semibold">{isInstructorView ? 'Student Attempts' : 'Your Attempts'}</h2>
             {results.length === 0 && !searchLoading && (
               <div className="text-sm text-gray-700 mt-2">No attempts found. Check your inputs.</div>
             )}
@@ -547,66 +671,89 @@ export default function ViewResult() {
                       <div>Email: {detail.summary.student.email} | Section: {detail.summary.student.section}</div>
                       <div>Start: {fmtDT(detail.summary.timing.startTime)} | End: {fmtDT(detail.summary.timing.endTime)} | Duration: {detail.summary.timing.durationMinutes} min</div>
                       <div>Score: {detail.summary.scoring.marksObtained} / {detail.summary.numDisplayedQuestions ?? '—'} {detail.summary.scoring.percentage !== null ? `(${detail.summary.scoring.percentage}%)` : ''}</div>
+                      {(
+                        detail.summary.scoring.easyCorrect != null ||
+                        detail.summary.scoring.mediumCorrect != null ||
+                        detail.summary.scoring.highCorrect != null
+                      ) && (
+                        <div className="mt-1">
+                          <span className="font-medium">Difficulty-wise:</span>{' '}
+                          {detail.summary.scoring.easyCorrect != null && (
+                            <span className="mr-3">Easy: {detail.summary.scoring.easyCorrect} / {detail.summary.scoring.easyTotal ?? '—'}</span>
+                          )}
+                          {detail.summary.scoring.mediumCorrect != null && (
+                            <span className="mr-3">Medium: {detail.summary.scoring.mediumCorrect} / {detail.summary.scoring.mediumTotal ?? '—'}</span>
+                          )}
+                          {detail.summary.scoring.highCorrect != null && (
+                            <span>High: {detail.summary.scoring.highCorrect} / {detail.summary.scoring.highTotal ?? '—'}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  {/* Questions */}
-                  <div className="mt-6 space-y-4">
-                    {detail.questions.map(q => (
-                      <div key={q.questionId} className={`rounded-xl border p-4 ${q.isCorrect ? 'border-emerald-300 bg-emerald-50/70' : 'border-rose-300 bg-rose-50/70'}`}>
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="font-medium text-black">Q{q.index}. <LatexInline text={q.questionText} /></div>
-                          {(() => {
-                            const earned = computeEarned(q);
-                            const isCorrect = earned > 0;
-                            const color = isCorrect ? 'emerald' : 'rose';
-                            const textColor = isCorrect ? 'text-emerald-800' : 'text-rose-800';
-                            const bgColor = isCorrect ? 'bg-emerald-200' : 'bg-rose-200';
-                            const borderColor = isCorrect ? 'border-emerald-300' : 'border-rose-300';
-                            return (
-                              <div className="flex flex-col items-center gap-1">
-                                <span className={`text-xs px-2 py-0.5 rounded-full border ${bgColor} ${textColor} ${borderColor}`}>
-                                  {earned.toFixed(2)}
-                                </span>
-                                <span className={`text-xs px-2 py-0.5 rounded-full border ${bgColor} ${textColor} ${borderColor}`}>
-                                  {isCorrect ? 'Correct' : 'Incorrect'}
-                                </span>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                        <div className="text-xs text-gray-700 mt-1 hidden">Points: {q.points ?? 1}</div>
-                        <div className="text-xs text-gray-700 mt-0.5">Course Outcome and Bloom's Taxonomy: {q.topic || '—'}</div>
-                        <div className="text-xs text-gray-700 mt-0.5">Topic: {q.subject || '—'}</div>
-                        <div className="text-xs text-gray-700 mt-0.5">Difficulty: {q.difficulty || '—'}</div>
-                        {q.imageUrl && (
-                          <div className="mt-2">
-                            <img src={q.imageUrl} alt="question" className="max-h-64 rounded-lg" />
+                  {/* Questions or Publication Notice */}
+                  {detail.summary.meta?.showDetailedResult === false ? (
+                    <div className="mt-6 text-sm text-rose-800 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+                      Detailed result has not been published. Please contact Instructor.
+                    </div>
+                  ) : (
+                    <div className="mt-6 space-y-4">
+                      {detail.questions.map(q => (
+                        <div key={q.questionId} className={`rounded-xl border p-4 ${q.isCorrect ? 'border-emerald-300 bg-emerald-50/70' : 'border-rose-300 bg-rose-50/70'}`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="font-medium text-black">Q{q.index}. <LatexInline text={q.questionText} /></div>
+                            {(() => {
+                              const earned = computeEarned(q);
+                              const isCorrect = earned > 0;
+                              const textColor = isCorrect ? 'text-emerald-800' : 'text-rose-800';
+                              const bgColor = isCorrect ? 'bg-emerald-200' : 'bg-rose-200';
+                              const borderColor = isCorrect ? 'border-emerald-300' : 'border-rose-300';
+                              return (
+                                <div className="flex flex-col items-center gap-1">
+                                  <span className={`text-xs px-2 py-0.5 rounded-full border ${bgColor} ${textColor} ${borderColor}`}>
+                                    {earned.toFixed(2)}
+                                  </span>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full border ${bgColor} ${textColor} ${borderColor}`}>
+                                    {isCorrect ? 'Correct' : 'Incorrect'}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                           </div>
-                        )}
-                        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
-                          {q.options.map(o => (
-                            <div
-                              key={o.id}
-                              className={`px-3 py-2 rounded-lg border text-sm ${o.isCorrect ? 'border-emerald-400 bg-emerald-50' : o.isSelected ? 'border-rose-400 bg-rose-50' : 'border-gray-200 bg-white'}`}
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                <LatexInline text={o.text} />
-                                <div className="flex items-center gap-1 text-xs">
-                                  {o.isCorrect && (
-                                    <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">Correct</span>
-                                  )}
-                                  {o.isSelected && (
-                                    <span className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">Selected</span>
-                                  )}
+                          <div className="text-xs text-gray-700 mt-1 hidden">Points: {q.points ?? 1}</div>
+                          <div className="text-xs text-gray-700 mt-0.5">Course Outcome and Bloom's Taxonomy: {q.topic || '—'}</div>
+                          <div className="text-xs text-gray-700 mt-0.5">Topic: {q.subject || '—'}</div>
+                          <div className="text-xs text-gray-700 mt-0.5">Difficulty: {q.difficulty || '—'}</div>
+                          {q.imageUrl && (
+                            <div className="mt-2">
+                              <img src={q.imageUrl} alt="question" className="max-h-64 rounded-lg" />
+                            </div>
+                          )}
+                          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {q.options.map(o => (
+                              <div
+                                key={o.id}
+                                className={`px-3 py-2 rounded-lg border text-sm ${o.isCorrect ? 'border-emerald-400 bg-emerald-50' : o.isSelected ? 'border-rose-400 bg-rose-50' : 'border-gray-200 bg-white'}`}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <LatexInline text={o.text} />
+                                  <div className="flex items-center gap-1 text-xs">
+                                    {o.isCorrect && (
+                                      <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">Correct</span>
+                                    )}
+                                    {o.isSelected && (
+                                      <span className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">Selected</span>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

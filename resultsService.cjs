@@ -160,11 +160,19 @@ function buildDetailDTO(attempt, quiz) {
         marksObtained: attempt.marksObtained,
         totalMarks: attempt.totalMarks,
         percentage,
+        // Difficulty-wise breakdown (nullable to be backward compatible)
+        easyCorrect: attempt.easyQuestionsCorrect ?? null,
+        mediumCorrect: attempt.mediumQuestionsCorrect ?? null,
+        highCorrect: attempt.highQuestionsCorrect ?? null,
+        easyTotal: quiz.numEasyQuestions ?? null,
+        mediumTotal: quiz.numMediumQuestions ?? null,
+        highTotal: quiz.numHighQuestions ?? null,
       },
       meta: {
         systemName: attempt.systemName,
         fullScreenFaults: attempt.fullScreenFaults,
         status: attempt.status,
+        showDetailedResult: typeof quiz.showDetailedResult === 'boolean' ? quiz.showDetailedResult : true,
       }
     },
     questions,
@@ -182,6 +190,97 @@ async function main() {
   const db = client.db(MONGO_DB);
   const attemptsCol = db.collection(COLL_ATTEMPTS);
   const quizzesCol = db.collection(COLL_QUIZZES);
+
+  // GET /api/quizzes/suggest?query=... -> top 10 quiz suggestions by name (case-insensitive)
+  app.get('/api/quizzes/suggest', async (req, res) => {
+    try {
+      const q = (req.query.query || '').toString().trim();
+      if (q.length < 2) return res.json({ quizzes: [] });
+      const regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      const results = await quizzesCol
+        .find({ quizName: { $regex: regex } }, { projection: { quizId: 1, quizName: 1, quizCode: 1 }, limit: 10 })
+        .limit(10)
+        .toArray();
+      res.json({ quizzes: results.map(r => ({ quizId: asNumberOrLong(r.quizId), quizName: r.quizName, quizCode: r.quizCode })) });
+    } catch (err) {
+      console.error('Suggest error:', err);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // POST /api/results/searchByQuiz -> instructor view: validate password and list attempts for quizId
+  app.post('/api/results/searchByQuiz', async (req, res) => {
+    try {
+      const { quizId: quizIdRaw, quizName, password } = req.body || {};
+      if (!password || (typeof password !== 'string')) {
+        return res.status(400).json({ error: 'password is required' });
+      }
+
+      let quiz = null;
+      if (quizIdRaw != null) {
+        const qid = asNumberOrLong(quizIdRaw);
+        quiz = await quizzesCol.findOne({ quizId: qid });
+      } else if (quizName) {
+        quiz = await quizzesCol.findOne({ quizName: quizName.toString() }); // exact match
+      } else {
+        return res.status(400).json({ error: 'quizId or quizName is required' });
+      }
+
+      if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
+
+      // strict case-sensitive match (client uppercases to 6 chars)
+      if (quiz.password !== password) {
+        return res.status(401).json({ error: 'Invalid password' });
+      }
+
+      const qid = asNumberOrLong(quiz.quizId);
+      const attempts = await attemptsCol.find({ quizId: qid }).toArray();
+
+      if (!attempts.length) return res.json({ results: [] });
+
+      // Dedupe latest per enrollmentNumber
+      const latestByEnroll = new Map();
+      for (const a of attempts) {
+        const key = (a.enrollmentNumber || '').toString();
+        const prev = latestByEnroll.get(key);
+        const t = new Date(a.endTime || a.startTime || 0).getTime();
+        const pt = prev ? new Date(prev.endTime || prev.startTime || 0).getTime() : -Infinity;
+        if (!prev || t >= pt) latestByEnroll.set(key, a);
+      }
+
+      const latestAttempts = Array.from(latestByEnroll.values());
+
+      const results = latestAttempts.map(a => {
+        const durationMinutes = minutesBetween(a.startTime, a.endTime);
+        return {
+          _id: a._id?.toString?.() || null,
+          attemptId: asNumberOrLong(a.attemptId),
+          quizId: qid,
+          quizName: quiz.quizName || null,
+          quizCode: quiz.quizCode || null,
+          subject: quiz.subject || null,
+          numDisplayedQuestions: quiz.numDisplayedQuestions ?? null,
+          instructorName: quiz.instructorName || null,
+          course: quiz.course || null,
+          startTime: a.startTime,
+          endTime: a.endTime,
+          durationMinutes,
+          marksObtained: a.marksObtained,
+          totalMarks: a.totalMarks,
+          status: a.status,
+          // extra identity fields (not used in current table but useful)
+          studentName: a.studentName || null,
+          studentEmail: a.studentEmail || null,
+          enrollmentNumber: a.enrollmentNumber || null,
+        };
+      });
+
+      res.json({ results });
+    } catch (err) {
+      console.error('searchByQuiz error:', err);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
 
   // POST /api/results/search -> list attempts across quizzes
   app.post('/api/results/search', async (req, res) => {

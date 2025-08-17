@@ -189,8 +189,10 @@ export default function HomePage() {
   // Dropdown open state and timeout refs
   const [downloadsOpen, setDownloadsOpen] = useState(false);
   const [manualsOpen, setManualsOpen] = useState(false);
+  const [studentOpen, setStudentOpen] = useState(false);
   const downloadsTimeout = React.useRef<NodeJS.Timeout | null>(null);
   const manualsTimeout = React.useRef<NodeJS.Timeout | null>(null);
+  const studentTimeout = React.useRef<NodeJS.Timeout | null>(null);
   // Parallax state
   const [mx, setMx] = useState(0); // -0.5..0.5 range
   const [my, setMy] = useState(0);
@@ -224,6 +226,19 @@ export default function HomePage() {
   };
   const handleManualsLeave = () => {
     manualsTimeout.current = setTimeout(() => setManualsOpen(false), 200);
+  };
+
+  // Handlers for Student Corner
+  const handleStudentEnter = () => {
+    if (studentTimeout.current) clearTimeout(studentTimeout.current);
+    setStudentOpen(true);
+  };
+  const handleStudentLeave = () => {
+    studentTimeout.current = setTimeout(() => setStudentOpen(false), 200);
+  };
+  const toggleStudent = () => {
+    if (studentTimeout.current) clearTimeout(studentTimeout.current);
+    setStudentOpen((v) => !v);
   };
 
   const handleScrollToVideo = () => {
@@ -279,6 +294,64 @@ export default function HomePage() {
   </div>
 </div>
               
+              {/* Student Corner (Desktop) - moved to left-most */}
+              <div
+                className="relative"
+                onMouseEnter={handleStudentEnter}
+                onMouseLeave={handleStudentLeave}
+              >
+                <button
+                  onClick={toggleStudent}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 text-blue-700 font-semibold shadow hover:bg-blue-100 focus:ring-2 focus:ring-blue-300 transition border border-blue-100 cursor-pointer select-none"
+                >
+                  {/* Student (upper-half) outline */}
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 7.5a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 20.25a8.25 8.25 0 0 1 15 0" />
+                  </svg>
+                  Student Corner
+                </button>
+                <div className={`absolute right-0 mt-2 w-60 bg-white rounded-lg shadow-lg border border-indigo-100 z-50 ${studentOpen ? 'block' : 'hidden'}`}>
+                  <a
+                    href="https://drive.google.com/file/d/1eOlyx08BCyI421qCoVurFUuSePAsRKk1/view"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 text-black hover:bg-gray-100 rounded-t"
+                  >
+                    {/* Arrow Down Tray outline */}
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5 text-indigo-700">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5"/>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 9l4.5 4.5L16.5 9"/>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v10.5"/>
+                    </svg>
+                    Student Software
+                  </a>
+                  <a
+                    href="/manuals/PrashnaSetu-Application-User-Guide_Student.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 text-black hover:bg-gray-100"
+                  >
+                    {/* Document Text outline */}
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5 text-indigo-700">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5.25A2.25 2.25 0 0 1 5.25 3h8.69a2.25 2.25 0 0 1 1.59.659l3.06 3.06A2.25 2.25 0 0 1 19.25 8.31V18.75A2.25 2.25 0 0 1 17 21H5.25A2.25 2.25 0 0 1 3 18.75V5.25z"/>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 7.5h3.75M9 12h6M9 16.5h6"/>
+                    </svg>
+                    Student Manual
+                  </a>
+                  <button
+                    onClick={() => openVideo('/takingquiz.mp4', 'Taking a Quiz - Student Walkthrough')}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-left text-black hover:bg-gray-100 rounded-b"
+                  >
+                    {/* Video Camera outline */}
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5 text-amber-700">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6.75A2.25 2.25 0 0 0 13.5 4.5h-9A2.25 2.25 0 0 0 2.25 6.75v6.5A2.25 2.25 0 0 0 4.5 15.5h9a2.25 2.25 0 0 0 2.25-2.25V10.5z"/>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25l-4.5 2.25 4.5 2.25V8.25z"/>
+                    </svg>
+                    Video Walkthrough
+                  </button>
+                </div>
+              </div>
               <Link to="/results">
                 <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-100 text-emerald-700 font-semibold shadow hover:bg-emerald-200 focus:ring-2 focus:ring-emerald-300 border border-emerald-200 transition">
                   <BarChart3 className="w-5 h-5" />
@@ -292,6 +365,7 @@ export default function HomePage() {
                 <PlayCircle className="w-5 h-5" />
                 Video Guides
               </button>
+              {/* Student Corner (Desktop) moved above */}
               <div className="relative"
   onMouseEnter={handleManualsEnter}
   onMouseLeave={handleManualsLeave}
@@ -300,9 +374,27 @@ export default function HomePage() {
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 20h9" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16.5 3.5l2 2-8.5 8.5H8.5v-2l8.5-8.5z" /></svg>
   User Manuals
 </button>
-  <div className={`absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-indigo-100 z-50 ${manualsOpen ? 'block' : 'hidden'}`}>
-    {manuals.map((m) => (
-      <a key={m.label} href={m.href} target="_blank" rel="noopener noreferrer" className="block px-4 py-2 text-black hover:bg-gray-100 rounded">{m.label}</a>
+  <div className={`absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-indigo-100 z-50 ${manualsOpen ? 'block' : 'hidden'}`}>
+    {manuals.filter((m) => m.label !== 'Student Manual').map((m) => (
+      <a key={m.label} href={m.href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 text-black hover:bg-gray-100">
+        {/* Icon per manual */}
+        {m.label === 'Admin Manual' && (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5 text-indigo-700"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3l8 4.5v4.5c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V7.5L12 3z"/></svg>
+        )}
+        {m.label === 'Instructor Manual' && (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5 text-indigo-700">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 20a5 5 0 11-10 0 5 5 0 0110 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        )}
+        {m.label === 'Proctor Manual' && (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5 text-indigo-700"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12s3.75-6 9.75-6 9.75 6 9.75 6-3.75 6-9.75 6-9.75-6-9.75-6z"/><circle cx="12" cy="12" r="3.75"/></svg>
+        )}
+        {m.label === 'Website Manual' && (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5 text-indigo-700"><path strokeLinecap="round" strokeLinejoin="round" d="M12 21c4.97 0 9-4.03 9-9s-4.03-9-9-9-9 4.03-9 9 4.03 9 9 9z"/><path strokeLinecap="round" strokeLinejoin="round" d="M3 12h18M12 3c2.5 3 2.5 15 0 18M7 6.5c3 1.5 7 1.5 10 0M7 17.5c3-1.5 7-1.5 10 0"/></svg>
+        )}
+        {m.label}
+      </a>
     ))}
   </div>
 </div>
@@ -341,6 +433,57 @@ export default function HomePage() {
   </div>
 </div>
               
+              {/* Student Corner (Mobile) - moved to first */}
+              <div
+                className="relative"
+                onMouseEnter={handleStudentEnter}
+                onMouseLeave={handleStudentLeave}
+              >
+                <button onClick={toggleStudent} className="px-3 py-1 rounded bg-blue-100 text-blue-700 font-medium border border-blue-200 flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 7.5a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 20.25a8.25 8.25 0 0 1 15 0" />
+                  </svg>
+                  Student Corner
+                </button>
+                <div className={`absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-indigo-100 z-50 ${studentOpen ? 'block' : 'hidden'}`}>
+                  <a
+                    href="https://drive.google.com/file/d/1eOlyx08BCyI421qCoVurFUuSePAsRKk1/view"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-1.5 text-black hover:bg-gray-100 rounded-t"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4 text-indigo-700">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5"/>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 9l4.5 4.5L16.5 9"/>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v10.5"/>
+                    </svg>
+                    Student Software
+                  </a>
+                  <a
+                    href="/manuals/PrashnaSetu-Application-User-Guide_Student.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-1.5 text-black hover:bg-gray-100"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4 text-indigo-700">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5.25A2.25 2.25 0 0 1 5.25 3h8.69a2.25 2.25 0 0 1 1.59.659l3.06 3.06A2.25 2.25 0 0 1 19.25 8.31V18.75A2.25 2.25 0 0 1 17 21H5.25A2.25 2.25 0 0 1 3 18.75V5.25z"/>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 7.5h3.75M9 12h6M9 16.5h6"/>
+                    </svg>
+                  Student Manual
+                  </a>
+                  <button
+                    onClick={() => openVideo('/takingquiz.mp4', 'Taking a Quiz - Student Walkthrough')}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-black hover:bg-gray-100 rounded-b"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4 text-amber-700">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6.75A2.25 2.25 0 0 0 13.5 4.5h-9A2.25 2.25 0 0 0 2.25 6.75v6.5A2.25 2.25 0 0 0 4.5 15.5h9a2.25 2.25 0 0 0 2.25-2.25V10.5z"/>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25l-4.5 2.25 4.5 2.25V8.25z"/>
+                    </svg>
+                    Video Walkthrough
+                  </button>
+                </div>
+              </div>
               <Link to="/results">
                 <button className="px-3 py-1 rounded bg-emerald-100 text-emerald-700 font-medium border border-emerald-200 flex items-center gap-1">
                   <BarChart3 className="w-4 h-4" />
@@ -354,14 +497,32 @@ export default function HomePage() {
                 <PlayCircle className="w-4 h-4" />
                 Video Guides
               </button>
+              {/* Student Corner (Mobile) moved above */}
               <div className="relative"
   onMouseEnter={handleManualsEnter}
   onMouseLeave={handleManualsLeave}
 >
   <button className="px-3 py-1 rounded bg-gray-100 text-black font-medium border border-gray-200 cursor-pointer select-none">User Manuals</button>
-  <div className={`absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-indigo-100 z-50 ${manualsOpen ? 'block' : 'hidden'}`}>
-    {manuals.map((m) => (
-      <a key={m.label} href={m.href} target="_blank" rel="noopener noreferrer" className="block px-3 py-1 text-black hover:bg-gray-100 rounded">{m.label}</a>
+  <div className={`absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-indigo-100 z-50 ${manualsOpen ? 'block' : 'hidden'}`}>
+    {manuals.filter((m) => m.label !== 'Student Manual').map((m) => (
+      <a key={m.label} href={m.href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 text-black hover:bg-gray-100">
+        {m.label === 'Admin Manual' && (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4 text-indigo-700"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3l8 4.5v4.5c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V7.5L12 3z"/></svg>
+        )}
+        {m.label === 'Instructor Manual' && (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4 text-indigo-700">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M18 20a6 6 0 10-12 0" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        )}
+        {m.label === 'Proctor Manual' && (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4 text-indigo-700"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12s3.75-6 9.75-6 9.75 6 9.75 6-3.75 6-9.75 6-9.75-6-9.75-6z"/><circle cx="12" cy="12" r="3.75"/></svg>
+        )}
+        {m.label === 'Website Manual' && (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4 text-indigo-700"><path strokeLinecap="round" strokeLinejoin="round" d="M12 21c4.97 0 9-4.03 9-9s-4.03-9-9-9-9 4.03-9 9 4.03 9 9 9z"/><path strokeLinecap="round" strokeLinejoin="round" d="M3 12h18M12 3c2.5 3 2.5 15 0 18M7 6.5c3 1.5 7 1.5 10 0M7 17.5c3-1.5 7-1.5 10 0"/></svg>
+        )}
+        {m.label}
+      </a>
     ))}
   </div>
 </div>
@@ -405,10 +566,12 @@ export default function HomePage() {
                 >
                   <span
                     className="pointer-events-none absolute -inset-0.5 rounded-[1.25rem] opacity-80 blur-[0.5px] bg-[conic-gradient(from_0deg,theme(colors.indigo.400),theme(colors.blue.400),theme(colors.indigo.400))] animate-[spin_3s_linear_infinite]"
+                    style={{ animationDirection: 'reverse' }}
                     aria-hidden="true"
                   />
                   <span
                     className="pointer-events-none absolute -inset-1 rounded-[1.35rem] opacity-30 blur-xl bg-[conic-gradient(from_0deg,theme(colors.indigo.400),theme(colors.blue.400),theme(colors.indigo.400))] animate-[spin_3s_linear_infinite]"
+                    style={{ animationDirection: 'reverse' }}
                     aria-hidden="true"
                   />
                   <span className="relative z-10 flex items-center gap-2">
