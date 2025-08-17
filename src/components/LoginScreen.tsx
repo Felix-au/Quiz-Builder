@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signInWithPopup } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signInWithPopup, sendEmailVerification } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Mail, Lock, LogIn, UserPlus, KeyRound, ChevronDown, Home as HomeIcon } from 'lucide-react';
@@ -14,18 +15,89 @@ import { useAuth } from "@/contexts/AuthContext";
 const LoginScreen = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  useEffect(() => {
-    if (user) {
-      navigate("/", { replace: true });
-    }
-  }, [user, navigate]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showLoginForm, setShowLoginForm] = useState(false);
+  const [showVerifyDialog, setShowVerifyDialog] = useState(false);
+  const [verifyEmailAddress, setVerifyEmailAddress] = useState<string>('');
   const { toast } = useToast();
+
+  // Navigate only when eligible (avoid while modal is open)
+  useEffect(() => {
+    const maybeNavigate = async () => {
+      if (!user || showVerifyDialog) return;
+      // Allow navigation for non-password providers (e.g., Google)
+      const providerId = user.providerData[0]?.providerId;
+      if (providerId && providerId !== 'password') {
+        navigate("/home", { replace: true });
+        return;
+      }
+      // For password provider, only navigate if email is verified
+      try {
+        await user.reload();
+      } catch (_) {
+        // ignore reload errors
+      }
+      if (user.emailVerified) {
+        navigate("/home", { replace: true });
+      }
+    };
+    maybeNavigate();
+  }, [user, showVerifyDialog, navigate]);
+
+  // Resend verification by signing in with current email/password, sending link, then signing out
+  const handleResendVerification = async () => {
+    if (!verifyEmailAddress || !password) {
+      toast({ title: 'Missing information', description: 'Enter your email and password to resend the verification link.', variant: 'destructive' });
+      return;
+    }
+    setLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, verifyEmailAddress, password);
+      if (auth.currentUser) {
+        await sendEmailVerification(auth.currentUser);
+      }
+      toast({ title: 'Verification email sent', description: `A new link was sent to ${verifyEmailAddress}.` });
+    } catch (e: any) {
+      toast({ title: 'Could not resend', description: e.message, variant: 'destructive' });
+    } finally {
+      try { await auth.signOut(); } catch {}
+      setLoading(false);
+    }
+  };
+
+  // User claims they verified: sign in, reload, check verified; redirect if verified
+  const handleIHaveVerified = async () => {
+    if (!verifyEmailAddress || !password) {
+      toast({ title: 'Missing information', description: 'Enter your email and password to continue.', variant: 'destructive' });
+      return;
+    }
+    setLoading(true);
+    let success = false;
+    try {
+      await signInWithEmailAndPassword(auth, verifyEmailAddress, password);
+      if (auth.currentUser) {
+        try { await auth.currentUser.reload(); } catch {}
+        if (auth.currentUser.emailVerified) {
+          setShowVerifyDialog(false);
+          success = true;
+          navigate('/home', { replace: true });
+          return;
+        }
+      }
+      toast({ title: 'Still not verified', description: 'We could not confirm verification yet. Please check your inbox and try again.' });
+    } catch (e: any) {
+      toast({ title: 'Sign-in failed', description: e.message, variant: 'destructive' });
+    } finally {
+      if (!success) {
+        try { await auth.signOut(); } catch {}
+      }
+      setLoading(false);
+    }
+  };
 
   // Handle scroll to show login form on mobile
   useEffect(() => {
@@ -66,12 +138,27 @@ const LoginScreen = () => {
     try {
       if (isSignUp) {
         await createUserWithEmailAndPassword(auth, email, password);
-        toast({
-          title: "Account created successfully!",
-          description: "Welcome to PrashnaSetu",
-        });
+        if (auth.currentUser) {
+          try {
+            await sendEmailVerification(auth.currentUser);
+          } catch (_) {
+            // ignore send errors here; user will still see the modal
+          }
+        }
+        setVerifyEmailAddress(email);
+        setShowVerifyDialog(true);
+        // Sign out unverified users to block access until verification
+        await auth.signOut();
       } else {
         await signInWithEmailAndPassword(auth, email, password);
+        // After sign-in, check verification status for password users
+        if (auth.currentUser && auth.currentUser.providerData[0]?.providerId === 'password' && !auth.currentUser.emailVerified) {
+          try { await sendEmailVerification(auth.currentUser); } catch (_) {}
+          setVerifyEmailAddress(email);
+          setShowVerifyDialog(true);
+          await auth.signOut();
+          return;
+        }
         toast({
           title: "Signed in successfully!",
           description: "Welcome back to PrashnaSetu",
@@ -139,6 +226,57 @@ const LoginScreen = () => {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
+      {/* Verification Modal */}
+      <Dialog open={showVerifyDialog} onOpenChange={setShowVerifyDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Verify your email</DialogTitle>
+            <DialogDescription>
+              We sent a verification link to <span className="font-medium">{verifyEmailAddress}</span>. Please click the link in your inbox to activate your account.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">
+              Tip: Check your Spam/Junk folder if you don’t see the email within a minute.
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <Button asChild variant="outline" size="sm">
+                <a href="https://mail.google.com" target="_blank" rel="noreferrer" className="w-full flex items-center justify-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4">
+                    <rect x="2" y="5" width="20" height="14" rx="2" ry="2" fill="#ffffff" stroke="#E53935" stroke-width="1.5"/>
+                    <path d="M3 7l9 6 9-6" fill="none" stroke="#E53935" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M4 18V8l8 5 8-5v10" fill="none" stroke="#D32F2F" stroke-width="1.2" stroke-linejoin="round"/>
+                  </svg>
+                  Gmail
+                </a>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <a href="https://outlook.live.com/mail/0/" target="_blank" rel="noreferrer" className="w-full flex items-center justify-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-4 h-4"><path fill="#0364B8" d="M45,12.7v22.6c0,1.3-0.9,2.4-2.2,2.7l-19.9,4c-0.8,0.2-1.6-0.4-1.6-1.3V7.3c0-0.9,0.8-1.5,1.6-1.3l19.9,4 C44.1,10.3,45,11.4,45,12.7z"/><path fill="#28A8EA" d="M23.3 6l10.7 2.2v31.6L23.3 42z"/><path fill="#0078D4" d="M3 14c0-1.1.9-2 2-2h17v24H5c-1.1 0-2-.9-2-2V14z"/><path fill="#50D9FF" d="M12 30c4.4 0 8-3.6 8-8s-3.6-8-8-8-8 3.6-8 8 3.6 8 8 8z"/></svg>
+                  Outlook
+                </a>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <a href="https://mail.yahoo.com" target="_blank" rel="noreferrer" className="w-full flex items-center justify-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4">
+                    <rect x="2" y="3" width="20" height="18" rx="4" fill="#5F01D1"/>
+                    <path d="M7 7l3 5v4h2v-4l3-5h-2.2L12 10.6 9.2 7H7z" fill="#ffffff"/>
+                    <rect x="16.5" y="13.7" width="1.8" height="3.8" rx="0.9" fill="#ffffff"/>
+                  </svg>
+                  Yahoo
+                </a>
+              </Button>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <Button variant="outline" onClick={handleResendVerification} disabled={loading}>Resend verification link</Button>
+              <div className="space-x-2">
+                <Button variant="secondary" onClick={handleIHaveVerified} disabled={loading}>I've verified</Button>
+                <Button onClick={() => setShowVerifyDialog(false)} disabled={loading}>Close</Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       {/* Darker Background Layers (like Home) */}
       <div className="absolute inset-0 -z-10 bg-gradient-to-br from-slate-800 via-indigo-900 to-blue-950" />
       <div className="absolute inset-0 -z-10 opacity-40 bg-[radial-gradient(ellipse_at_center,_rgba(79,70,229,0.45),_transparent_60%)]" />

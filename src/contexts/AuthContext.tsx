@@ -24,8 +24,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      if (u) {
+        // If password provider and not verified, sign out to prevent app treating as authenticated
+        const providerId = u.providerData[0]?.providerId;
+        try {
+          await u.reload();
+        } catch (_) {}
+        if (providerId === 'password' && !u.emailVerified) {
+          await auth.signOut();
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+      }
+      setUser(u);
       setLoading(false);
     });
 

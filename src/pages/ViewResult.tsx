@@ -1,11 +1,14 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 // no header icons needed now
-import { signInWithEmailAndPassword, sendPasswordResetEmail, signInWithPopup, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail, signInWithPopup, createUserWithEmailAndPassword, signOut, sendEmailVerification } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
 import { BlockMath, InlineMath } from 'react-katex';
 import 'katex/dist/katex.min.css';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 const API_BASE = import.meta.env.VITE_RESULTS_API_URL || "https://result-xxa7.onrender.com";
 
@@ -95,6 +98,8 @@ type DetailDTO = {
 
 export default function ViewResult() {
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [enrollmentNumber, setEnrollmentNumber] = React.useState("");
   const [email, setEmail] = React.useState("");
   // Instructor view toggle and fields
@@ -178,6 +183,9 @@ export default function ViewResult() {
   const [authLoading, setAuthLoading] = React.useState(false);
   const [authError, setAuthError] = React.useState<string | null>(null);
   const [isSignUp, setIsSignUp] = React.useState(false);
+  // Email verification modal state
+  const [showVerifyDialog, setShowVerifyDialog] = React.useState(false);
+  const [verifyEmailAddress, setVerifyEmailAddress] = React.useState("");
 
   // Header simplified: Home + Contact, logo/link to '/'
 
@@ -274,13 +282,81 @@ export default function ViewResult() {
     setAuthLoading(true);
     try {
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, loginEmail, loginPassword);
+        const cred = await createUserWithEmailAndPassword(auth, loginEmail, loginPassword);
+        try { await sendEmailVerification(cred.user); } catch {}
+        setVerifyEmailAddress(loginEmail);
+        setShowVerifyDialog(true);
+        try { await signOut(auth); } catch {}
       } else {
         await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+        // If password provider and not verified, resend and gate with modal
+        const u = auth.currentUser;
+        if (u) {
+          const providerId = u.providerData[0]?.providerId;
+          try { await u.reload(); } catch {}
+          if (providerId === 'password' && !u.emailVerified) {
+            try { await sendEmailVerification(u); } catch {}
+            setVerifyEmailAddress(loginEmail);
+            setShowVerifyDialog(true);
+            try { await signOut(auth); } catch {}
+          }
+        }
       }
     } catch (err: any) {
       setAuthError(err?.message || "Login failed");
     } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // Resend verification: sign in temporarily, send, sign out
+  const handleResendVerification = async () => {
+    if (!verifyEmailAddress || !loginPassword) {
+      toast({ title: 'Missing information', description: 'Enter your email and password to resend the verification link.', variant: 'destructive' });
+      return;
+    }
+    setAuthLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, verifyEmailAddress, loginPassword);
+      if (auth.currentUser) {
+        try { await sendEmailVerification(auth.currentUser); } catch {}
+      }
+      toast({ title: 'Verification email sent', description: 'Check your inbox and spam folder.' });
+    } catch (e: any) {
+      toast({ title: 'Failed to resend', description: e?.message || 'Please try again later.', variant: 'destructive' });
+    } finally {
+      try { await signOut(auth); } catch {}
+      setAuthLoading(false);
+    }
+  };
+
+  // I've verified: sign in, reload, if verified keep logged in and refresh current results route
+  const handleIHaveVerified = async () => {
+    if (!verifyEmailAddress || !loginPassword) {
+      toast({ title: 'Missing information', description: 'Enter your email and password to continue.', variant: 'destructive' });
+      return;
+    }
+    setAuthLoading(true);
+    let success = false;
+    try {
+      await signInWithEmailAndPassword(auth, verifyEmailAddress, loginPassword);
+      if (auth.currentUser) {
+        try { await auth.currentUser.reload(); } catch {}
+        if (auth.currentUser.emailVerified) {
+          success = true;
+          setShowVerifyDialog(false);
+          // Redirect back to this results screen
+          navigate(window.location.pathname, { replace: true });
+          return;
+        }
+      }
+      toast({ title: 'Still not verified', description: 'We could not confirm verification yet. Please check your inbox and try again.' });
+    } catch (e: any) {
+      toast({ title: 'Sign-in failed', description: e?.message || 'Please try again.', variant: 'destructive' });
+    } finally {
+      if (!success) {
+        try { await signOut(auth); } catch {}
+      }
       setAuthLoading(false);
     }
   };
@@ -598,6 +674,49 @@ export default function ViewResult() {
                   </div>
                 )}
               </div>
+              {/* Verification Modal */}
+              <Dialog open={showVerifyDialog} onOpenChange={setShowVerifyDialog}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Verify your email</DialogTitle>
+                    <DialogDescription>
+                      We sent a verification link to <span className="font-medium">{verifyEmailAddress}</span>. Please click the link in your inbox to activate your account.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    <div className="text-sm text-muted-foreground">
+                      Tip: Check your Spam/Junk folder if you don’t see the email within a minute.
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Button asChild variant="outline" size="sm">
+                        <a href="https://mail.google.com" target="_blank" rel="noreferrer" className="w-full flex items-center justify-center gap-1.5">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4"><rect x="2" y="5" width="20" height="14" rx="2" ry="2" fill="#ffffff" stroke="#E53935" strokeWidth="1.5"/><path d="M3 7l9 6 9-6" fill="none" stroke="#E53935" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 18V8l8 5 8-5v10" fill="none" stroke="#D32F2F" strokeWidth="1.2" strokeLinejoin="round"/></svg>
+                          Gmail
+                        </a>
+                      </Button>
+                      <Button asChild variant="outline" size="sm">
+                        <a href="https://outlook.live.com/mail/0/" target="_blank" rel="noreferrer" className="w-full flex items-center justify-center gap-1.5">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-4 h-4"><path fill="#0364B8" d="M45,12.7v22.6c0,1.3-0.9,2.4-2.2,2.7l-19.9,4c-0.8,0.2-1.6-0.4-1.6-1.3V7.3c0-0.9,0.8-1.5,1.6-1.3l19.9,4 C44.1,10.3,45,11.4,45,12.7z"/><path fill="#28A8EA" d="M23.3 6l10.7 2.2v31.6L23.3 42z"/><path fill="#0078D4" d="M3 14c0-1.1.9-2 2-2h17v24H5c-1.1 0-2-.9-2-2V14z"/><path fill="#50D9FF" d="M12 30c4.4 0 8-3.6 8-8s-3.6-8-8-8-8 3.6-8 8 3.6 8 8 8z"/></svg>
+                          Outlook
+                        </a>
+                      </Button>
+                      <Button asChild variant="outline" size="sm">
+                        <a href="https://mail.yahoo.com" target="_blank" rel="noreferrer" className="w-full flex items-center justify-center gap-1.5">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4"><rect x="2" y="3" width="20" height="18" rx="4" fill="#5F01D1"/><path d="M7 7l3 5v4h2v-4l3-5h-2.2L12 10.6 9.2 7H7z" fill="#ffffff"/><rect x="16.5" y="13.7" width="1.8" height="3.8" rx="0.9" fill="#ffffff"/></svg>
+                          Yahoo
+                        </a>
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <Button variant="outline" onClick={handleResendVerification} disabled={authLoading}>Resend verification link</Button>
+                      <div className="space-x-2">
+                        <Button variant="secondary" onClick={handleIHaveVerified} disabled={authLoading}>I've verified</Button>
+                        <Button onClick={() => setShowVerifyDialog(false)} disabled={authLoading}>Close</Button>
+                      </div>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           ) : (
           <div className="space-y-4">

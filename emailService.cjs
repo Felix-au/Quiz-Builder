@@ -80,7 +80,7 @@ app.post('/send-quiz-email', upload.single('quizZip'), async (req, res) => {
     `;
 
     await transporter.sendMail({
-      from: 'PrashnaSetu <quizbuilder86@gmail.com>',
+      from: 'PrashnaSetu <noreply@bmu.edu.in>',
       to,
       subject: 'Quiz details',
       html,
@@ -102,7 +102,7 @@ app.post('/send-quiz-email', upload.single('quizZip'), async (req, res) => {
         setTimeout(async () => {
           try {
             await transporter.sendMail({
-              from: 'PrashnaSetu <quizbuilder86@gmail.com>',
+              from: 'PrashnaSetu <noreply@bmu.edu.in>',
               to,
               subject: 'Reminder: Quiz details',
               html,
