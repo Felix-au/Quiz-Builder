@@ -25,6 +25,10 @@ type SearchResultItem = {
   totalMarks: number | null;
   numDisplayedQuestions: number | null;
   status: string | null;
+  // present in instructor search results; optional in student view
+  studentName?: string | null;
+  studentEmail?: string | null;
+  enrollmentNumber?: string | null;
 };
 
 type DetailDTO = {
@@ -453,7 +457,10 @@ export default function ViewResult() {
 
       {/* Content */}
       <div className="container mx-auto px-4 pt-24 pb-8">
-        <div className="max-w-3xl mx-auto bg-white/80 text-black rounded-2xl shadow-xl border border-indigo-200/60 p-6">
+        <br></br>        <br></br>
+        <br></br>
+
+        <div className="max-w-5xl mx-auto bg-white/80 text-black rounded-2xl shadow-xl border border-indigo-200/60 px-6 py-12">
           <h1 className="text-2xl font-bold mb-4">View Results</h1>
           {!user ? (
             <div className="py-6">
@@ -648,6 +655,13 @@ export default function ViewResult() {
                     <tr className="text-left text-gray-600">
                       <th className="p-2">Quiz</th>
                       <th className="p-2">Subject</th>
+                      {isInstructorView && (
+                        <>
+                          <th className="p-2">Name</th>
+                          <th className="p-2">Email</th>
+                          <th className="p-2">Enrollment</th>
+                        </>
+                      )}
                       <th className="p-2">Marks</th>
                       <th className="p-2">Duration</th>
                       <th className="p-2">Start</th>
@@ -662,6 +676,13 @@ export default function ViewResult() {
                           <div className="font-medium">{r.quizName || '—'}{r.quizCode ? ` (${r.quizCode})` : ''}</div>
                         </td>
                         <td className="p-2">{r.subject || '—'}</td>
+                        {isInstructorView && (
+                          <>
+                            <td className="p-2 text-sm font-medium text-gray-900">{r.studentName || '—'}</td>
+                            <td className="p-2 text-xs text-gray-700">{r.studentEmail || '—'}</td>
+                            <td className="p-2 text-xs text-gray-700">{r.enrollmentNumber || '—'}</td>
+                          </>
+                        )}
                         <td className="p-2">{r.marksObtained} / {r.numDisplayedQuestions ?? '—'}</td>
                         <td className="p-2">{r.durationMinutes ?? '—'} min</td>
                         <td className="p-2">{fmtDT(r.startTime)}</td>
@@ -691,7 +712,7 @@ export default function ViewResult() {
               {detail && (
                 <div>
                   {/* Summary */}
-                  <div className="rounded-xl border border-indigo-200/60 bg-white/70 p-4">
+                  <div className="rounded-xl border border-indigo-200/60 bg-white/70 px-4 py-6">
                     <div className="font-semibold text-black">{detail.summary.quizName} {detail.summary.quizCode ? `(${detail.summary.quizCode})` : ''}</div>
                     <div className="text-sm text-gray-700">
                       <div>Subject: {detail.summary.subject} {detail.summary.subjectCode ? `(${detail.summary.subjectCode})` : ''}</div>
@@ -787,7 +808,8 @@ export default function ViewResult() {
               )}
             </div>
           )}
-        </div>
+        </div>        <br></br>
+        <br></br>
       </div>
 
       {/* Cloned Footer */}
