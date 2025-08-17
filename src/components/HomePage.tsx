@@ -23,8 +23,8 @@ const manuals = [
 ];
 
 const downloads = [
-  { label: "Faculty Zip", href: "https://drive.google.com/file/d/1RfUKLSqFVVSjdgm3JXM0joZQBYS7bMQG/view" },
-  { label: "Result Zip", href: "https://drive.google.com/file/d/1eOlyx08BCyI421qCoVurFUuSePAsRKk1/view" },
+  { label: "Faculty Zip", href: "https://drive.usercontent.google.com/download?id=14pipSlvFdKNtkdYhbiQ5zmsUmTgUDW7x&export=download" },
+  { label: "Result Zip", href: "https://drive.usercontent.google.com/download?id=14pipSlvFdKNtkdYhbiQ5zmsUmTgUDW7x&export=download" },
 ];
 
 // Salient features to show as flip cards (with icons)
@@ -339,7 +339,7 @@ export default function HomePage() {
                 </button>
                 <div className={`absolute right-0 mt-2 w-60 bg-white rounded-lg shadow-lg border border-indigo-100 z-50 ${studentOpen ? 'block' : 'hidden'}`}>
                   <a
-                    href="https://drive.google.com/file/d/1eOlyx08BCyI421qCoVurFUuSePAsRKk1/view"
+                    href="https://drive.usercontent.google.com/download?id=1tqpksC7-QawabCTXWy6qnPVw0EXSsjtx&export=download"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 px-4 py-2 text-black hover:bg-gray-100 rounded-t"
@@ -474,7 +474,7 @@ export default function HomePage() {
                 </button>
                 <div className={`absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-indigo-100 z-50 ${studentOpen ? 'block' : 'hidden'}`}>
                   <a
-                    href="https://drive.google.com/file/d/1eOlyx08BCyI421qCoVurFUuSePAsRKk1/view"
+                    href="https://drive.usercontent.google.com/download?id=1tqpksC7-QawabCTXWy6qnPVw0EXSsjtx&export=download"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 px-3 py-1.5 text-black hover:bg-gray-100 rounded-t"
