@@ -116,6 +116,62 @@ export default function ViewResult() {
   const [detailError, setDetailError] = React.useState<string | null>(null);
   const detailRef = React.useRef<HTMLDivElement | null>(null);
 
+  // Instructor-only: filters and sorting
+  const [instFilters, setInstFilters] = React.useState({
+    name: '',
+    email: '',
+    enrollment: '',
+  });
+  const [sortBy, setSortBy] = React.useState<
+    'name' | 'email' | 'enrollment' | 'marks' | 'duration' | 'start' | 'end' | 'subject' | 'quiz' | null
+  >('enrollment');
+  const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('asc');
+
+  const displayedResults = React.useMemo(() => {
+    let arr = results.slice();
+    if (isInstructorView) {
+      const name = instFilters.name.trim().toLowerCase();
+      const email = instFilters.email.trim().toLowerCase();
+      const enrollment = instFilters.enrollment.trim().toLowerCase();
+      if (name) arr = arr.filter(r => (r.studentName || '').toLowerCase().includes(name));
+      if (email) arr = arr.filter(r => (r.studentEmail || '').toLowerCase().includes(email));
+      if (enrollment) arr = arr.filter(r => (r.enrollmentNumber || '').toLowerCase().includes(enrollment));
+
+      if (sortBy) {
+        const getVal = (r: SearchResultItem) => {
+          switch (sortBy) {
+            case 'name': return r.studentName ?? '';
+            case 'email': return r.studentEmail ?? '';
+            case 'enrollment': return r.enrollmentNumber ?? '';
+            case 'subject': return r.subject ?? '';
+            case 'quiz': return r.quizName ?? '';
+            case 'marks': return r.marksObtained ?? -Infinity;
+            case 'duration': return r.durationMinutes ?? -Infinity;
+            case 'start': return r.startTime ?? '';
+            case 'end': return r.endTime ?? '';
+            default: return '';
+          }
+        };
+        arr.sort((a, b) => {
+          const va = getVal(a) as any;
+          const vb = getVal(b) as any;
+          // Handle numbers vs strings
+          const num = typeof va === 'number' && typeof vb === 'number';
+          let cmp = 0;
+          if (num) cmp = (va as number) - (vb as number);
+          else cmp = String(va).localeCompare(String(vb));
+          return sortDir === 'asc' ? cmp : -cmp;
+        });
+      }
+    }
+    return arr;
+  }, [results, isInstructorView, instFilters, sortBy, sortDir]);
+
+  const toggleSort = (key: NonNullable<typeof sortBy>) => {
+    if (sortBy === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortBy(key); setSortDir('asc'); }
+  };
+
   // Inline auth form state (for unauthenticated users)
   const [loginEmail, setLoginEmail] = React.useState("");
   const [loginPassword, setLoginPassword] = React.useState("");
@@ -650,28 +706,132 @@ export default function ViewResult() {
             )}
             {results.length > 0 && (
               <div className="mt-3 overflow-x-auto">
+                {isInstructorView && (
+                  <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+                    <input
+                      className="h-8 rounded border border-gray-300 px-2"
+                      placeholder="Filter Name"
+                      value={instFilters.name}
+                      onChange={e => setInstFilters(s => ({ ...s, name: e.target.value }))}
+                    />
+                    <input
+                      className="h-8 rounded border border-gray-300 px-2"
+                      placeholder="Filter Email"
+                      value={instFilters.email}
+                      onChange={e => setInstFilters(s => ({ ...s, email: e.target.value }))}
+                    />
+                    <input
+                      className="h-8 rounded border border-gray-300 px-2"
+                      placeholder="Filter Enrollment"
+                      value={instFilters.enrollment}
+                      onChange={e => setInstFilters(s => ({ ...s, enrollment: e.target.value }))}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setInstFilters({ name: '', email: '', enrollment: '' })}
+                      className="h-8 px-3 rounded bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200"
+                      title="Clear filters"
+                    >
+                      Clear
+                    </button>
+                    <div className="ml-auto flex items-center gap-2">
+                      <label className="text-gray-600">Sort by:</label>
+                      <select
+                        className="h-8 rounded border border-gray-300 px-2 bg-white"
+                        value={sortBy ?? ''}
+                        onChange={e => setSortBy((e.target.value || null) as any)}
+                      >
+                        <option value="">None</option>
+                        <option value="enrollment">Enrollment Number</option>
+                        <option value="name">Name</option>
+                        <option value="email">Email</option>
+                        <option value="marks">Marks</option>
+                        <option value="start">Start Time</option>
+                        <option value="end">End Time</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))}
+                        className="h-8 px-3 rounded bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200"
+                        title="Toggle ascending/descending"
+                      >
+                        {sortDir === 'asc' ? 'Asc ▲' : 'Desc ▼'}
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <table className="min-w-full text-sm">
                   <thead>
                     <tr className="text-left text-gray-600">
-                      <th className="p-2">Quiz</th>
-                      <th className="p-2">Subject</th>
+                      <th className="p-2 w-12">#</th>
+                      <th className="p-2">
+                        {isInstructorView ? (
+                          <button onClick={() => toggleSort('quiz')} className="flex items-center gap-1">
+                            Quiz {sortBy === 'quiz' && (<span>{sortDir === 'asc' ? '▲' : '▼'}</span>)}
+                          </button>
+                        ) : 'Quiz'}
+                      </th>
+                      <th className="p-2">
+                        {isInstructorView ? (
+                          <button onClick={() => toggleSort('subject')} className="flex items-center gap-1">
+                            Subject {sortBy === 'subject' && (<span>{sortDir === 'asc' ? '▲' : '▼'}</span>)}
+                          </button>
+                        ) : 'Subject'}
+                      </th>
                       {isInstructorView && (
                         <>
-                          <th className="p-2">Name</th>
-                          <th className="p-2">Email</th>
-                          <th className="p-2">Enrollment</th>
+                          <th className="p-2">
+                            <button onClick={() => toggleSort('name')} className="flex items-center gap-1">
+                              Name {sortBy === 'name' && (<span>{sortDir === 'asc' ? '▲' : '▼'}</span>)}
+                            </button>
+                          </th>
+                          <th className="p-2">
+                            <button onClick={() => toggleSort('email')} className="flex items-center gap-1">
+                              Email {sortBy === 'email' && (<span>{sortDir === 'asc' ? '▲' : '▼'}</span>)}
+                            </button>
+                          </th>
+                          <th className="p-2">
+                            <button onClick={() => toggleSort('enrollment')} className="flex items-center gap-1">
+                              Enrollment {sortBy === 'enrollment' && (<span>{sortDir === 'asc' ? '▲' : '▼'}</span>)}
+                            </button>
+                          </th>
                         </>
                       )}
-                      <th className="p-2">Marks</th>
-                      <th className="p-2">Duration</th>
-                      <th className="p-2">Start</th>
-                      <th className="p-2">End</th>
+                      <th className="p-2">
+                        {isInstructorView ? (
+                          <button onClick={() => toggleSort('marks')} className="flex items-center gap-1">
+                            Marks {sortBy === 'marks' && (<span>{sortDir === 'asc' ? '▲' : '▼'}</span>)}
+                          </button>
+                        ) : 'Marks'}
+                      </th>
+                      <th className="p-2">
+                        {isInstructorView ? (
+                          <button onClick={() => toggleSort('duration')} className="flex items-center gap-1">
+                            Duration {sortBy === 'duration' && (<span>{sortDir === 'asc' ? '▲' : '▼'}</span>)}
+                          </button>
+                        ) : 'Duration'}
+                      </th>
+                      <th className="p-2">
+                        {isInstructorView ? (
+                          <button onClick={() => toggleSort('start')} className="flex items-center gap-1">
+                            Start {sortBy === 'start' && (<span>{sortDir === 'asc' ? '▲' : '▼'}</span>)}
+                          </button>
+                        ) : 'Start'}
+                      </th>
+                      <th className="p-2">
+                        {isInstructorView ? (
+                          <button onClick={() => toggleSort('end')} className="flex items-center gap-1">
+                            End {sortBy === 'end' && (<span>{sortDir === 'asc' ? '▲' : '▼'}</span>)}
+                          </button>
+                        ) : 'End'}
+                      </th>
                       <th className="p-2">Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {results.map(r => (
+                    {displayedResults.map((r, i) => (
                       <tr key={`${r.attemptId}`} className="border-t border-gray-200">
+                        <td className="p-2 w-12 text-gray-500">{i + 1}</td>
                         <td className="p-2">
                           <div className="font-medium">{r.quizName || '—'}{r.quizCode ? ` (${r.quizCode})` : ''}</div>
                         </td>
