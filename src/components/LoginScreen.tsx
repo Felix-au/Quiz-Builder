@@ -79,9 +79,10 @@ const LoginScreen = () => {
     let success = false;
     try {
       await signInWithEmailAndPassword(auth, verifyEmailAddress, password);
-      if (auth.currentUser) {
-        try { await auth.currentUser.reload(); } catch {}
-        if (auth.currentUser.emailVerified) {
+      const u = auth.currentUser;
+      if (u) {
+        try { await u.reload(); } catch {}
+        if (u.emailVerified) {
           setShowVerifyDialog(false);
           success = true;
           navigate('/home', { replace: true });
@@ -430,7 +431,7 @@ const LoginScreen = () => {
         
         {/* Copyright Footer Full-width - Desktop */}
         <div className="hidden md:block fixed bottom-0 left-0 w-full bg-white/60 backdrop-blur-xl border-t border-indigo-200/60 py-3 text-center text-xs text-gray-700 z-50">
-          <p>© Copyrighted by CAD-CS, BML Munjal University</p>
+          <p>  Copyrighted by CAD-CS, BML Munjal University</p>
           <p><Mail className="inline-block w-4 h-4 mr-1 -mt-1 align-middle text-gray-500" /><a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-indigo-700">cadcs@bmu.edu.in</a></p>
         </div>
       </div>
@@ -586,7 +587,7 @@ const LoginScreen = () => {
           
           {/* Copyright Footer - Mobile Screen 2 */}
           <div className="text-center text-xs text-gray-600 py-4">
-            <p>© Copyrighted by CAD-CS, BML Munjal University</p>
+            <p>  Copyrighted by CAD-CS, BML Munjal University</p>
             <p><Mail className="inline-block w-4 h-4 mr-1 -mt-1 align-middle text-gray-500" /><a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-blue-700">cadcs@bmu.edu.in</a></p>
           </div>
         </div>
