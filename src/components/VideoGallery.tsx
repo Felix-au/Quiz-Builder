@@ -39,7 +39,7 @@ const videos = [
 
 
 
-export default function VideoGallery() {
+export default function VideoGallery({ onDark = false }: { onDark?: boolean }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [activeVideo, setActiveVideo] = useState<null | typeof videos[0]>(null);
   const [current, setCurrent] = useState(0);
@@ -160,7 +160,7 @@ export default function VideoGallery() {
                     className="w-80 h-44 md:w-96 md:h-54 object-contain mb-6 rounded-xl shadow-lg aspect-video"
                     style={{ border: "none", background: "rgba(255,255,255,0.05)" }}
                   />
-                  <span className="text-base md:text-lg text-white font-bold text-center block leading-tight">
+                  <span className={`text-base md:text-lg ${onDark ? 'text-white' : 'text-black'} font-bold text-center block leading-tight`}>
                     {video.title}
                   </span>
                 </div>

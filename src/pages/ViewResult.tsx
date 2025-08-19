@@ -9,6 +9,9 @@ import 'katex/dist/katex.min.css';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
+import { Sun, Moon } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const API_BASE = import.meta.env.VITE_RESULTS_API_URL || "https://result-xxa7.onrender.com";
 
@@ -32,6 +35,37 @@ type SearchResultItem = {
   studentName?: string | null;
   studentEmail?: string | null;
   enrollmentNumber?: string | null;
+};
+
+// Minimal two-theme model cloned from Home/Credits
+type ThemeKey = 'solarizedDuo' | 'gradientMeshPop';
+type ThemeConfig = {
+  name: string;
+  rootBg: string;
+  header: string;
+  headerText: string;
+  renderOverlay: (args: { mx: number; my: number; reduceMotion: boolean }) => React.ReactNode;
+};
+
+const themes: Record<ThemeKey, ThemeConfig> = {
+  solarizedDuo: {
+    name: 'Solarized Duo',
+    rootBg: 'bg-[#fdf6e3]',
+    header: 'bg-[#fdf6e3]/80 backdrop-blur-xl shadow-lg border-b border-amber-200',
+    headerText: 'text-black',
+    renderOverlay: () => (
+      <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 20% 30%, rgba(38,139,210,0.15), transparent 40%), radial-gradient(circle at 80% 70%, rgba(203,75,22,0.15), transparent 40%)' }} />
+    ),
+  },
+  gradientMeshPop: {
+    name: 'Gradient Mesh Pop',
+    rootBg: 'bg-black',
+    header: 'bg-white/10 backdrop-blur-xl shadow-lg border-b border-white/20',
+    headerText: 'text-white',
+    renderOverlay: () => (
+      <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 20% 30%, rgba(34,211,238,0.25), transparent 35%), radial-gradient(circle at 80% 20%, rgba(244,63,94,0.25), transparent 35%), radial-gradient(circle at 60% 80%, rgba(250,204,21,0.25), transparent 35%)' }} />
+    ),
+  },
 };
 
 type DetailDTO = {
@@ -100,6 +134,25 @@ export default function ViewResult() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  // Theme + parallax state
+  const [mx, setMx] = React.useState(0);
+  const [my, setMy] = React.useState(0);
+  const { theme, setTheme, reduceMotion } = useTheme();
+  const isDark = themes[theme].headerText.includes('white');
+  const btnNeutral = isDark
+    ? 'bg-white/10 text-white border-white/15 hover:bg-white/15 focus-visible:ring-white/20'
+    : 'bg-gray-50 text-gray-800 border-gray-200 hover:bg-gray-100 focus-visible:ring-gray-200';
+  const footerShell = isDark ? 'bg-slate-900/60 backdrop-blur-xl border-t border-white/15' : 'bg-white/70 backdrop-blur-xl border-t border-gray-200';
+  const footerText = isDark ? 'text-white/80' : 'text-gray-700';
+  const targetTheme: ThemeKey = theme === 'solarizedDuo' ? 'gradientMeshPop' : 'solarizedDuo';
+  const targetLabel = targetTheme === 'solarizedDuo' ? 'Switch to Solarized Duo' : 'Switch to Gradient Mesh Pop';
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const { innerWidth, innerHeight } = window;
+    const nx = e.clientX / innerWidth - 0.5;
+    const ny = e.clientY / innerHeight - 0.5;
+    setMx(nx);
+    setMy(ny);
+  };
   const [enrollmentNumber, setEnrollmentNumber] = React.useState("");
   const [email, setEmail] = React.useState("");
   // Instructor view toggle and fields
@@ -481,29 +534,77 @@ export default function ViewResult() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-800 via-indigo-900 to-blue-950 text-white flex items-center justify-center">
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div>Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-800 via-indigo-900 to-blue-950 text-white">
-      {/* Header (simplified per request) */}
-      <div className="bg-gradient-to-br from-white/70 to-indigo-50/60 backdrop-blur-xl shadow-lg border-b border-indigo-200/60 fixed top-0 left-0 w-full z-40 transition-all duration-300">
+    <div onMouseMove={handleMouseMove} className={`relative min-h-screen transition-colors duration-700 ${themes[theme].rootBg} text-white`}>
+      {/* Themed background layers at z-0 */}
+      <div className="pointer-events-none select-none fixed inset-0 z-0">
+        <div className="absolute inset-0">
+          {!reduceMotion && (
+            <div
+              className="absolute inset-0 opacity-30 mix-blend-screen animate-[spin_60s_linear_infinite]"
+              style={{
+                background:
+                  'conic-gradient(from_180deg_at_50%_50%, rgba(99,102,241,0.15), rgba(34,211,238,0.12), rgba(244,63,94,0.12), rgba(99,102,241,0.15))',
+              }}
+            />
+          )}
+          <div
+            className="absolute inset-0 opacity-15"
+            style={{
+              background:
+                'repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 24px), repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 24px)',
+            }}
+          />
+          <div
+            className="absolute inset-0 opacity-10"
+            style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px)', backgroundSize: '22px 22px' }}
+          />
+          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse_at_center, rgba(0,0,0,0.35), transparent_60%)' }} />
+          {!reduceMotion && (
+            <>
+              <div
+                className="absolute -top-24 -left-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
+                style={{
+                  background: 'radial-gradient(circle_at_30%_30%, rgba(99,102,241,0.35), transparent_60%)',
+                  transform: `translate3d(${mx * 40}px, ${my * 40}px, 0)`,
+                  transition: 'transform 0.25s ease-out',
+                }}
+              />
+              <div
+                className="absolute -bottom-24 -right-24 w-[30rem] h-[30rem] rounded-full blur-3xl"
+                style={{
+                  background: 'radial-gradient(circle_at_70%_70%, rgba(34,211,238,0.35), transparent_60%)',
+                  transform: `translate3d(${mx * -48}px, ${my * -48}px, 0)`,
+                  transition: 'transform 0.25s ease-out',
+                }}
+              />
+            </>
+          )}
+          {/* Theme overlay */}
+          {themes[theme].renderOverlay({ mx, my, reduceMotion })}
+        </div>
+      </div>
+      {/* Header (theme-aware) */}
+      <div className={`${themes[theme].header} fixed top-0 left-0 w-full z-40 transition-all duration-700`}>
         <div className="container flex flex-col justify-center px-4">
           {/* Desktop Header */}
           <div className="hidden md:flex items-center justify-between h-20">
-            <Link to="/" className="flex items-center gap-3 cursor-pointer">
-              <img src="/logo2.png" alt="PrashnaSetu Logo" className="h-12 w-12 object-contain" />
-              <div className="flex flex-col justify-center">
-                <h1 className="text-lg font-semibold leading-tight text-black">PrashnaSetu</h1>
-                <span className="text-xs text-black leading-tight">Think. Compete. Conquer.</span>
-              </div>
+            <Link to="/" className="flex items-center gap-3 cursor-pointer h-full">
+              <img
+                src={isDark ? "/logo1dark.png" : "/logo1light.png"}
+                alt="PrashnaSetu Logo"
+                className="h-[90%] w-auto object-contain"
+              />
             </Link>
             <div className="flex items-center gap-4">
               {user && (
-                <div className="hidden md:flex items-center text-right mr-2 text-black">
+                <div className={`hidden md:flex items-center text-right mr-2 ${themes[theme].headerText}`}>
                   <div className="text-sm font-semibold">Welcome {user.displayName || user.email}</div>
                 </div>
               )}
@@ -518,20 +619,34 @@ export default function ViewResult() {
                 </svg>
                 {isInstructorView ? 'Switch to Student View' : 'Switch to Instructor View'}
               </button>
-              <Link to="/credits">
-                <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-100 text-green-700 font-semibold shadow hover:bg-green-200 focus:ring-2 focus:ring-green-300 border border-green-200 transition">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 8.5V18a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 18V8.5m18 0A2.5 2.5 0 0018.5 6h-13A2.5 2.5 0 003 8.5m18 0V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2.5m18 0l-9 6.5-9-6.5" /></svg>
-                  Contact Us
-                </button>
-              </Link>
+              {/* Contact Us removed for View Results header */}
               <Link to="/">
-                <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-100 text-indigo-700 font-semibold shadow hover:bg-indigo-200 focus:ring-2 focus:ring-indigo-300 border border-indigo-200 transition">
+                <button className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold shadow focus-visible:ring-2 border transition ${btnNeutral}`}>
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9.75l9-6.75 9 6.75V20a2 2 0 0 1-2 2h-4.5v-6h-5V22H5a2 2 0 0 1-2-2V9.75" />
                   </svg>
                   Home
                 </button>
               </Link>
+              <motion.button
+                whileTap={reduceMotion ? undefined : { scale: 0.95 }}
+                onClick={() => setTheme(targetTheme)}
+                aria-label={targetLabel}
+                className={`flex items-center justify-center px-3 py-2 rounded-lg font-semibold shadow focus-visible:ring-2 border transition cursor-pointer select-none ${btnNeutral}`}
+              >
+                <AnimatePresence initial={false} mode="wait">
+                  {targetTheme === 'solarizedDuo' ? (
+                    <motion.span key="sun" initial={reduceMotion ? { opacity: 1 } : { opacity: 0, rotate: -90 }} animate={{ opacity: 1, rotate: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, rotate: 90 }} transition={{ duration: reduceMotion ? 0 : 0.5, ease: 'easeOut' }} className="flex">
+                      <Sun className="w-5 h-5" />
+                    </motion.span>
+                  ) : (
+                    <motion.span key="moon" initial={reduceMotion ? { opacity: 1 } : { opacity: 0, rotate: -90 }} animate={{ opacity: 1, rotate: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, rotate: 90 }} transition={{ duration: reduceMotion ? 0 : 0.5, ease: 'easeOut' }} className="flex">
+                      <Moon className="w-5 h-5" />
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+                <span className="sr-only">{targetLabel}</span>
+              </motion.button>
               {user && (
                 <button onClick={handleSignOut} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-rose-100 text-rose-700 font-semibold shadow hover:bg-rose-200 focus:ring-2 focus:ring-rose-300 border border-rose-200 transition">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12H3m12 0l-4-4m4 4l-4 4m6-10V6a2 2 0 00-2-2H7a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
@@ -543,18 +658,18 @@ export default function ViewResult() {
 
           {/* Mobile Header */}
           <div className="md:hidden py-3">
-            <div className="flex items-center justify-between mb-2">
-              <Link to="/" className="flex items-center gap-2 cursor-pointer">
-                <img src="/logo2.png" alt="PrashnaSetu Logo" className="h-8 w-8 object-contain" />
-                <div className="flex flex-col">
-                  <h1 className="text-sm font-semibold leading-tight text-black">PrashnaSetu</h1>
-                  <span className="text-xs text-black leading-tight">Think. Compete. Conquer.</span>
-                </div>
+            <div className="flex items-center justify-between mb-2 h-16">
+              <Link to="/" className="flex items-center gap-2 cursor-pointer h-full">
+                <img
+                  src={isDark ? "/logo1dark.png" : "/logo1light.png"}
+                  alt="PrashnaSetu Logo"
+                  className="h-[90%] w-auto object-contain"
+                />
               </Link>
             </div>
             <div className="flex items-center gap-2 mt-2">
               {user && (
-                <div className="flex-1 text-right text-black">
+                <div className={`flex-1 text-right ${themes[theme].headerText}`}>
                   <div className="text-sm font-semibold">Welcome {user.displayName || user.email}</div>
                 </div>
               )}
@@ -568,76 +683,90 @@ export default function ViewResult() {
                 </svg>
                 {isInstructorView ? 'Switch to Student View' : 'Switch to Instructor View'}
               </button>
-              <Link to="/credits">
-                <button className="px-3 py-1 rounded bg-green-100 text-green-700 font-medium border border-green-200">Contact Us</button>
-              </Link>
+              {/* Contact Us removed for View Results header (mobile) */}
               <Link to="/">
-                <button className="px-3 py-1 rounded bg-indigo-100 text-indigo-700 font-medium border border-indigo-200 flex items-center gap-1">
+                <button className={`px-3 py-1 rounded font-medium border flex items-center gap-1 ${btnNeutral}`}>
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9.75l9-6.75 9 6.75V20a2 2 0 0 1-2 2h-4.5v-6h-5V22H5a2 2 0 0 1-2-2V9.75" />
                   </svg>
                   Home
                 </button>
               </Link>
-              {user && (
-                <button onClick={handleSignOut} className="px-3 py-1 rounded bg-rose-100 text-rose-700 font-medium border border-rose-200">Logout</button>
-              )}
-            </div>
+              <motion.button
+                whileTap={reduceMotion ? undefined : { scale: 0.95 }}
+                onClick={() => setTheme(targetTheme)}
+                aria-label={targetLabel}
+                className={`px-3 py-1 rounded font-medium border ${btnNeutral}`}
+              >
+                <AnimatePresence initial={false} mode="wait">
+                  {targetTheme === 'solarizedDuo' ? (
+                    <motion.span key="sun" initial={reduceMotion ? { opacity: 1 } : { opacity: 0, rotate: -90 }} animate={{ opacity: 1, rotate: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, rotate: 90 }} transition={{ duration: reduceMotion ? 0 : 0.5, ease: 'easeOut' }} className="flex">
+                      <Sun className="w-4 h-4" />
+                    </motion.span>
+                  ) : (
+                    <motion.span key="moon" initial={reduceMotion ? { opacity: 1 } : { opacity: 0, rotate: -90 }} animate={{ opacity: 1, rotate: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, rotate: 90 }} transition={{ duration: reduceMotion ? 0 : 0.5, ease: 'easeOut' }} className="flex">
+                      <Moon className="w-4 h-4" />
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+                <span className="sr-only">{targetLabel}</span>
+              </motion.button>
           </div>
         </div>
       </div>
+    </div>
 
-      {/* Content */}
-      <div className="container mx-auto px-4 pt-24 pb-8">
-        <br></br>        <br></br>
-        <br></br>
+    {/* Content */}
+    <div className="container mx-auto px-4 pt-24 pb-28 relative z-10">
+      <br></br>        <br></br>
+      <br></br>
 
-        <div className="max-w-5xl mx-auto bg-white/80 text-black rounded-2xl shadow-xl border border-indigo-200/60 px-6 py-12">
-          <h1 className="text-2xl font-bold mb-4">View Results</h1>
-          {!user ? (
-            <div className="py-6">
-              <div className="text-center text-gray-900 font-semibold mb-4">Login first to access results</div>
-              <div className="max-w-md mx-auto">
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Email</label>
-                    <div className="relative">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 0l8 6 8-6"/></svg>
-                      <input
-                        className="w-full h-10 rounded-lg border border-gray-300 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
-                        type="email"
-                        value={loginEmail}
-                        onChange={e => setLoginEmail(e.target.value)}
-                        placeholder="Email address"
-                        required
-                      />
-                    </div>
+      <div className="max-w-5xl mx-auto bg-white/80 text-black rounded-2xl shadow-xl border border-indigo-200/60 px-6 py-12">
+        <h1 className="text-2xl font-bold mb-4">View Results</h1>
+        {!user ? (
+          <div className="py-6">
+            <div className="text-center text-gray-900 font-semibold mb-4">Login first to access results</div>
+            <div className="max-w-md mx-auto">
+              <form onSubmit={handleSignIn} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Email</label>
+                  <div className="relative">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 0l8 6 8-6"/></svg>
+                    <input
+                      className="w-full h-10 rounded-lg border border-gray-300 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                      type="email"
+                      value={loginEmail}
+                      onChange={e => setLoginEmail(e.target.value)}
+                      placeholder="Email address"
+                      required
+                    />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Password</label>
-                    <div className="relative">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V8a4.5 4.5 0 10-9 0v2.5" />
-                        <rect x="5" y="10.5" width="14" height="9" rx="2" ry="2" />
-                      </svg>
-                      <input
-                        className="w-full h-10 rounded-lg border border-gray-300 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
-                        type="password"
-                        value={loginPassword}
-                        onChange={e => setLoginPassword(e.target.value)}
-                        placeholder="Password"
-                        required
-                      />
-                    </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Password</label>
+                  <div className="relative">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V8a4.5 4.5 0 10-9 0v2.5" />
+                      <rect x="5" y="10.5" width="14" height="9" rx="2" ry="2" fill="#ffffff" stroke="#E53935" strokeWidth="1.5"/>
+                    </svg>
+                    <input
+                      className="w-full h-10 rounded-lg border border-gray-300 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                      type="password"
+                      value={loginPassword}
+                      onChange={e => setLoginPassword(e.target.value)}
+                      placeholder="Password"
+                      required
+                    />
                   </div>
-                  <button
-                    type="submit"
-                    disabled={authLoading}
-                    className="w-full h-10 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow disabled:opacity-50"
-                  >
-                    {authLoading ? (isSignUp ? 'Creating account...' : 'Signing in...') : (isSignUp ? 'Create Account' : 'Sign In')}
-                  </button>
-                </form>
+                </div>
+                <button
+                  type="submit"
+                  disabled={authLoading}
+                  className="w-full h-10 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow disabled:opacity-50"
+                >
+                  {authLoading ? (isSignUp ? 'Creating account...' : 'Signing in...') : (isSignUp ? 'Create Account' : 'Sign In')}
+                </button>
+              </form>
 
                 <div className="my-4 border-t border-gray-200" />
 

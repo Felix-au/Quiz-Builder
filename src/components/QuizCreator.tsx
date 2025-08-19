@@ -1804,12 +1804,8 @@ const QuizCreator = () => {
         <div className="container flex flex-col justify-center px-4">
           {/* Desktop Header */}
           <div className="hidden md:flex items-center justify-between h-20">
-            <div className="flex items-center gap-3 cursor-pointer" onClick={() => (currentScreen === 0 ? navigate('/') : setCurrentScreen(0))}>
-              <img src="/logo2.png" alt="PrashnaSetu Logo" className="h-12 w-12 object-contain" />
-              <div className="flex flex-col justify-center">
-                <h1 className="text-lg font-semibold leading-tight text-black">PrashnaSetu</h1>
-                <span className="text-xs text-black leading-tight">Think. Compete. Conquer.</span>
-              </div>
+            <div className="flex items-center gap-0 cursor-pointer h-full" onClick={() => (currentScreen === 0 ? navigate('/') : setCurrentScreen(0))}>
+              <img src="/logo1light.png" alt="PrashnaSetu Logo" className="h-[90%] w-auto object-contain" />
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-sm text-muted-foreground">
@@ -1818,24 +1814,20 @@ const QuizCreator = () => {
                     <Button
                                     variant="outline"
                                     size="sm"
-                onClick={logout}
-                className="flex items-center space-x-2"
+              onClick={logout}
+              className="flex items-center space-x-2"
                                   >
-                <LogOut className="h-4 w-4" />
-                <span>Logout</span>
+              <LogOut className="h-4 w-4" />
+              <span>Logout</span>
                                   </Button>
                               </div>
                                 </div>
 
           {/* Mobile Header */}
-          <div className="md:hidden py-3">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 cursor-pointer" onClick={() => (currentScreen === 0 ? navigate('/') : setCurrentScreen(0))}>
-                <img src="/logo2.png" alt="PrashnaSetu Logo" className="h-8 w-8 object-contain" />
-                <div className="flex flex-col">
-                  <h1 className="text-sm font-semibold leading-tight text-black">PrashnaSetu</h1>
-                  <span className="text-xs text-black leading-tight">Think. Compete. Conquer.</span>
-                </div>
+          <div className="md:hidden">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center gap-0 cursor-pointer h-full" onClick={() => (currentScreen === 0 ? navigate('/') : setCurrentScreen(0))}>
+                <img src="/logo1light.png" alt="PrashnaSetu Logo" className="h-[90%] w-auto object-contain" />
               </div>
               <Button
                                     variant="outline"
@@ -1848,7 +1840,7 @@ const QuizCreator = () => {
                                   </Button>
                               </div>
             <div className="text-sm text-muted-foreground">
-              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Welcome, {user?.displayName || user?.email}
+              &nbsp;&nbsp;&nbsp;Welcome, {user?.displayName || user?.email}
             </div>
           </div>
         </div>

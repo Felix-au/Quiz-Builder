@@ -304,7 +304,7 @@ const LoginScreen = () => {
         {/* Left Branding Section */}
             <div className="flex flex-col items-center justify-center bg-gradient-to-br from-gray-200 to-gray-400 text-gray-900 p-8 h-full w-full">
           <div className="text-center max-w-xs mx-auto cursor-pointer" onClick={() => navigate('/') }>
-            <img src="/logo23.png" alt="PrashnaSetu Logo" className="mx-auto h-56 w-56 object-contain" />
+            <img src="/logo1light.png" alt="PrashnaSetu Logo" className="mx-auto h-62 w-212 object-contain" />
             <p className="text-base opacity-80 -mt-2 leading-tight">PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
           </div>
         </div>
@@ -441,8 +441,8 @@ const LoginScreen = () => {
         {/* Screen 1: Logo Screen */}
         <div className="h-screen flex flex-col items-center justify-center text-gray-900 p-8 relative">
           <div className="text-center max-w-xs mx-auto animate-bounce-slow cursor-pointer" onClick={() => navigate('/') }>
-            <img src="/logo23.png" alt="PrashnaSetu Logo" className="mx-auto h-48 w-48 object-contain" />
-            <p className="text-sm opacity-80 -mt-2 leading-tight">PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
+            <img src="/logo1light.png" alt="PrashnaSetu Logo" className="mx-auto h-96 w-96 object-contain" />
+            <p className="text-sm opacity-80 -mt-4 leading-tight">PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
             
             {/* Copyright Footer - Mobile Screen 1 */}
             <div className="text-center text-xs text-gray-600 mt-6">

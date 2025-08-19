@@ -13,6 +13,7 @@ import ViewResult from "./pages/ViewResult";
 import Credits from "@/components/Credits";
 import { toast } from "@/components/ui/use-toast";
 import React from "react";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 const queryClient = new QueryClient();
 
@@ -68,13 +69,15 @@ const AppContent = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <Toaster />
-          <Sonner />
-          <AppContent />
-        </BrowserRouter>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <Toaster />
+            <Sonner />
+            <AppContent />
+          </BrowserRouter>
+        </AuthProvider>
+      </ThemeProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
