@@ -2282,7 +2282,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
 
 const distributionDialog = (
   <Dialog open={showDistributionDialog} onOpenChange={setShowDistributionDialog}>
-    <DialogContent className="max-w-3xl p-0">
+    <DialogContent className="max-w-3xl p-0 max-h-[calc(97.5vh-2rem)] overflow-y-auto">
       <DialogHeader className="px-6 pt-6 pb-2">
         <DialogTitle className="text-xl font-bold text-blue-800 flex items-center gap-2">
           <Download className="h-6 w-6 text-green-600" />
