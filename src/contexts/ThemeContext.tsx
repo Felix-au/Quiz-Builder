@@ -12,9 +12,9 @@ const ThemeContext = React.createContext<ThemeContextValue | undefined>(undefine
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = React.useState<ThemeKey>(() => {
-    if (typeof window === 'undefined') return 'gradientMeshPop';
+    if (typeof window === 'undefined') return 'solarizedDuo';
     const saved = localStorage.getItem('appTheme') as ThemeKey | null;
-    return saved || 'gradientMeshPop';
+    return saved || 'solarizedDuo';
   });
 
   React.useEffect(() => {
