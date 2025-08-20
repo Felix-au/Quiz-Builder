@@ -167,6 +167,10 @@ export default function ViewResult() {
   const [searchLoading, setSearchLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // Trusted instructor flow
+  const [isTrusted, setIsTrusted] = React.useState<boolean>(false);
+  const [trustLoading, setTrustLoading] = React.useState<boolean>(false);
+
   const [results, setResults] = React.useState<SearchResultItem[]>([]);
   const [selectedAttemptId, setSelectedAttemptId] = React.useState<number | null>(null);
   const [detail, setDetail] = React.useState<DetailDTO | null>(null);
@@ -247,6 +251,32 @@ export default function ViewResult() {
       setEmail(user.email);
     }
   }, [user]);
+
+  // Determine trusted status when entering Instructor view or when email changes
+  React.useEffect(() => {
+    const run = async () => {
+      if (!isInstructorView) { setIsTrusted(false); return; }
+      const e = (user?.email || '').trim();
+      if (!e) { setIsTrusted(false); return; }
+      setTrustLoading(true);
+      try {
+        const resp = await fetch(`${API_BASE}/api/auth/isTrusted`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: e }),
+        });
+        if (!resp.ok) throw new Error('trust check failed');
+        const data = await resp.json();
+        setIsTrusted(!!data?.isTrusted);
+      } catch {
+        setIsTrusted(false);
+      } finally {
+        setTrustLoading(false);
+      }
+    };
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInstructorView, user?.email]);
 
   // Debounced suggestions fetch for quiz name (only when no selection is active)
   React.useEffect(() => {
@@ -485,7 +515,10 @@ export default function ViewResult() {
         if (selectedQuizId == null) {
           throw new Error('Please select a quiz from suggestions.');
         }
-        const payload: any = { password: quizPassword.trim(), quizId: selectedQuizId };
+        const payload: any = { quizId: selectedQuizId };
+        // Always include email (backend uses it to bypass when trusted)
+        if (email?.trim()) payload.email = email.trim();
+        if (!isTrusted) payload.password = quizPassword.trim();
         const resp = await fetch(`${API_BASE}/api/results/searchByQuiz`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -927,13 +960,22 @@ export default function ViewResult() {
                     }}
                     placeholder="Enter 6-char password"
                   />
+                  <div className="text-xs text-gray-600 mt-1">
+                    Password is not required for users logged in with an email registered on PrashnaSetu Application
+                    {trustLoading && <span className="ml-2 text-gray-400">(checking…)</span>}
+                    {(!trustLoading && isTrusted) && <span className="ml-2 text-emerald-700 font-medium">Trusted</span>}
+                  </div>
                 </div>
               </>
             )}
             <div>
               <button
                 onClick={doSearch}
-                disabled={searchLoading || (!isInstructorView && (!enrollmentNumber.trim() || !email.trim())) || (isInstructorView && (selectedQuizId == null || quizPassword.trim().length !== 6))}
+                disabled={
+                  searchLoading ||
+                  (!isInstructorView && (!enrollmentNumber.trim() || !email.trim())) ||
+                  (isInstructorView && (selectedQuizId == null || (!isTrusted && quizPassword.trim().length !== 6)))
+                }
                 className="w-full h-10 rounded-lg bg-indigo-600 text-white font-semibold shadow hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {searchLoading ? 'Searching...' : 'Search'}

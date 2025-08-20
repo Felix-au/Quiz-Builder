@@ -12,6 +12,7 @@ const COLL_ATTEMPTS = process.env.MONGO_COLL_ATTEMPTS;
 
 // Helpers
 function toLowerSafe(s) { return (s || '').toString().trim().toLowerCase(); }
+function escapeRegex(s) { return (s || '').toString().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 function asNumberOrLong(v) {
   if (v == null) return v;
   if (typeof v === 'number') return v;
@@ -190,6 +191,13 @@ async function main() {
   const db = client.db(MONGO_DB);
   const attemptsCol = db.collection(COLL_ATTEMPTS);
   const quizzesCol = db.collection(COLL_QUIZZES);
+  const userSyncCol = db.collection('user_sync');
+  // Ensure index on emailLower for fast lookups and uniqueness
+  try {
+    await userSyncCol.createIndex({ emailLower: 1 }, { unique: true, name: 'emailLower_unique' });
+  } catch (e) {
+    console.warn('user_sync index ensure warning:', e?.message || e);
+  }
 
   // GET /api/quizzes/suggest?query=... -> top 10 quiz suggestions by name (case-insensitive)
   app.get('/api/quizzes/suggest', async (req, res) => {
@@ -208,13 +216,29 @@ async function main() {
     }
   });
 
-  // POST /api/results/searchByQuiz -> instructor view: validate password and list attempts for quizId
+  // POST /api/auth/isTrusted -> check if an email exists in user_sync via emailLower
+  app.post('/api/auth/isTrusted', async (req, res) => {
+    try {
+      const { email } = req.body || {};
+      const e = (email || '').toString().trim();
+      if (!e) return res.json({ isTrusted: false });
+      let doc = await userSyncCol.findOne({ emailLower: toLowerSafe(e) });
+      if (!doc) {
+        // fallback for older records without emailLower
+        const regex = new RegExp(`^${escapeRegex(e)}$`, 'i');
+        doc = await userSyncCol.findOne({ email: { $regex: regex } });
+      }
+      res.json({ isTrusted: !!doc });
+    } catch (err) {
+      console.error('isTrusted error:', err);
+      res.status(500).json({ isTrusted: false });
+    }
+  });
+
+  // POST /api/results/searchByQuiz -> instructor view: validate password unless trusted and list attempts for quizId
   app.post('/api/results/searchByQuiz', async (req, res) => {
     try {
-      const { quizId: quizIdRaw, quizName, password } = req.body || {};
-      if (!password || (typeof password !== 'string')) {
-        return res.status(400).json({ error: 'password is required' });
-      }
+      const { quizId: quizIdRaw, quizName, password, email } = req.body || {};
 
       let quiz = null;
       if (quizIdRaw != null) {
@@ -236,16 +260,36 @@ async function main() {
 
       if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
 
-      // Password check with normalization to avoid trivial mismatches (trim/case/format)
-      const normalizePwd = (p) => (p == null ? '' : String(p))
-        .trim()
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, '')
-        .slice(0, 6);
-      const storedPwdNorm = normalizePwd(quiz.password);
-      const enteredPwdNorm = normalizePwd(password);
-      if (!storedPwdNorm || storedPwdNorm !== enteredPwdNorm) {
-        return res.status(401).json({ error: 'Invalid password' });
+      // Determine trust based on provided email existing in user_sync (emailLower)
+      let isTrusted = false;
+      const e = (email || '').toString().trim();
+      if (e) {
+        try {
+          let found = await userSyncCol.findOne({ emailLower: toLowerSafe(e) });
+          if (!found) {
+            const regex = new RegExp(`^${escapeRegex(e)}$`, 'i');
+            found = await userSyncCol.findOne({ email: { $regex: regex } });
+          }
+          isTrusted = !!found;
+        } catch (_) { /* ignore */ }
+      }
+
+      if (!isTrusted) {
+        // Password check with normalization to avoid trivial mismatches (trim/case/format)
+        const normalizePwd = (p) => (p == null ? '' : String(p))
+          .trim()
+          .toUpperCase()
+          .replace(/[^A-Z0-9]/g, '')
+          .slice(0, 6);
+
+        if (!password || (typeof password !== 'string')) {
+          return res.status(400).json({ error: 'password is required' });
+        }
+        const storedPwdNorm = normalizePwd(quiz.password);
+        const enteredPwdNorm = normalizePwd(password);
+        if (!storedPwdNorm || storedPwdNorm !== enteredPwdNorm) {
+          return res.status(401).json({ error: 'Invalid password' });
+        }
       }
 
       const qid = asNumberOrLong(quiz.quizId);
