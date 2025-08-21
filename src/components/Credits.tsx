@@ -298,12 +298,10 @@ const Credits: React.FC = () => {
     {/* Copyright Footer - Desktop */}
     <div className={`hidden md:block fixed bottom-0 left-0 w-full ${footerShell} py-3 text-center text-xs ${footerText} z-50`}>
       <p>© Copyrighted by CAD-CS, BML Munjal University</p>
-      <p className="flex items-center justify-center gap-2"><Mail className="h-4 w-4 text-indigo-500" /><a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-blue-700">cadcs@bmu.edu.in</a></p>
     </div>
     {/* Copyright Footer - Mobile */}
     <div className={`md:hidden text-center text-xs py-4 ${footerShell} ${footerText}`}>
       <p>© Copyrighted by CAD-CS, BML Munjal University</p>
-      <p className="flex items-center justify-center gap-2"><Mail className="h-4 w-4 text-indigo-500" /><a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-blue-700">cadcs@bmu.edu.in</a></p>
     </div>
   </div>
   );

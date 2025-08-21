@@ -483,15 +483,18 @@ export default function ViewResult() {
     const points = q.points ?? 1;
     const correct = new Set(q.correctOptionIds);
     const selected = new Set(q.selectedOptionIds);
-    // any wrong selected => 0
+    // If any wrong option is selected -> 0
     for (const id of selected) {
       if (!correct.has(id)) return 0;
     }
-    const n = correct.size || 1;
-    let x = 0;
-    for (const id of selected) if (correct.has(id)) x++;
-    // round to 2 decimals to preserve values like 0.75, 0.25
-    return Math.round((points * (x / n)) * 100) / 100;
+    // Exact match required: all correct selected and no extras
+    if (selected.size === correct.size) {
+      for (const id of correct) {
+        if (!selected.has(id)) return 0;
+      }
+      return points; // full marks
+    }
+    return 0; // partial selections without wrong -> still 0
   };
 
   const doSearch = async () => {
@@ -952,18 +955,21 @@ export default function ViewResult() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Password</label>
                   <input
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white tracking-widest uppercase"
+                    className={`w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 tracking-widest uppercase ${isTrusted ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white'}`}
                     value={quizPassword}
                     onChange={e => {
                       const v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
                       setQuizPassword(v);
                     }}
                     placeholder="Enter 6-char password"
+                    disabled={isTrusted}
+                    title={isTrusted ? 'Password not required for trusted users' : 'Enter quiz password'}
                   />
                   <div className="text-xs text-gray-600 mt-1">
                     Password is not required for users logged in with an email registered on PrashnaSetu Application
                     {trustLoading && <span className="ml-2 text-gray-400">(checking…)</span>}
                     {(!trustLoading && isTrusted) && <span className="ml-2 text-emerald-700 font-medium">Trusted</span>}
+                    {(!trustLoading && !isTrusted) && <span className="ml-2 text-red-600 font-medium">Not trusted</span>}
                   </div>
                 </div>
               </>
@@ -1263,13 +1269,11 @@ export default function ViewResult() {
       </div>
 
       {/* Cloned Footer */}
-      <div className="hidden md:block fixed bottom-0 left-0 w-full bg-gradient-to-br from-white/70 to-indigo-50/60 backdrop-blur-xl border-t border-indigo-200/60 py-3 text-center text-xs text-gray-700 z-40 shadow-lg">
+      <div className={`hidden md:block fixed bottom-0 left-0 w-full ${footerShell} py-3 text-center text-xs ${footerText} z-40 shadow-lg transition-colors duration-700`}>
         <p>© Copyrighted by CAD-CS, BML Munjal University</p>
-        <p className="flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-.96 1.85l-7.29 5.063a2.25 2.25 0 0 1-2.52 0L2.46 8.843a2.25 2.25 0 0 1-.96-1.85V6.75"/></svg><a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-blue-700">cadcs@bmu.edu.in</a></p>
       </div>
-      <div className="md:hidden text-center text-xs text-gray-700 mt-6 mb-2 bg-gradient-to-br from-white/70 to-indigo-50/60 backdrop-blur-xl py-3 border-t border-indigo-200/60 shadow">
+      <div className={`md:hidden text-center text-xs mt-6 mb-2 py-3 shadow ${footerShell} ${footerText} transition-colors duration-700`}>
         <p>© Copyrighted by CAD-CS, BML Munjal University</p>
-        <p className="flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-.96 1.85l-7.29 5.063a2.25 2.25 0 0 1-2.52 0L2.46 8.843a2.25 2.25 0 0 1-.96-1.85V6.75"/></svg><a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-blue-700">cadcs@bmu.edu.in</a></p>
       </div>
     </div>
   );

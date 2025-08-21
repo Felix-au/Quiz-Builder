@@ -29,10 +29,10 @@ interface Screen1Props {
   setCustomProgram: (value: string) => void;
   selectedSemester: string;
   setSelectedSemester: (value: string) => void;
-  selectedDepartment: string;
-  setSelectedDepartment: (value: string) => void;
-  customDepartment: string;
-  setCustomDepartment: (value: string) => void;
+  selectedDepartments: string[];
+  setSelectedDepartments: (value: string[]) => void;
+  customDepartments: string;
+  setCustomDepartments: (value: string) => void;
   selectedSections: string[];
   setSelectedSections: (value: string[]) => void;
   customSections: string;
@@ -41,7 +41,7 @@ interface Screen1Props {
 }
 
 const departments = [
-  'CSE', 'ME', 'ECE', 'ECOM', 'CE', 'EE', 'IT', 'BT', 'CH', 'N/A', 'custom'
+  'CSE', 'ME', 'ECE', 'ECOM', 'N/A', 'custom'
 ];
 const sections = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'N/A', 'custom'];
 const programs = [
@@ -67,10 +67,10 @@ const Screen1: React.FC<Screen1Props> = ({
   setCustomProgram,
   selectedSemester,
   setSelectedSemester,
-  selectedDepartment,
-  setSelectedDepartment,
-  customDepartment,
-  setCustomDepartment,
+  selectedDepartments,
+  setSelectedDepartments,
+  customDepartments,
+  setCustomDepartments,
   selectedSections,
   setSelectedSections,
   customSections,
@@ -86,6 +86,7 @@ const Screen1: React.FC<Screen1Props> = ({
   }, [metadata.code, setMetadata]);
 
   const [sectionSelectOpen, setSectionSelectOpen] = useState(false);
+  const [deptSelectOpen, setDeptSelectOpen] = useState(false);
 
   return (
     <Card className="shadow-lg border-0">
@@ -165,26 +166,62 @@ const Screen1: React.FC<Screen1Props> = ({
           </div>
           <div>
             <Label>Department <span className="text-red-500">*</span></Label>
-            <Select value={selectedDepartment} onValueChange={setSelectedDepartment} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Select department" />
-              </SelectTrigger>
-              <SelectContent>
-                {departments.map(dept => (
-                  <SelectItem key={dept} value={dept}>
-                    {dept === 'custom' ? 'Other (Type your own)' : dept}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedDepartment === 'custom' && (
+            <div className="relative">
+              <Input
+                value={selectedDepartments.includes('custom')
+                  ? 'Other: separated by comma if multiple'
+                  : selectedDepartments.length === 0
+                    ? ''
+                    : selectedDepartments.join(', ')
+                }
+                placeholder="Select department"
+                readOnly
+                className="cursor-pointer"
+                onClick={() => setDeptSelectOpen(true)}
+                required
+              />
+              <Select open={deptSelectOpen} onOpenChange={setDeptSelectOpen}>
+                <SelectTrigger className="absolute inset-0 opacity-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map(dept => {
+                    const checked = selectedDepartments.includes(dept);
+                    const toggle = () => {
+                      if (checked) {
+                        setSelectedDepartments(selectedDepartments.filter(d => d !== dept));
+                      } else {
+                        setSelectedDepartments([...selectedDepartments, dept]);
+                        if (dept === 'custom') setDeptSelectOpen(false);
+                      }
+                    };
+                    return (
+                      <div
+                        key={dept}
+                        className="flex items-center space-x-2 px-2 py-1.5 cursor-pointer hover:bg-accent"
+                        onClick={toggle}
+                      >
+                        <Checkbox id={`dept-${dept}`} checked={checked} />
+                        <Label htmlFor={`dept-${dept}`} className="text-sm cursor-pointer">
+                          {dept === 'custom' ? 'Other: separated by comma if multiple' : dept}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedDepartments.includes('custom') && (
               <Input
                 className="mt-2"
-                placeholder="Enter custom department"
-                value={customDepartment}
+                placeholder="Enter custom departments"
+                value={customDepartments}
                 onChange={(e) => {
-                  const trimmed = e.target.value.replace(/\s+/g, '');
-                  setCustomDepartment(trimmed);
+                  let value = e.target.value;
+                  value = value.replace(/\s*,\s*/g, ', ');
+                  value = value.replace(/,{2,}/g, ',');
+                  value = value.replace(/^\s+|\s+$/g, '');
+                  setCustomDepartments(value);
                 }}
                 required
               />
@@ -210,26 +247,26 @@ const Screen1: React.FC<Screen1Props> = ({
                 <SelectTrigger className="absolute inset-0 opacity-0">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  {sections.map(sec => (
-                    <div key={sec} className="flex items-center space-x-2 px-2 py-1.5 cursor-pointer hover:bg-accent">
-                      <Checkbox
-                        id={`sec-${sec}`}
-                        checked={selectedSections.includes(sec)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedSections([...selectedSections, sec]);
-                            if (sec === 'custom') setSectionSelectOpen(false);
-                          } else {
-                            setSelectedSections(selectedSections.filter(s => s !== sec));
-                          }
-                        }}
-                      />
-                      <Label htmlFor={`sec-${sec}`} className="text-sm cursor-pointer">
-                        {sec === 'custom' ? 'Other: separated by comma if multiple' : sec}
-                      </Label>
-                    </div>
-                  ))}
+                <SelectContent className="max-h-80 overflow-y-auto">
+                  {(['custom', 'N/A', ...sections.filter(s => s !== 'custom' && s !== 'N/A')]).map(sec => {
+                    const checked = selectedSections.includes(sec);
+                    const toggle = () => {
+                      if (checked) {
+                        setSelectedSections(selectedSections.filter(s => s !== sec));
+                      } else {
+                        setSelectedSections([...selectedSections, sec]);
+                        if (sec === 'custom') setSectionSelectOpen(false);
+                      }
+                    };
+                    return (
+                      <div key={sec} className="flex items-center space-x-2 px-2 py-1.5 cursor-pointer hover:bg-accent" onClick={toggle}>
+                        <Checkbox id={`sec-${sec}`} checked={checked} />
+                        <Label htmlFor={`sec-${sec}`} className="text-sm cursor-pointer">
+                          {sec === 'custom' ? 'Other: separated by comma if multiple' : sec}
+                        </Label>
+                      </div>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>

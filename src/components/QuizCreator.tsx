@@ -11,9 +11,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText, Sigma, Superscript, Subscript, Calendar, Mail, ChevronRight, HelpCircle, FileUp, PlayCircle, RefreshCw, LogOut } from 'lucide-react';
+import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText, Sigma, Superscript, Subscript, Calendar, Mail, ChevronRight, HelpCircle, FileUp, PlayCircle, RefreshCw, LogOut, Sun, Moon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import JSZip from 'jszip';
 import * as FileSaver from 'file-saver';
 import { uploadImageToImgBB, downloadImageAsFile } from '@/utils/imageUpload';
@@ -90,6 +91,19 @@ const QuizCreator = () => {
   const { toast } = useToast();
   const { logout, user } = useAuth();
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
+  const isDark = theme === 'gradientMeshPop';
+  const targetTheme = isDark ? 'solarizedDuo' : 'gradientMeshPop';
+  // Match HomePage header styles in both themes
+  const headerShell = isDark
+    ? 'bg-white/10 backdrop-blur-xl shadow-lg border-b border-white/20 text-white'
+    : 'bg-[#fdf6e3]/80 backdrop-blur-xl shadow-lg border-b border-amber-200 text-black';
+  const footerShellDesktop = isDark
+    ? 'bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border-t border-white/15 text-gray-200'
+    : 'bg-gradient-to-br from-white/70 to-indigo-50/60 backdrop-blur-xl border-t border-indigo-200/60 text-gray-700';
+  const footerShellMobile = isDark
+    ? 'bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border-t border-white/15 text-gray-200'
+    : 'bg-gradient-to-br from-white/70 to-indigo-50/60 backdrop-blur-xl border-t border-indigo-200/60 text-gray-700';
   const [currentScreen, setCurrentScreen] = useState(0);
   const [showFlushDialog, setShowFlushDialog] = useState(false);
   const [showReminderDialog, setShowReminderDialog] = useState(false);
@@ -147,10 +161,10 @@ const QuizCreator = () => {
 
   const [selectedProgram, setSelectedProgram] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
-  const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
   const [selectedSections, setSelectedSections] = useState<string[]>([]);
   const [customProgram, setCustomProgram] = useState('');
-  const [customDepartment, setCustomDepartment] = useState('');
+  const [customDepartments, setCustomDepartments] = useState('');
   const [customSections, setCustomSections] = useState('');
   const [skipLoadSavedData, setSkipLoadSavedData] = useState(false);
 
@@ -399,17 +413,19 @@ const QuizCreator = () => {
     let courseValue = '';
     const program = selectedProgram === 'custom' ? customProgram : selectedProgram;
     const semester = selectedSemester;
-    const department = selectedDepartment === 'custom' ? customDepartment : selectedDepartment;
-    const sectionStr = selectedSections.includes('custom') 
-      ? customSections 
+    const departmentStr = selectedDepartments.includes('custom')
+      ? customDepartments
+      : selectedDepartments.join(', ');
+    const sectionStr = selectedSections.includes('custom')
+      ? customSections
       : selectedSections.join(', ');
     
-    if (program || semester || department || sectionStr) {
-      courseValue = `${program}${semester ? `_${semester}` : ''} ${department} ${sectionStr}`.trim();
+    if (program || semester || departmentStr || sectionStr) {
+      courseValue = `${program}${semester ? `_${semester}` : ''} ${departmentStr} ${sectionStr}`.trim();
     }
     
     setMetadata(prev => ({ ...prev, course: courseValue }));
-  }, [selectedProgram, selectedSemester, selectedDepartment, selectedSections, customProgram, customDepartment, customSections]);
+  }, [selectedProgram, selectedSemester, selectedDepartments, selectedSections, customProgram, customDepartments, customSections]);
 
   const generateYearOptions = () => {
     const currentYear = new Date().getFullYear();
@@ -471,10 +487,23 @@ const QuizCreator = () => {
       
       setSelectedProgram(parsed.selectedProgram || '');
       setSelectedSemester(parsed.selectedSemester || '');
-      setSelectedDepartment(parsed.selectedDepartment || '');
+      // Migrate legacy single department (string) to new array-based departments
+      if (parsed.selectedDepartments) {
+        setSelectedDepartments(parsed.selectedDepartments);
+      } else if (parsed.selectedDepartment) {
+        setSelectedDepartments(parsed.selectedDepartment ? [parsed.selectedDepartment] : []);
+      } else {
+        setSelectedDepartments([]);
+      }
       setSelectedSections(parsed.selectedSections || []);
       setCustomProgram(parsed.customProgram || '');
-      setCustomDepartment(parsed.customDepartment || '');
+      if (parsed.customDepartments !== undefined) {
+        setCustomDepartments(parsed.customDepartments);
+      } else if (parsed.customDepartment !== undefined) {
+        setCustomDepartments(parsed.customDepartment);
+      } else {
+        setCustomDepartments('');
+      }
       setCustomSections(parsed.customSections || '');
       setSubjects(parsed.subjects || []); // Load the subjects list for Screen2/Screen3
       
@@ -540,10 +569,10 @@ const QuizCreator = () => {
     setNumberOfQuestions(1);
     setSelectedProgram('');
     setSelectedSemester('');
-    setSelectedDepartment('');
+    setSelectedDepartments([]);
     setSelectedSections([]);
     setCustomProgram('');
-    setCustomDepartment('');
+    setCustomDepartments('');
     setCustomSections('');
     
     toast({
@@ -605,19 +634,19 @@ const QuizCreator = () => {
         created_by: quiz.created_by || null,
       });
 
-      // Parse course field to set program/department/sections
+      // Parse course field to set program/departments/sections
       if (quiz.course) {
         const courseParts = quiz.course.split(' ').filter(part => part.trim() !== '');
         if (courseParts.length > 0) {
           // Set as custom since we can't match exactly
           setSelectedProgram('custom');
           setCustomProgram(courseParts[0] || '');
-          
+
           if (courseParts.length > 1) {
-            setSelectedDepartment('custom');
-            setCustomDepartment(courseParts[1] || '');
+            setSelectedDepartments(['custom']);
+            setCustomDepartments(courseParts[1] || '');
           }
-          
+
           if (courseParts.length > 2) {
             setSelectedSections(['custom']);
             setCustomSections(courseParts.slice(2).join(' '));
@@ -808,10 +837,10 @@ const QuizCreator = () => {
         numberOfQuestions,
         selectedProgram,
         selectedSemester,
-        selectedDepartment,
+        selectedDepartments,
         selectedSections,
         customProgram,
-        customDepartment,
+        customDepartments,
         customSections,
         subjects, // Save the subject list from Screen2/Screen3
       };
@@ -869,10 +898,10 @@ const QuizCreator = () => {
     setNumberOfQuestions(1);
     setSelectedProgram('');
     setSelectedSemester('');
-    setSelectedDepartment('');
+    setSelectedDepartments([]);
     setSelectedSections([]);
     setCustomProgram('');
-    setCustomDepartment('');
+    setCustomDepartments('');
     setCustomSections('');
     setShowFlushDialog(false);
     toast({
@@ -1241,8 +1270,8 @@ const QuizCreator = () => {
             }
             
             if (courseParts.length > 2) {
-              setSelectedDepartment('custom');
-              setCustomDepartment(courseParts[2] || '');
+              setSelectedDepartments(['custom']);
+              setCustomDepartments(courseParts[2] || '');
             }
             
             if (courseParts.length > 3) {
@@ -1687,7 +1716,7 @@ const QuizCreator = () => {
 
   const checkAllRequiredFieldsFilled = () => {
     const program = selectedProgram === 'custom' ? customProgram : selectedProgram;
-    const department = selectedDepartment === 'custom' ? customDepartment : selectedDepartment;
+    const department = selectedDepartments.includes('custom') ? customDepartments : selectedDepartments.join(', ');
     const sectionStr = selectedSections.includes('custom') ? customSections : selectedSections.join(', ');
     
     const totalDifficultyQuestions = metadata.num_easy_questions + metadata.num_medium_questions + metadata.num_high_questions;
@@ -1791,35 +1820,67 @@ const QuizCreator = () => {
   };
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden">
-      {/* Darker Background Layers (like Home) */}
-      {/* Aurora Background Layers */}
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,_rgba(99,102,241,0.16),_transparent_60%),_radial-gradient(ellipse_at_bottom_right,_rgba(59,130,246,0.16),_transparent_60%)]" />
-      <div className="absolute -z-10 w-80 h-80 bg-indigo-300/30 rounded-full blur-3xl -top-16 -left-16" />
-      <div className="absolute -z-10 w-96 h-96 bg-blue-300/30 rounded-full blur-3xl top-1/4 -right-20" />
-      <div className="absolute -z-10 w-72 h-72 bg-purple-300/30 rounded-full blur-3xl bottom-0 left-1/3" />
+    <div className={`relative z-10 min-h-screen overflow-x-hidden overflow-y-auto no-scrollbar ${isDark ? 'bg-black' : 'bg-[#fdf6e3]'}`}>
+      {/* Fixed background overlays to cover during scroll */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        {isDark ? (
+          <>
+            <div
+              className="absolute inset-0 opacity-85 transition-opacity duration-700"
+              style={{
+                background:
+                  'radial-gradient(circle at 18% 28%, rgba(34,211,238,0.38), transparent 40%), radial-gradient(circle at 82% 22%, rgba(244,63,94,0.38), transparent 40%), radial-gradient(circle at 62% 82%, rgba(250,204,21,0.32), transparent 42%)',
+              }}
+            />
+            <div className="absolute inset-0 opacity-40 transition-opacity duration-700" style={{background:"conic-gradient(from_180deg_at_50%_50%, rgba(99,102,241,0.18), rgba(34,211,238,0.14), rgba(244,63,94,0.14), rgba(99,102,241,0.18))"}} />
+            <div className="absolute inset-0 opacity-20 transition-opacity duration-700" style={{background:"repeating-linear-gradient(0deg, rgba(255,255,255,0.08) 0 1px, transparent 1px 24px), repeating-linear-gradient(90deg, rgba(255,255,255,0.08) 0 1px, transparent 1px 24px)"}} />
+            <div className="absolute w-[30rem] h-[30rem] rounded-full blur-3xl -top-28 -left-28 transition-all duration-700" style={{background:"radial-gradient(circle_at_30%_30%, rgba(99,102,241,0.45), transparent_60%)"}} />
+            <div className="absolute w-[32rem] h-[32rem] rounded-full blur-3xl -bottom-28 -right-28 transition-all duration-700" style={{background:"radial-gradient(circle_at_70%_70%, rgba(34,211,238,0.45), transparent_60%)"}} />
+            <div className="absolute inset-0 transition-opacity duration-700" style={{ background: "radial-gradient(ellipse_at_center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.65) 100%)" }} />
+          </>
+        ) : (
+          <>
+            <div className="absolute inset-0 transition-all duration-700" style={{ background: 'radial-gradient(circle at 20% 30%, rgba(38,139,210,0.15), transparent 40%), radial-gradient(circle at 80% 70%, rgba(203,75,22,0.15), transparent 40%)' }} />
+            <div className="absolute inset-0 opacity-20 transition-opacity duration-700" style={{ background: 'radial-gradient(circle at 50% 50%, rgba(99,102,241,0.12), transparent 50%)' }} />
+          </>
+        )}
+      </div>
 
-      {/* Header (match HomePage) */}
-      <div className="bg-gradient-to-br from-white/70 to-indigo-50/60 backdrop-blur-xl shadow-lg border-b border-indigo-200/60 fixed top-0 left-0 w-full z-40 transition-all duration-300">
+      {/* Header (theme-aware) */}
+      <div className={`${headerShell} fixed top-0 left-0 w-full z-40 transition-all duration-700`}>
         <div className="container flex flex-col justify-center px-4">
           {/* Desktop Header */}
           <div className="hidden md:flex items-center justify-between h-20">
             <div className="flex items-center gap-0 cursor-pointer h-full" onClick={() => (currentScreen === 0 ? navigate('/') : setCurrentScreen(0))}>
-              <img src="/logo1light.png" alt="PrashnaSetu Logo" className="h-[90%] w-auto object-contain" />
+              <img src={isDark ? "/logo1dark.png" : "/logo1light.png"} alt="PrashnaSetu Logo" className="h-[90%] w-auto object-contain" />
             </div>
             <div className="flex items-center space-x-2">
-              <span className="text-sm text-muted-foreground">
+              <span className={`text-sm ${isDark ? 'text-white/85' : 'text-gray-700'}`}>
                 Welcome, {user?.displayName || user?.email}
-                        </span>
-                    <Button
-                                    variant="outline"
-                                    size="sm"
-              onClick={logout}
-              className="flex items-center space-x-2"
-                                  >
-              <LogOut className="h-4 w-4" />
-              <span>Logout</span>
-                                  </Button>
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={logout}
+                className={`flex items-center space-x-2 transition-colors ${isDark ? 'bg-white/10 text-white border-white/15 hover:bg-white/15' : ''}`}
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Logout</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+                title={isDark ? 'Light theme' : 'Dark theme'}
+                onClick={() => setTheme(targetTheme as any)}
+                className="ml-1"
+              >
+                {isDark ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </Button>
                               </div>
                                 </div>
 
@@ -1827,19 +1888,33 @@ const QuizCreator = () => {
           <div className="md:hidden">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center gap-0 cursor-pointer h-full" onClick={() => (currentScreen === 0 ? navigate('/') : setCurrentScreen(0))}>
-                <img src="/logo1light.png" alt="PrashnaSetu Logo" className="h-[90%] w-auto object-contain" />
+                <img src={isDark ? "/logo1dark.png" : "/logo1light.png"} alt="PrashnaSetu Logo" className="h-[90%] w-auto object-contain" />
               </div>
               <Button
-                                    variant="outline"
-                                    size="sm"
+                variant="outline"
+                size="sm"
                 onClick={logout}
-                className="flex items-center space-x-1 h-8 px-2"
-                                  >
+                className={`flex items-center space-x-1 h-8 px-2 transition-colors ${isDark ? 'bg-white/10 text-white border-white/15 hover:bg-white/15' : ''}`}
+              >
                 <LogOut className="h-3 w-3" />
                 <span className="text-xs">Logout</span>
-                                  </Button>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+                title={isDark ? 'Light theme' : 'Dark theme'}
+                onClick={() => setTheme(targetTheme as any)}
+                className="ml-1 h-8 w-8"
+              >
+                {isDark ? (
+                  <Sun className="h-3 w-3" />
+                ) : (
+                  <Moon className="h-3 w-3" />
+                )}
+              </Button>
                               </div>
-            <div className="text-sm text-muted-foreground">
+            <div className={`text-sm ${isDark ? 'text-white/85' : 'text-gray-700'}`}>
               &nbsp;&nbsp;&nbsp;Welcome, {user?.displayName || user?.email}
             </div>
           </div>
@@ -1872,10 +1947,10 @@ const QuizCreator = () => {
                 setCustomProgram={setCustomProgram}
                 selectedSemester={selectedSemester}
                 setSelectedSemester={setSelectedSemester}
-                selectedDepartment={selectedDepartment}
-                setSelectedDepartment={setSelectedDepartment}
-                customDepartment={customDepartment}
-                setCustomDepartment={setCustomDepartment}
+                selectedDepartments={selectedDepartments}
+                setSelectedDepartments={setSelectedDepartments}
+                customDepartments={customDepartments}
+                setCustomDepartments={setCustomDepartments}
                 selectedSections={selectedSections}
                 setSelectedSections={setSelectedSections}
                 customSections={customSections}
@@ -2252,19 +2327,17 @@ const QuizCreator = () => {
         </div>
       </div>
 
-      {/* Footer Desktop (match HomePage) */}
+      {/* Footer Desktop (theme-aware) */}
       {currentScreen !== 3 && (
-        <div className="hidden md:block fixed bottom-0 left-0 w-full bg-gradient-to-br from-white/70 to-indigo-50/60 backdrop-blur-xl border-t border-indigo-200/60 py-3 text-center text-xs text-gray-700 z-50 shadow-lg">
+        <div className={`hidden md:block fixed bottom-0 left-0 w-full ${footerShellDesktop} py-3 text-center text-xs z-50 shadow-lg transition-all duration-300`}>
           <p>© Copyrighted by CAD-CS, BML Munjal University</p>
-          <p className="flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-.96 1.85l-7.29 5.063a2.25 2.25 0 0 1-2.52 0L2.46 8.843a2.25 2.25 0 0 1-.96-1.85V6.75"/></svg><a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-blue-700">cadcs@bmu.edu.in</a></p>
         </div>
       )}
 
-      {/* Footer Mobile (match HomePage) */}
+      {/* Footer Mobile (theme-aware) */}
       {currentScreen !== 3 && (
-        <div className="md:hidden text-center text-xs text-gray-700 mt-6 mb-2 bg-gradient-to-br from-white/70 to-indigo-50/60 backdrop-blur-xl py-3 border-t border-indigo-200/60 shadow">
+        <div className={`md:hidden text-center text-xs mt-6 mb-2 ${footerShellMobile} py-3 shadow transition-all duration-300`}>
           <p>© Copyrighted by CAD-CS, BML Munjal University</p>
-          <p className="flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-.96 1.85l-7.29 5.063a2.25 2.25 0 0 1-2.52 0L2.46 8.843a2.25 2.25 0 0 1-.96-1.85V6.75"/></svg><a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-blue-700">cadcs@bmu.edu.in</a></p>
         </div>
       )}
 

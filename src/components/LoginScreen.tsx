@@ -7,14 +7,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { Mail, Lock, LogIn, UserPlus, KeyRound, ChevronDown, Home as HomeIcon } from 'lucide-react';
+import { Mail, Lock, LogIn, UserPlus, KeyRound, ChevronDown, Home as HomeIcon, Sun, Moon } from 'lucide-react';
 
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const LoginScreen = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
+  const isDark = theme === 'gradientMeshPop';
+  const targetTheme = isDark ? 'solarizedDuo' : 'gradientMeshPop';
+  const headerShell = isDark
+    ? 'bg-white/10 backdrop-blur-xl border-b border-white/15 text-white'
+    : 'bg-white/70 backdrop-blur-xl border-b border-gray-200 text-gray-900';
+  const btnNeutral = isDark
+    ? 'bg-white/10 text-white border-white/15 hover:bg-white/15'
+    : 'bg-gray-50 text-gray-800 border-gray-200 hover:bg-gray-100';
+  const brandShell = isDark
+    ? 'bg-gradient-to-br from-slate-800 to-slate-700 text-white'
+    : 'bg-gradient-to-br from-gray-200 to-gray-400 text-gray-900';
+  const brandText = isDark ? 'text-white' : 'text-gray-900';
+  const footerShell = isDark
+    ? 'bg-slate-900/60 backdrop-blur-xl border-t border-white/15'
+    : 'bg-white/70 backdrop-blur-xl border-t border-gray-200';
+  const footerText = isDark ? 'text-white/80' : 'text-gray-700';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
@@ -226,7 +244,32 @@ const LoginScreen = () => {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative min-h-screen overflow-hidden transition-colors duration-700">
+      {/* Slim Header (no logo) */}
+      <div className={`fixed top-0 left-0 w-full z-50 ${headerShell} transition-all duration-700`}>
+        <div className="h-12 flex items-center justify-end px-4 gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate('/')}
+            aria-label="Home"
+            className={`flex items-center justify-center gap-2 px-3 border ${btnNeutral}`}
+          >
+            <HomeIcon className="w-4 h-4" />
+            <span>Home</span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            aria-label="Toggle Theme"
+            onClick={() => setTheme(targetTheme)}
+            className={`flex items-center justify-center border ${btnNeutral}`}
+          >
+            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </Button>
+        </div>
+      </div>
+      {/* Header spacer removed to avoid extra bottom padding under header */}
       {/* Verification Modal */}
       <Dialog open={showVerifyDialog} onOpenChange={setShowVerifyDialog}>
         <DialogContent>
@@ -278,36 +321,50 @@ const LoginScreen = () => {
           </div>
         </DialogContent>
       </Dialog>
-      {/* Darker Background Layers (like Home) */}
-      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-slate-800 via-indigo-900 to-blue-950" />
-      <div className="absolute inset-0 -z-10 opacity-40 bg-[radial-gradient(ellipse_at_center,_rgba(79,70,229,0.45),_transparent_60%)]" />
-      <div className="absolute inset-0 -z-10 bg-black/20" />
-      <div className="absolute -z-10 w-80 h-80 bg-indigo-500/40 rounded-full blur-3xl -top-16 -left-16" />
-      <div className="absolute -z-10 w-96 h-96 bg-blue-500/45 rounded-full blur-3xl top-1/4 -right-20" />
-      <div className="absolute -z-10 w-72 h-72 bg-purple-600/30 rounded-full blur-3xl bottom-0 left-1/3" />
-      {/* Desktop Layout - Original Design */}
+      {/* Theme-aware Background (inspired by HomePage) */}
+      {isDark ? (
+        <>
+          {/* Base layer moved further back so overlays are visible */}
+          <div className="absolute inset-0 -z-20 bg-black transition-colors duration-700" />
+          {/* Gradient mesh overlay (match HomePage dark theme, stronger) */}
+          <div
+            className="absolute inset-0 -z-10 opacity-85 transition-opacity duration-700"
+            style={{
+              background:
+                'radial-gradient(circle at 18% 28%, rgba(34,211,238,0.38), transparent 40%), radial-gradient(circle at 82% 22%, rgba(244,63,94,0.38), transparent 40%), radial-gradient(circle at 62% 82%, rgba(250,204,21,0.32), transparent 42%)',
+            }}
+          />
+          {/* Conic accent */}
+          <div className="absolute inset-0 -z-10 opacity-40 transition-opacity duration-700" style={{background:"conic-gradient(from_180deg_at_50%_50%, rgba(99,102,241,0.18), rgba(34,211,238,0.14), rgba(244,63,94,0.14), rgba(99,102,241,0.18))"}} />
+          {/* Grid + dots */}
+          <div className="absolute inset-0 -z-10 opacity-20 transition-opacity duration-700" style={{background:"repeating-linear-gradient(0deg, rgba(255,255,255,0.08) 0 1px, transparent 1px 24px), repeating-linear-gradient(90deg, rgba(255,255,255,0.08) 0 1px, transparent 1px 24px)"}} />
+          <div className="absolute inset-0 -z-10 opacity-15 transition-opacity duration-700" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.10) 1px, transparent 1px)", backgroundSize: "22px 22px" }} />
+          {/* Corner glows */}
+          <div className="absolute -z-10 w-[30rem] h-[30rem] rounded-full blur-3xl -top-28 -left-28 transition-all duration-700" style={{background:"radial-gradient(circle_at_30%_30%, rgba(99,102,241,0.45), transparent_60%)"}} />
+          <div className="absolute -z-10 w-[32rem] h-[32rem] rounded-full blur-3xl -bottom-28 -right-28 transition-all duration-700" style={{background:"radial-gradient(circle_at_70%_70%, rgba(34,211,238,0.45), transparent_60%)"}} />
+          {/* Edge vignette to emphasize corners/edges */}
+          <div className="absolute inset-0 -z-10 pointer-events-none transition-opacity duration-700" style={{ background: "radial-gradient(ellipse_at_center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.65) 100%)" }} />
+        </>
+      ) : (
+        <>
+          <div className="absolute inset-0 -z-10 bg-[#fdf6e3] transition-colors duration-700" />
+          <div className="absolute inset-0 -z-10 transition-all duration-700" style={{ background: "radial-gradient(circle at 20% 30%, rgba(38,139,210,0.15), transparent 40%), radial-gradient(circle at 80% 70%, rgba(203,75,22,0.15), transparent 40%)" }} />
+          <div className="absolute inset-0 -z-10 opacity-20 transition-opacity duration-700" style={{ background: "radial-gradient(circle at 50% 50%, rgba(99,102,241,0.12), transparent 50%)" }} />
+        </>
+      )}
+      {/* Desktop Layout - Original Design */
+      }
       <div className="hidden md:flex flex-col min-h-screen">
-        {/* Top-right Home button (desktop) */}
-        <div className="hidden md:block absolute top-4 right-4 z-50">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate('/')}
-            className="bg-white/70 backdrop-blur hover:bg-white"
-          >
-            <HomeIcon className="w-4 h-4 mr-2" />
-            Home
-          </Button>
-        </div>
-        <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
-          <div className="w-full max-w-screen-xl grid grid-cols-2 shadow-xl rounded-lg overflow-hidden bg-white/95 h-[85vh]">
+        {/* Desktop Content */}
+        <div className="flex-1 flex items-center justify-center px-4 overflow-hidden">
+          <div className="w-full max-w-screen-xl grid grid-cols-2 shadow-xl rounded-lg overflow-hidden bg-white/95 h-[80vh]">
         {/* Left Branding Section */}
-            <div className="flex flex-col items-center justify-center bg-gradient-to-br from-gray-200 to-gray-400 text-gray-900 p-8 h-full w-full">
-          <div className="text-center max-w-xs mx-auto cursor-pointer" onClick={() => navigate('/') }>
-            <img src="/logo1light.png" alt="PrashnaSetu Logo" className="mx-auto h-62 w-212 object-contain" />
-            <p className="text-base opacity-80 -mt-2 leading-tight">PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
-          </div>
-        </div>
+            <div className={`flex flex-col items-center justify-center ${brandShell} p-8 h-full w-full transition-colors duration-700`}>
+              <div className="text-center max-w-xs mx-auto cursor-pointer" onClick={() => navigate('/') }>
+                <img src={isDark ? "/logo1dark.png" : "/logo1light.png"} alt="PrashnaSetu Logo" className="mx-auto h-62 w-212 object-contain transition-opacity duration-700" />
+                <p className={`text-base opacity-80 -mt-2 leading-tight ${brandText} transition-colors duration-700`}>PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
+              </div>
+            </div>
             
             {/* Right Form Section */}
             <div className="flex items-center justify-center bg-background p-8">
@@ -430,9 +487,8 @@ const LoginScreen = () => {
         </div>
         
         {/* Copyright Footer Full-width - Desktop */}
-        <div className="hidden md:block fixed bottom-0 left-0 w-full bg-white/60 backdrop-blur-xl border-t border-indigo-200/60 py-3 text-center text-xs text-gray-700 z-50">
-          <p>  Copyrighted by CAD-CS, BML Munjal University</p>
-          <p><Mail className="inline-block w-4 h-4 mr-1 -mt-1 align-middle text-gray-500" /><a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-indigo-700">cadcs@bmu.edu.in</a></p>
+        <div className={`hidden md:block fixed bottom-0 left-0 w-full ${footerShell} py-3 text-center text-xs ${footerText} z-50 transition-colors duration-700`}>
+          <p>© Copyrighted by CAD-CS, BML Munjal University</p>
         </div>
       </div>
 
@@ -441,20 +497,19 @@ const LoginScreen = () => {
         {/* Screen 1: Logo Screen */}
         <div className="h-screen flex flex-col items-center justify-center text-gray-900 p-8 relative">
           <div className="text-center max-w-xs mx-auto animate-bounce-slow cursor-pointer" onClick={() => navigate('/') }>
-            <img src="/logo1light.png" alt="PrashnaSetu Logo" className="mx-auto h-96 w-96 object-contain" />
-            <p className="text-sm opacity-80 -mt-4 leading-tight">PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
+            <img src={isDark ? "/logo1dark.png" : "/logo1light.png"} alt="PrashnaSetu Logo" className="mx-auto h-96 w-96 object-contain" />
+            <p className={`text-sm opacity-80 -mt-4 leading-tight ${isDark ? 'text-white/80' : 'text-gray-600'}`}>PrashnaSetu is a modern, full-screen quiz app that presents randomized questions with images, and provides real-time monitoring to ensure academic integrity.</p>
             
             {/* Copyright Footer - Mobile Screen 1 */}
-            <div className="text-center text-xs text-gray-600 mt-6">
-              <p>  Copyrighted by CAD-CS, BML Munjal University</p>
-              <p><Mail className="inline-block w-4 h-4 mr-1 -mt-1 align-middle text-gray-500" /> : <a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-blue-700">cadcs@bmu.edu.in</a></p>
+            <div className={`text-center text-xs mt-6 ${isDark ? 'text-white/80' : 'text-gray-600'}`}>
+              <p>© Copyrighted by CAD-CS, BML Munjal University</p>
             </div>
           </div>
           
           {/* Scroll Indicator */}
           <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-center animate-pulse">
-            <p className="text-sm text-gray-700 mb-2">Scroll down to login</p>
-            <ChevronDown className="h-6 w-6 mx-auto text-gray-600 animate-bounce" />
+            <p className={`text-sm mb-2 ${isDark ? 'text-white/80' : 'text-gray-700'}`}>Scroll down to login</p>
+            <ChevronDown className={`h-6 w-6 mx-auto animate-bounce ${isDark ? 'text-white/80' : 'text-gray-600'}`} />
           </div>
         </div>
 
@@ -547,15 +602,7 @@ const LoginScreen = () => {
                     Continue with Google
                   </button>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => navigate('/')}
-                  >
-                    <HomeIcon className="w-4 h-4 mr-2" />
-                    Home
-                  </Button>
+                  {/* Home button moved to header */}
 
                   <div className="text-center space-y-2">
                     {!isSignUp && (
@@ -586,9 +633,8 @@ const LoginScreen = () => {
           </div>
           
           {/* Copyright Footer - Mobile Screen 2 */}
-          <div className="text-center text-xs text-gray-600 py-4">
-            <p>  Copyrighted by CAD-CS, BML Munjal University</p>
-            <p><Mail className="inline-block w-4 h-4 mr-1 -mt-1 align-middle text-gray-500" /><a href="mailto:cadcs@bmu.edu.in" className="underline hover:text-blue-700">cadcs@bmu.edu.in</a></p>
+          <div className={`text-center text-xs py-4 ${isDark ? 'text-white/80' : 'text-gray-600'}`}>
+            <p>© Copyrighted by CAD-CS, BML Munjal University</p>
           </div>
         </div>
       </div>
