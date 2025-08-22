@@ -331,6 +331,11 @@ const Screen1: React.FC<Screen1Props> = ({
             />
           </div>
         </div>
+        <div className="mt-3 text-sm md:text-base text-gray-700 dark:text-gray-200">
+          <p>
+            <span className="font-semibold">Note:</span> Please save your session regularly to avoid losing progress. Your sessions are private and stored locally on your device — we do not collect or store your data.
+          </p>
+        </div>
         {/* Number of questions fields removed; now set in Set Distribution dialog (Screen3) */}
         {!checkAllRequiredFieldsFilled() && (
           <div className="mt-6 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -338,6 +343,7 @@ const Screen1: React.FC<Screen1Props> = ({
               Fields marked with * are required.
             </p>
           </div>
+          
         )}
         
         {/* Hidden field to store the auto-generated quiz code */}

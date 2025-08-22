@@ -11,7 +11,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText, Sigma, Superscript, Subscript, Calendar, Mail, ChevronRight, HelpCircle, FileUp, PlayCircle, RefreshCw, LogOut, Sun, Moon } from 'lucide-react';
+import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText, Sigma, Superscript, Subscript, Calendar, Mail, ChevronRight, HelpCircle, FileUp, PlayCircle, RefreshCw, LogOut, Sun, Moon, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -82,6 +83,13 @@ interface QuizMetadata {
   created_at: string;
   updated_at: string;
   created_by: null;
+  // Structured fields for schema v2+
+  schemaVersion?: number;
+  program?: string;
+  semester?: string;
+  departments?: string[];
+  sections?: string[];
+  courseDisplay?: string;
 }
 
 const QuizCreator = () => {
@@ -106,6 +114,7 @@ const QuizCreator = () => {
     : 'bg-gradient-to-br from-white/70 to-indigo-50/60 backdrop-blur-xl border-t border-indigo-200/60 text-gray-700';
   const [currentScreen, setCurrentScreen] = useState(0);
   const [showFlushDialog, setShowFlushDialog] = useState(false);
+  const [showFlushAllDialog, setShowFlushAllDialog] = useState(false);
   const [showReminderDialog, setShowReminderDialog] = useState(false);
   
   const [reminderDate, setReminderDate] = useState('');
@@ -119,6 +128,13 @@ const QuizCreator = () => {
   const [importProgress, setImportProgress] = useState(0);
   const [importingFiles, setImportingFiles] = useState<string[]>([]);
   const [currentImportFile, setCurrentImportFile] = useState('');
+  const [pendingZipFiles, setPendingZipFiles] = useState<File[]>([]);
+  const [isImportingZips, setIsImportingZips] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Drag-and-drop reordering state for pending ZIP rows
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const [metadata, setMetadata] = useState<QuizMetadata>({
     id: 1,
@@ -150,6 +166,15 @@ const QuizCreator = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [questionAdjustTimeout, setQuestionAdjustTimeout] = useState<NodeJS.Timeout | null>(null);
 
+  // Screen1 selection state (moved up to avoid use-before-declare in import helpers)
+  const [selectedProgram, setSelectedProgram] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState('');
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
+  const [selectedSections, setSelectedSections] = useState<string[]>([]);
+  const [customProgram, setCustomProgram] = useState('');
+  const [customDepartments, setCustomDepartments] = useState('');
+  const [customSections, setCustomSections] = useState('');
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -159,13 +184,449 @@ const QuizCreator = () => {
     };
   }, [questionAdjustTimeout]);
 
-  const [selectedProgram, setSelectedProgram] = useState('');
-  const [selectedSemester, setSelectedSemester] = useState('');
-  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
-  const [selectedSections, setSelectedSections] = useState<string[]>([]);
-  const [customProgram, setCustomProgram] = useState('');
-  const [customDepartments, setCustomDepartments] = useState('');
-  const [customSections, setCustomSections] = useState('');
+  // Open the multi-zip import modal
+  const openZipImportModal = () => {
+    if (isImportingZips) return;
+    setPendingZipFiles([]);
+    setImportProgress(0);
+    setImportingFiles([]);
+    setCurrentImportFile('');
+    setShowMultiImportDialog(true);
+  };
+
+  // Add selected zip files to pending list (dedupe by name+lastModified)
+  const addZipFiles = (files: FileList | File[]) => {
+    const current = [...pendingZipFiles];
+    const seen = new Set(current.map(f => `${f.name}|${f.lastModified}`));
+    const toAdd: File[] = [];
+    Array.from(files as any).forEach((f: File) => {
+      const isZip = f.name.toLowerCase().endsWith('.zip');
+      if (!isZip) {
+        toast({ title: 'Unsupported file', description: `${f.name} is not a .zip`, variant: 'destructive' });
+        return;
+      }
+      const key = `${f.name}|${f.lastModified}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        toAdd.push(f);
+      }
+    });
+    if (toAdd.length > 0) setPendingZipFiles([...current, ...toAdd]);
+  };
+
+  const movePendingUp = (index: number) => {
+    if (index <= 0 || isImportingZips) return;
+    const next = [...pendingZipFiles];
+    [next[index - 1], next[index]] = [next[index], next[index - 1]];
+    setPendingZipFiles(next);
+  };
+
+  const movePendingDown = (index: number) => {
+    if (index >= pendingZipFiles.length - 1 || isImportingZips) return;
+    const next = [...pendingZipFiles];
+    [next[index + 1], next[index]] = [next[index], next[index + 1]];
+    setPendingZipFiles(next);
+  };
+
+  const removePendingAt = (index: number) => {
+    if (isImportingZips) return;
+    setPendingZipFiles(pendingZipFiles.filter((_, i) => i !== index));
+  };
+
+  const handleDropZips: React.DragEventHandler<HTMLDivElement> = (e) => {
+    e.preventDefault();
+    if (isImportingZips) return;
+    if (e.dataTransfer?.files?.length) addZipFiles(e.dataTransfer.files);
+  };
+
+  // DnD handlers for reordering rows
+  const handleRowDragStart = (index: number) => {
+    if (isImportingZips) return;
+    setDragIndex(index);
+  };
+
+  const handleRowDragOver = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+    e.preventDefault();
+    if (isImportingZips) return;
+    // If dragging external files, don't show row highlight
+    const types = (e.dataTransfer && Array.from(e.dataTransfer.types)) || [];
+    if (types.includes('Files')) return;
+    setDragOverIndex(index);
+  };
+
+  const handleRowDrop = (index: number) => {
+    if (isImportingZips) return;
+    if (dragIndex === null || dragIndex === index) {
+      setDragIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+    const next = [...pendingZipFiles];
+    const [moved] = next.splice(dragIndex, 1);
+    next.splice(index, 0, moved);
+    setPendingZipFiles(next);
+    setDragIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleRowDragEnd = () => {
+    setDragIndex(null);
+    setDragOverIndex(null);
+  };
+
+  // ===== Structured metadata helpers =====
+  const SEM_PATTERN = /^Sem-?([IVX]+|\d+)$/i;
+  const KNOWN_PROGRAMS = ['BTech', 'BA', 'MBA', 'MTech', 'PhD'];
+  const KNOWN_DEPARTMENTS = ['CSE', 'ME', 'ECE', 'ECOM', 'CE', 'EE', 'IT', 'BT', 'CH', 'N/A'];
+  const KNOWN_SECTIONS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'N/A'];
+
+  const normalizeList = (values: string[] = [], known: string[]) => {
+    const trimmed = values.map(v => (v || '').trim()).filter(Boolean);
+    const knownVals: string[] = [];
+    const customVals: string[] = [];
+    for (const v of trimmed) {
+      if (known.includes(v)) knownVals.push(v);
+      else customVals.push(v);
+    }
+    return { knownVals, customVals };
+  };
+
+  // Parse legacy combined course string like:
+  //   "BTech_Sem-I CSE, ECE I, II" OR "MBA Sem-II ME IV"
+  const parseLegacyCourse = (courseStr: string | undefined) => {
+    const result = { program: '', semester: '', departments: [] as string[], sections: [] as string[] };
+    if (!courseStr) return result;
+    const str = courseStr.trim();
+    if (!str) return result;
+
+    const parts = str.split(/\s+/);
+    let idx = 0;
+    if (parts.length === 0) return result;
+
+    // First token may be PROGRAM or PROGRAM_SEM
+    const first = parts[0];
+    if (first.includes('_')) {
+      const [prog, semMaybe] = first.split('_', 2);
+      result.program = prog || '';
+      if (semMaybe && SEM_PATTERN.test(semMaybe)) {
+        result.semester = semMaybe;
+      }
+      idx = 1;
+    } else {
+      // PROG [SEM]?  then rest
+      result.program = first;
+      idx = 1;
+      if (parts[idx] && SEM_PATTERN.test(parts[idx])) {
+        result.semester = parts[idx];
+        idx += 1;
+      }
+    }
+
+    const rest = parts.slice(idx).join(' ').trim();
+    if (rest) {
+      // Try to detect sections at the tail, consisting of roman numerals and/or N/A, comma separated
+      const sectionTailMatch = rest.match(/((?:I|II|III|IV|V|VI|VII|VIII|IX|X|N\/A)(?:\s*,\s*(?:I|II|III|IV|V|VI|VII|VIII|IX|X|N\/A))*)\s*$/);
+      if (sectionTailMatch) {
+        const sectionStr = sectionTailMatch[1];
+        result.sections = sectionStr.split(/\s*,\s*/).map(s => s.trim()).filter(Boolean);
+        const deptStr = rest.slice(0, sectionTailMatch.index).trim();
+        if (deptStr) result.departments = deptStr.split(/\s*,\s*/).map(d => d.trim()).filter(Boolean);
+      } else {
+        // No obvious sections tail; treat entire rest as departments
+        result.departments = rest.split(/\s*,\s*/).map(d => d.trim()).filter(Boolean);
+      }
+    }
+    return result;
+  };
+
+  const applyStructuredToUI = (program: string, semester: string, departments: string[], sections: string[]) => {
+    // Program
+    if (program && KNOWN_PROGRAMS.includes(program)) {
+      setSelectedProgram(program);
+      setCustomProgram('');
+    } else if (program) {
+      setSelectedProgram('custom');
+      setCustomProgram(program);
+    } else {
+      setSelectedProgram('');
+      setCustomProgram('');
+    }
+
+    // Semester (keep as-is; UI has fixed options but we preserve value)
+    setSelectedSemester(semester || '');
+
+    // Departments
+    const { knownVals: knownDepts, customVals: customDepts } = normalizeList(departments, KNOWN_DEPARTMENTS);
+    if (customDepts.length > 0) {
+      setSelectedDepartments([...knownDepts, 'custom']);
+      setCustomDepartments(customDepts.join(', '));
+    } else {
+      setSelectedDepartments(knownDepts);
+      setCustomDepartments('');
+    }
+
+    // Sections
+    const { knownVals: knownSecs, customVals: customSecs } = normalizeList(sections, KNOWN_SECTIONS);
+    if (customSecs.length > 0) {
+      setSelectedSections([...knownSecs, 'custom']);
+      setCustomSections(customSecs.join(', '));
+    } else {
+      setSelectedSections(knownSecs);
+      setCustomSections('');
+    }
+  };
+
+  const startOrderedZipImport = async (files: File[]) => {
+    if (!files || files.length === 0) return;
+    setIsImportingZips(true);
+    setImportProgress(0);
+    setImportingFiles(files.map(f => f.name));
+    setCurrentImportFile('');
+
+    let allQuestions: Question[] = [];
+    let firstMetadata: QuizMetadata | null = null;
+    let mergedInstructions: Instruction[] = [];
+    const seenInstructionKeys = new Set<string>();
+    const subjectsSet = new Set<string>();
+    let questionIdCounter = 1;
+
+    try {
+      toast({ title: 'Multi-ZIP Import Started', description: 'Combining subjects, instructions, and questions in selected order.' });
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setCurrentImportFile(file.name);
+        setImportProgress(((i + 1) / files.length) * 100);
+
+        const zip = new JSZip();
+        const zipContent = await zip.loadAsync(file);
+        const quizJsonFile = zipContent.file('quiz.json');
+        if (!quizJsonFile) {
+          toast({ title: 'Invalid ZIP file', description: `No quiz.json file found in ${file.name}`, variant: 'destructive' });
+          continue;
+        }
+        const quizJsonContent = await quizJsonFile.async('text');
+        const quizData = JSON.parse(quizJsonContent);
+        if (!quizData.quiz) {
+          toast({ title: 'Invalid quiz format', description: `The quiz.json in ${file.name} is invalid.`, variant: 'destructive' });
+          continue;
+        }
+        const quiz = quizData.quiz;
+
+        if (!firstMetadata) {
+          firstMetadata = {
+            id: quiz.id || 1,
+            code: quiz.code || '',
+            name: quiz.name || '',
+            instructor: quiz.instructor || '',
+            course: quiz.course || '',
+            year: quiz.year || '',
+            academic_year: quiz.academic_year || new Date().getFullYear().toString(),
+            subject: quiz.subject || '',
+            subject_code: quiz.subject_code || '',
+            allowed_time: quiz.allowed_time || 0,
+            visible: quiz.visible !== undefined ? quiz.visible : true,
+            total_points: quiz.total_points || 0,
+            num_displayed_questions: quiz.num_displayed_questions || 1,
+            num_easy_questions: quiz.num_easy_questions || 0,
+            num_medium_questions: quiz.num_medium_questions || 0,
+            num_high_questions: quiz.num_high_questions || 0,
+            allow_resume: quiz.allow_resume !== undefined ? quiz.allow_resume : false,
+            created_at: quiz.created_at || new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            created_by: quiz.created_by || null,
+            // carry forward any structured fields if present
+            schemaVersion: quiz.schemaVersion,
+            program: quiz.program,
+            semester: quiz.semester,
+            departments: quiz.departments,
+            sections: quiz.sections,
+            courseDisplay: quiz.courseDisplay,
+          };
+        }
+
+        // Merge instructions with dedupe by normalized text
+        const insts: Instruction[] = (quiz.instructions?.map((inst: any) => ({
+          id: inst.id,
+          instruction_text: inst.instruction_text,
+          instruction_order: inst.instruction_order,
+        })) || []);
+        for (const inst of insts) {
+          const key = inst.instruction_text?.trim().toLowerCase();
+          if (key && !seenInstructionKeys.has(key)) {
+            seenInstructionKeys.add(key);
+            mergedInstructions.push({ ...inst });
+          }
+        }
+
+        // Merge subjects (topics)
+        const subjArr: string[] = quiz.subjects || [];
+        for (const s of subjArr) {
+          if (!subjectsSet.has(s)) subjectsSet.add(s);
+        }
+
+        // Load questions with images from this ZIP
+        const questionsWithImages = await Promise.all(
+          quiz.questions?.map(async (q: any) => {
+            let imageFile: File | undefined;
+            if (q.image && zipContent.folder('images')) {
+              const imageFileName = q.image.split('/').pop();
+              const imageFileInZip = zipContent.file(`images/${imageFileName}`);
+              if (imageFileInZip) {
+                try {
+                  const imageBlob = await imageFileInZip.async('blob');
+                  imageFile = new File([imageBlob], imageFileName || 'image.png', { type: imageBlob.type });
+                } catch (error) {
+                  console.error('Failed to load image:', error);
+                }
+              }
+            }
+            return {
+              id: questionIdCounter++,
+              question: q.question || '',
+              topic: q.topic || 'NA',
+              summary: q.summary || 'NA',
+              question_order: allQuestions.length,
+              points: q.points || 1,
+              image_path: q.image_path || '',
+              image_url: q.image_url || '',
+              image: q.image || '',
+              difficulty: q.difficulty || 'MEDIUM',
+              subject: q.subject || '',
+              imageFile,
+              originalImageFileName: imageFile?.name,
+              options: q.options?.map((opt: any) => ({
+                id: opt.id,
+                option_text: opt.option_text || '',
+                is_correct: opt.is_correct || false,
+                option_order: opt.option_order || 0,
+              })) || [],
+            } as Question;
+          }) || []
+        );
+        allQuestions = [...allQuestions, ...questionsWithImages];
+      }
+
+      // Renumber questions sequentially to ensure consistent ordering
+      allQuestions = allQuestions.map((q, idx) => ({ ...q, question_order: idx }));
+
+      // Ensure full-screen instruction exists once
+      const fullScreenInstructionText = 'Once the quiz starts, full screen will trigger automatically, everytime window goes out of focus or is switched, one fault is counted. Faculty may terminate quiz or negative marks may be given based on it.';
+      const hasFull = mergedInstructions.some(inst =>
+        inst.instruction_text.includes('full screen') ||
+        inst.instruction_text.includes('window goes out of focus')
+      );
+      if (!hasFull) {
+        mergedInstructions = [
+          {
+            id: (mergedInstructions.reduce((m, i) => Math.max(m, i.id || 0), 0) + 1) || 1,
+            instruction_text: fullScreenInstructionText,
+            instruction_order: 1,
+          },
+          ...mergedInstructions,
+        ];
+      }
+      // Renumber instruction_order sequentially
+      mergedInstructions = mergedInstructions.map((inst, idx) => ({ ...inst, instruction_order: idx + 1 }));
+
+      // Apply combined data
+      if (firstMetadata) {
+        setMetadata(firstMetadata);
+        // Prefer structured fields when schemaVersion >= 2
+        if (firstMetadata.schemaVersion && Number(firstMetadata.schemaVersion) >= 2 && (firstMetadata.program || firstMetadata.departments || firstMetadata.sections)) {
+          applyStructuredToUI(
+            firstMetadata.program || '',
+            firstMetadata.semester || '',
+            firstMetadata.departments || [],
+            firstMetadata.sections || []
+          );
+        } else {
+          const legacy = parseLegacyCourse(firstMetadata.course || '');
+          applyStructuredToUI(legacy.program, legacy.semester, legacy.departments, legacy.sections);
+        }
+      }
+
+      setInstructions(mergedInstructions);
+      setSubjects(Array.from(subjectsSet));
+      setQuestions(allQuestions);
+      setNumberOfQuestions(allQuestions.length);
+      setCurrentScreen(1);
+
+      setIsImportingZips(false);
+      setShowMultiImportDialog(false);
+      setImportProgress(100);
+      setImportingFiles([]);
+      setCurrentImportFile('');
+      setPendingZipFiles([]);
+
+      toast({ title: 'Multi-ZIP Import Successful', description: `Imported ${allQuestions.length} questions from ${files.length} ZIP(s).` });
+    } catch (error) {
+      console.error('Multi-import error:', error);
+      toast({ title: 'Multi-ZIP Import Failed', description: 'Failed to import one or more ZIP files. Please check formats.', variant: 'destructive' });
+      setIsImportingZips(false);
+      setShowMultiImportDialog(false);
+      setImportProgress(0);
+      setImportingFiles([]);
+      setCurrentImportFile('');
+    }
+  };
+
+  const flushAllScreens = () => {
+    // Screen 1 fields
+    setMetadata(prev => ({
+      ...prev,
+      code: '',
+      name: '',
+      instructor: '',
+      course: '',
+      year: '',
+      academic_year: new Date().getFullYear().toString(),
+      subject: '',
+      subject_code: '',
+      allowed_time: 0,
+      total_points: 0,
+      num_displayed_questions: 0,
+      num_easy_questions: 0,
+      num_medium_questions: 0,
+      num_high_questions: 0,
+      allow_resume: false,
+      updated_at: new Date().toISOString(),
+    }));
+    setSelectedProgram('');
+    setSelectedSemester('');
+    setSelectedDepartments([]);
+    setSelectedSections([]);
+    setCustomProgram('');
+    setCustomDepartments('');
+    setCustomSections('');
+
+    // Screen 2 fields
+    const defaultInstruction: Instruction = {
+      id: 1,
+      instruction_text:
+        'Once the quiz starts, full screen will trigger automatically, everytime window goes out of focus or is switched, one fault is counted. Faculty may terminate quiz or negative marks may be given based on it.',
+      instruction_order: 1,
+    };
+    setInstructions([defaultInstruction]);
+    setNewInstruction('');
+    setSubjects([]);
+    setNewSubject('');
+
+    // Screen 3 fields
+    initializeDefaultQuestion();
+    setNumberOfQuestions(1);
+    setCurrentQuestionIndex(0);
+    setOptionFormatting({});
+    setOptionSymbolPage({});
+    if (questionAdjustTimeout) clearTimeout(questionAdjustTimeout);
+    setQuestionAdjustTimeout(null);
+
+    setShowFlushAllDialog(false);
+    toast({
+      title: 'All Screens Cleared',
+      description: 'All fields were cleared. Saved session remains intact.',
+    });
+  };
+
   const [skipLoadSavedData, setSkipLoadSavedData] = useState(false);
 
   // Place these at the top level of QuizCreator, after other useState hooks:
@@ -861,52 +1322,76 @@ const QuizCreator = () => {
   };
 
   const flushData = () => {
-    localStorage.removeItem('quizCreatorData');
-    setMetadata({
-      id: 1,
-      code: '',
-      name: '',
-      instructor: '',
-      course: '',
-      year: '',
-      academic_year: new Date().getFullYear().toString(),
-      subject: '',
-      subject_code: '',
-      allowed_time: 0,
-      visible: true,
-      total_points: 0,
-      num_displayed_questions: 0,
-      num_easy_questions: 0,
-      num_medium_questions: 0,
-      num_high_questions: 0,
-      allow_resume: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      created_by: null,
-    });
-    
-    const defaultInstruction: Instruction = {
-      id: 1,
-      instruction_text: 'Once the quiz starts, full screen will trigger automatically, everytime window goes out of focus or is switched, one fault is counted. Faculty may terminate quiz or negative marks may be given based on it.',
-      instruction_order: 1,
-    };
-    setInstructions([defaultInstruction]);
-    
-    initializeDefaultQuestion();
-    
-    setCurrentScreen(1);
-    setNumberOfQuestions(1);
-    setSelectedProgram('');
-    setSelectedSemester('');
-    setSelectedDepartments([]);
-    setSelectedSections([]);
-    setCustomProgram('');
-    setCustomDepartments('');
-    setCustomSections('');
+    // Clear only fields of the CURRENT screen. Do not modify localStorage so user can restore previous session.
+    switch (currentScreen) {
+      case 1: {
+        // Screen 1: Quiz Information
+        setMetadata(prev => ({
+          ...prev,
+          code: '',
+          name: '',
+          instructor: '',
+          course: '',
+          year: '',
+          academic_year: new Date().getFullYear().toString(),
+          subject: '',
+          subject_code: '',
+          allowed_time: 0,
+          total_points: 0,
+          num_displayed_questions: 0,
+          num_easy_questions: 0,
+          num_medium_questions: 0,
+          num_high_questions: 0,
+          allow_resume: false,
+          updated_at: new Date().toISOString(),
+        }));
+
+        setSelectedProgram('');
+        setSelectedSemester('');
+        setSelectedDepartments([]);
+        setSelectedSections([]);
+        setCustomProgram('');
+        setCustomDepartments('');
+        setCustomSections('');
+        break;
+      }
+      case 2: {
+        // Screen 2: Instructions and Topics
+        const defaultInstruction: Instruction = {
+          id: 1,
+          instruction_text:
+            'Once the quiz starts, full screen will trigger automatically, everytime window goes out of focus or is switched, one fault is counted. Faculty may terminate quiz or negative marks may be given based on it.',
+          instruction_order: 1,
+        };
+        setInstructions([defaultInstruction]);
+        setNewInstruction('');
+        setSubjects([]);
+        setNewSubject('');
+        break;
+      }
+      case 3: {
+        // Screen 3: Questions & Options
+        initializeDefaultQuestion();
+        setNumberOfQuestions(1);
+        setCurrentQuestionIndex(0);
+        setOptionFormatting({});
+        setOptionSymbolPage({});
+        if (questionAdjustTimeout) {
+          clearTimeout(questionAdjustTimeout);
+        }
+        setQuestionAdjustTimeout(null);
+        break;
+      }
+      default: {
+        // Home or other screens: nothing to clear
+        break;
+      }
+    }
+
     setShowFlushDialog(false);
     toast({
-      title: "Data Flushed",
-      description: "All data has been cleared. Starting fresh.",
+      title: 'Screen Cleared',
+      description: 'Only the current screen\'s fields were cleared. Saved session remains intact.',
     });
   };
 
@@ -1019,7 +1504,7 @@ const QuizCreator = () => {
         ? {
             ...q,
             options: [...q.options, {
-              id: q.options.length + 1,
+              id: q.options.reduce((maxId, o) => Math.max(maxId, o.id), 0) + 1,
               option_text: '',
               is_correct: false,
               option_order: q.options.length,
@@ -1257,28 +1742,17 @@ const QuizCreator = () => {
       // Set the combined data
       if (firstMetadata) {
         setMetadata(firstMetadata);
-        
-        // Parse course field to set program/department/sections
-        if (firstMetadata.course) {
-          const courseParts = firstMetadata.course.split(' ').filter(part => part.trim() !== '');
-          if (courseParts.length > 0) {
-            setSelectedProgram('custom');
-            setCustomProgram(courseParts[0] || '');
-            
-            if (courseParts.length > 1) {
-              setSelectedSemester(courseParts[1] || '');
-            }
-            
-            if (courseParts.length > 2) {
-              setSelectedDepartments(['custom']);
-              setCustomDepartments(courseParts[2] || '');
-            }
-            
-            if (courseParts.length > 3) {
-              setSelectedSections(['custom']);
-              setCustomSections(courseParts.slice(3).join(' '));
-            }
-          }
+        // Prefer structured fields when schemaVersion >= 2
+        if (firstMetadata.schemaVersion && Number(firstMetadata.schemaVersion) >= 2 && (firstMetadata.program || firstMetadata.departments || firstMetadata.sections)) {
+          applyStructuredToUI(
+            firstMetadata.program || '',
+            firstMetadata.semester || '',
+            firstMetadata.departments || [],
+            firstMetadata.sections || []
+          );
+        } else {
+          const legacy = parseLegacyCourse(firstMetadata.course || '');
+          applyStructuredToUI(legacy.program, legacy.semester, legacy.departments, legacy.sections);
         }
       }
 
@@ -1352,9 +1826,37 @@ const QuizCreator = () => {
       // Log to Google Form
       logToGoogleForm(updatedMetadata);
 
+      // Structured metadata derived from current UI selections
+      const uiProgram = (selectedProgram === 'custom' ? customProgram : selectedProgram) || '';
+      const uiSemester = selectedSemester || '';
+      const uiDepartments = (
+        selectedDepartments.includes('custom')
+          ? [
+              ...selectedDepartments.filter(d => d !== 'custom'),
+              ...((customDepartments || '').split(',').map(s => s.trim()).filter(Boolean)),
+            ]
+          : selectedDepartments
+      ).filter(Boolean);
+      const uiSections = (
+        selectedSections.includes('custom')
+          ? [
+              ...selectedSections.filter(s => s !== 'custom'),
+              ...((customSections || '').split(',').map(s => s.trim()).filter(Boolean)),
+            ]
+          : selectedSections
+      ).filter(Boolean);
+      const courseDisplay = metadata.course || '';
+
       const quizData = {
         quiz: {
           ...updatedMetadata,
+          // New structured fields (schema v2+) alongside legacy 'course'
+          schemaVersion: 2,
+          program: uiProgram,
+          semester: uiSemester,
+          departments: uiDepartments,
+          sections: uiSections,
+          courseDisplay,
           instructions: instructions.map((inst, index) => ({
             id: inst.id,
             quiz_id: metadata.id,
@@ -1858,6 +2360,35 @@ const QuizCreator = () => {
               <span className={`text-sm ${isDark ? 'text-white/85' : 'text-gray-700'}`}>
                 Welcome, {user?.displayName || user?.email}
               </span>
+              <AlertDialog open={showFlushAllDialog} onOpenChange={setShowFlushAllDialog}>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center space-x-2 text-red-600 border-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span>Flush All Screens</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-red-500" />
+                      Confirm Flush All
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will clear fields on all three screens. Your saved session will remain intact.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={flushAllScreens} className="bg-red-600 hover:bg-red-700">
+                      Yes, Clear All Screens
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               <Button
                 variant="outline"
                 size="sm"
@@ -1890,6 +2421,35 @@ const QuizCreator = () => {
               <div className="flex items-center gap-0 cursor-pointer h-full" onClick={() => (currentScreen === 0 ? navigate('/') : setCurrentScreen(0))}>
                 <img src={isDark ? "/logo1dark.png" : "/logo1light.png"} alt="PrashnaSetu Logo" className="h-[90%] w-auto object-contain" />
               </div>
+              <AlertDialog open={showFlushAllDialog} onOpenChange={setShowFlushAllDialog}>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`flex items-center space-x-1 h-8 px-2 text-red-600 border-red-600 hover:bg-red-50 transition-colors ${isDark ? 'bg-white/10' : ''}`}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    <span className="text-xs">Flush All</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-red-500" />
+                      Confirm Flush All
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will clear fields on all three screens. Your saved session will remain intact.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={flushAllScreens} className="bg-red-600 hover:bg-red-700">
+                      Yes, Clear All Screens
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               <Button
                 variant="outline"
                 size="sm"
@@ -1931,8 +2491,7 @@ const QuizCreator = () => {
             <Screen0
               loadFromSavedSession={loadFromSavedSession}
               startNewQuiz={startNewQuiz}
-              importFromZip={importFromZip}
-              importFromMultipleZips={importFromMultipleZips}
+              openZipImportModal={openZipImportModal}
             />
           )}
           {currentScreen === 1 && (
@@ -1995,15 +2554,8 @@ const QuizCreator = () => {
                           Confirm Data Flush
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                          This action will permanently delete all quiz data including:
-                          <ul className="list-disc list-inside mt-2 space-y-1">
-                            <li>Quiz information and metadata</li>
-                            <li>All instructions</li>
-                            <li>All questions and their options</li>
-                            <li>Uploaded images</li>
-                            <li>Saved session data</li>
-                          </ul>
-                          This action cannot be undone.
+                          This action will clear the fields of the current screen, user can still revert to last saved session.
+                                  
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -2053,15 +2605,7 @@ const QuizCreator = () => {
                           Confirm Data Flush
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                          This action will permanently delete all quiz data including:
-                          <ul className="list-disc list-inside mt-2 space-y-1">
-                            <li>Quiz information and metadata</li>
-                            <li>All instructions</li>
-                            <li>All questions and their options</li>
-                            <li>Uploaded images</li>
-                            <li>Saved session data</li>
-                          </ul>
-                          This action cannot be undone.
+                        This action will clear the fields of the current screen, user can still revert to last saved session.            
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -2153,21 +2697,13 @@ const QuizCreator = () => {
                       Confirm Data Flush
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      This action will permanently delete all quiz data including:
-                      <ul className="list-disc list-inside mt-2 space-y-1">
-                        <li>Quiz information and metadata</li>
-                        <li>All instructions</li>
-                        <li>All questions and their options</li>
-                        <li>Uploaded images</li>
-                        <li>Saved session data</li>
-                      </ul>
-                      This action cannot be undone.
+                      This will clear only the fields on the current screen. Your saved session will remain intact, so you can restore previous data if needed.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={flushData} className="bg-red-600 hover:bg-red-700">
-                      Yes, Clear All Data
+                      Yes, Clear This Screen
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -2210,21 +2746,13 @@ const QuizCreator = () => {
                         Confirm Data Flush
                       </AlertDialogTitle>
                       <AlertDialogDescription>
-                        This action will permanently delete all quiz data including:
-                        <ul className="list-disc list-inside mt-2 space-y-1">
-                          <li>Quiz information and metadata</li>
-                          <li>All instructions</li>
-                          <li>All questions and their options</li>
-                          <li>Uploaded images</li>
-                          <li>Saved session data</li>
-                        </ul>
-                        This action cannot be undone.
+                        This will clear only the fields on the current screen. Your saved session will remain intact, so you can restore previous data if needed.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction onClick={flushData} className="bg-red-600 hover:bg-red-700">
-                        Yes, Clear All Data
+                        Yes, Clear This Screen
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -2322,6 +2850,113 @@ const QuizCreator = () => {
               }}
             />
           )}
+
+          {/* Multi-ZIP Import Modal */}
+          <Dialog
+            open={showMultiImportDialog}
+            onOpenChange={(open) => {
+              if (!isImportingZips) setShowMultiImportDialog(open);
+            }}
+         >
+            <DialogContent
+              className="max-w-2xl"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDropZips}
+            >
+              <DialogHeader>
+                <DialogTitle>Import from ZIP files</DialogTitle>
+              </DialogHeader>
+
+              {/* Selection / Drag-drop area */}
+              <div
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDropZips}
+                className="border-2 border-dashed rounded-md p-6 text-center mb-4"
+              >
+                <p className="mb-3">Drag and drop one or more .zip files here</p>
+                <div className="flex justify-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isImportingZips}
+                    className="flex items-center gap-2"
+                  >
+                    <FileUp className="h-4 w-4" /> Select ZIPs
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".zip"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files) addZipFiles(e.target.files);
+                      e.currentTarget.value = '';
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Pending list */}
+              <div className="space-y-2 max-h-64 overflow-auto">
+                {pendingZipFiles.length === 0 && (
+                  <div className="text-sm opacity-70">No files selected yet.</div>
+                )}
+                {pendingZipFiles.length > 0 && (
+                  <div className="text-xs opacity-70">Tip: Drag rows or use arrows to reorder.</div>
+                )}
+                {pendingZipFiles.map((f, idx) => (
+                  <div
+                    key={`${f.name}-${f.lastModified}-${idx}`}
+                    className={`flex items-center justify-between border rounded p-2 transition-colors ${dragOverIndex === idx ? 'ring-2 ring-indigo-400 bg-indigo-50/50 dark:bg-white/10' : 'hover:bg-muted/60'}`}
+                    draggable={!isImportingZips}
+                    onDragStart={() => handleRowDragStart(idx)}
+                    onDragOver={(e) => handleRowDragOver(e, idx)}
+                    onDrop={() => handleRowDrop(idx)}
+                    onDragEnd={handleRowDragEnd}
+                    aria-grabbed={dragIndex === idx}
+                    aria-dropeffect="move"
+                  >
+                    <div className="flex items-center gap-3">
+                      <GripVertical className="h-4 w-4 opacity-70 cursor-move" />
+                      <span className="text-xs px-2 py-1 rounded bg-muted">{idx + 1}</span>
+                      <span className="text-sm break-all">{f.name}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button size="icon" variant="ghost" onClick={() => movePendingUp(idx)} disabled={idx === 0 || isImportingZips} aria-label="Move up"><ChevronUp className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" onClick={() => movePendingDown(idx)} disabled={idx === pendingZipFiles.length - 1 || isImportingZips} aria-label="Move down"><ChevronDown className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" onClick={() => removePendingAt(idx)} disabled={isImportingZips} aria-label="Remove"><X className="h-4 w-4" /></Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Progress */}
+              {isImportingZips && (
+                <div className="mt-4 space-y-2">
+                  <div className="text-sm">Importing: {currentImportFile || 'Starting...'}</div>
+                  <Progress value={importProgress} />
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowMultiImportDialog(false)}
+                  disabled={isImportingZips}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => startOrderedZipImport(pendingZipFiles)}
+                  disabled={pendingZipFiles.length === 0 || isImportingZips}
+                >
+                  Import
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* ... navigation and dialogs ... */}
         </div>

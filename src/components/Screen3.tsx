@@ -1272,13 +1272,13 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                       Confirm Data Flush
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      This action will permanently delete all quiz data. This action cannot be undone.
+                      This action will clear the fields of the current screen, user can still revert to last saved session.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={flushData} className="bg-red-600 hover:bg-red-700">
-                      Yes, Clear All Data
+                      Yes, Clear This Screen
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
