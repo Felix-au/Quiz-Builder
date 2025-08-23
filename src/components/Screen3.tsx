@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText, Sigma, Superscript, Subscript, Calendar, Mail, ChevronRight, HelpCircle, Home, RefreshCw } from 'lucide-react';
+import FormattingToolkit from './FormattingToolkit';
 
 declare global {
   interface Window {
@@ -154,7 +155,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
   const [doubleIntegralLower, setDoubleIntegralLower] = useState('');
   const [doubleIntegralUpper, setDoubleIntegralUpper] = useState('');
   const [doubleIntegralFunction, setDoubleIntegralFunction] = useState('');
-  const [doubleIntegralVariable, setDoubleIntegralVariable] = useState('x, y');
+  const [doubleIntegralVariable, setDoubleIntegralVariable] = useState('x, dy');
   const [showSummationDialog, setShowSummationDialog] = useState(false);
   const [summationIndex, setSummationIndex] = useState('k');
   const [summationLower, setSummationLower] = useState('0');
@@ -183,6 +184,25 @@ const Screen3: React.FC<Screen3Props> = (props) => {
   const [superSubOptionId, setSuperSubOptionId] = useState<number | null>(null);
   // Generic math construct target
   const [mathTargetId, setMathTargetId] = useState<number | null>(null);
+  
+  // Focus tracking for unified toolkit
+  const [focusedField, setFocusedField] = useState<{
+    type: 'question' | 'option';
+    qid: number;
+    oid?: number;
+    caretPos?: number;
+  } | null>(null);
+  
+  // Math insert target for all constructs
+  const [mathInsertTarget, setMathInsertTarget] = useState<{
+    type: 'question' | 'option';
+    qid: number;
+    oid?: number;
+    caretPos?: number;
+  } | null>(null);
+  
+  // Show unified toolkit (always on)
+  const showUnifiedToolkit = true;
   // Distribution dialog state
   const [showDistributionDialog, setShowDistributionDialog] = useState(false);
   const [distNumDisplayed, setDistNumDisplayed] = useState<number>(numberOfQuestions || 1);
@@ -204,6 +224,66 @@ const Screen3: React.FC<Screen3Props> = (props) => {
 
   const getFieldId = (t: 'question' | 'option', qid: number, oid?: number) =>
     t === 'question' ? `question-textarea-${qid}` : `option-input-${qid}-${oid}`;
+
+  // Focus tracking handlers
+  const handleFieldFocus = (type: 'question' | 'option', qid: number, oid?: number) => {
+    const element = document.getElementById(getFieldId(type, qid, oid)) as HTMLTextAreaElement;
+    const caretPos = element ? element.selectionStart || 0 : 0;
+    setFocusedField({ type, qid, oid, caretPos });
+  };
+
+  const handleFieldSelect = (type: 'question' | 'option', qid: number, oid?: number) => {
+    const element = document.getElementById(getFieldId(type, qid, oid)) as HTMLTextAreaElement;
+    const caretPos = element ? element.selectionStart || 0 : 0;
+    setFocusedField({ type, qid, oid, caretPos });
+  };
+
+  // Generic LaTeX insertion utility
+  const insertLatexAtTarget = (latex: string) => {
+    if (!mathInsertTarget) return;
+    
+    const { type, qid, oid, caretPos } = mathInsertTarget;
+    const element = document.getElementById(getFieldId(type, qid, oid)) as HTMLTextAreaElement;
+    
+    if (type === 'question') {
+      const q = questions.find(q => q.id === qid);
+      if (!q) return;
+      
+      const insertPos = caretPos != null ? caretPos : q.question.length;
+      const newValue = q.question.slice(0, insertPos) + latex + q.question.slice(insertPos);
+      updateQuestion(qid, 'question', newValue);
+      
+      // Restore focus and caret
+      setTimeout(() => {
+        if (element) {
+          element.focus();
+          const newPos = insertPos + latex.length;
+          element.setSelectionRange(newPos, newPos);
+          autoResize(element);
+        }
+      }, 0);
+    } else if (type === 'option' && oid != null) {
+      const q = questions.find(q => q.id === qid);
+      if (!q) return;
+      
+      const option = q.options.find((o: any) => o.id === oid);
+      if (!option) return;
+      
+      const insertPos = caretPos != null ? caretPos : option.option_text.length;
+      const newValue = option.option_text.slice(0, insertPos) + latex + option.option_text.slice(insertPos);
+      updateOption(qid, oid, 'option_text', newValue);
+      
+      // Restore focus and caret
+      setTimeout(() => {
+        if (element) {
+          element.focus();
+          const newPos = insertPos + latex.length;
+          element.setSelectionRange(newPos, newPos);
+          autoResize(element);
+        }
+      }, 0);
+    }
+  };
 
   // Keyboard shortcuts for formatting when text is selected
   const handleKeyDownFormat = (
@@ -393,28 +473,75 @@ const Screen3: React.FC<Screen3Props> = (props) => {
       autoResize(el);
     }, 0);
   };
+  
+  // Unified toolkit handlers
+  const handleToolkitFormat = (kind: 'bold' | 'italic' | 'underline' | 'strike') => {
+    if (!focusedField) return;
+    setFormatTarget({ type: focusedField.type, qid: focusedField.qid, oid: focusedField.oid });
+    setHasSelection(true);
+    setTimeout(() => applyMdFormat(kind), 0);
+  };
+  
+  const handleToolkitSymbolInsert = (symbol: string) => {
+    // Ensure we have a focused field, default to current question if none
+    if (!focusedField) {
+      setFocusedField({ type: 'question', qid: currentQuestion.id, caretPos: 0 });
+      // Use current question as fallback
+      const textarea = document.getElementById(`question-textarea-${currentQuestion.id}`) as HTMLTextAreaElement;
+      const cursorPos = textarea ? textarea.selectionStart : 0;
+      insertMathSymbol(currentQuestion.id, symbol, cursorPos);
+      return;
+    }
+    
+    if (focusedField.type === 'question') {
+      const textarea = document.getElementById(`question-textarea-${focusedField.qid}`) as HTMLTextAreaElement;
+      const cursorPos = textarea ? textarea.selectionStart : undefined;
+      insertMathSymbol(focusedField.qid, symbol, cursorPos);
+    } else if (focusedField.type === 'option' && focusedField.oid != null) {
+      // Insert symbol into option at caret
+      const q = questions.find(q => q.id === focusedField.qid);
+      if (!q) return;
+      const option = q.options.find((o: any) => o.id === focusedField.oid);
+      if (!option) return;
+      
+      const input = document.getElementById(`option-input-${focusedField.qid}-${focusedField.oid}`) as HTMLTextAreaElement;
+      const cursorPos = input ? input.selectionStart : option.option_text.length;
+      const newText = option.option_text.slice(0, cursorPos) + symbol + option.option_text.slice(cursorPos);
+      updateOption(focusedField.qid, focusedField.oid, 'option_text', newText);
+      
+      // Restore cursor position
+      setTimeout(() => {
+        if (input) {
+          input.focus();
+          input.setSelectionRange(cursorPos + symbol.length, cursorPos + symbol.length);
+          autoResize(input);
+        }
+      }, 0);
+    }
+  };
+  
+  const handleToolkitMathTool = (tool: 'matrix' | 'fraction' | 'binomial' | 'integral' | 'doubleIntegral' | 'summation' | 'limit' | 'root' | 'product') => {
+    // Ensure we have a focused field, default to current question if none
+    if (!focusedField) {
+      setFocusedField({ type: 'question', qid: currentQuestion.id, caretPos: 0 });
+    }
+    
+    switch (tool) {
+      case 'matrix': openMatrixDialog(); break;
+      case 'fraction': openFractionDialog(); break;
+      case 'binomial': openBinomialDialog(); break;
+      case 'integral': openIntegralDialog(); break;
+      case 'doubleIntegral': openDoubleIntegralDialog(); break;
+      case 'summation': openSummationDialog(); break;
+      case 'limit': openLimitDialog(); break;
+      case 'root': openRootDialog(); break;
+      case 'product': openProductDialog(); break;
+    }
+  };
 
   const FormatToolbar: React.FC = () => {
-    if (!formatTarget || !hasSelection || !showToolbar) return null;
-    return (
-      <div
-        className={`${toolbarStrategy === 'fixed' ? 'fixed' : 'absolute'} z-10 bg-white border shadow-sm rounded-md px-1 py-0.5 flex gap-1`}
-        style={{ top: Math.max(0, toolbarPos?.top ?? 0), left: Math.max(0, toolbarPos?.left ?? 0) }}
-      >
-        <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => applyMdFormat('bold')} title="Bold">
-          <strong>B</strong>
-        </Button>
-        <Button size="sm" variant="ghost" className="h-6 px-2 italic" onClick={() => applyMdFormat('italic')} title="Italic">
-          I
-        </Button>
-        <Button size="sm" variant="ghost" className="h-6 px-2 underline" onClick={() => applyMdFormat('underline')} title="Underline">
-          U
-        </Button>
-        <Button size="sm" variant="ghost" className="h-6 px-2 line-through" onClick={() => applyMdFormat('strike')} title="Strikethrough">
-          S
-        </Button>
-      </div>
-    );
+    // Hidden - replaced by unified FormattingToolkit
+    return null;
   };
 
   // Helper to check if cursor is inside a LaTeX math block (\[ ... \])
@@ -425,26 +552,37 @@ const Screen3: React.FC<Screen3Props> = (props) => {
     return open > close;
   }
 
-  // Handler to open superscript/subscript dialog
+  // Handler to open superscript/subscript dialog (updated to use focusedField)
   const openSuperSubDialog = (
     type: 'sup' | 'sub',
-    targetType: 'question' | 'option',
-    questionId: number,
+    targetType?: 'question' | 'option',
+    questionId?: number,
     optionId?: number
   ) => {
     setSuperSubValue('');
-    setSuperSubTargetType(targetType);
-    setSuperSubTargetId(questionId);
-    setSuperSubOptionId(optionId ?? null);
-    let insertPos = null;
-    if (targetType === 'question') {
-      const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
-      insertPos = textarea ? textarea.selectionStart : null;
-    } else if (targetType === 'option' && optionId != null) {
-      const input = document.getElementById(`option-input-${questionId}-${optionId}`) as HTMLTextAreaElement;
-      insertPos = input ? input.selectionStart : null;
+    
+    // Use focusedField if no explicit target provided (for unified toolkit)
+    if (!targetType && focusedField) {
+      setSuperSubTargetType(focusedField.type);
+      setSuperSubTargetId(focusedField.qid);
+      setSuperSubOptionId(focusedField.oid ?? null);
+      setSuperSubInsertPos(focusedField.caretPos ?? null);
+    } else {
+      // Legacy behavior for existing buttons
+      setSuperSubTargetType(targetType || 'question');
+      setSuperSubTargetId(questionId || currentQuestion.id);
+      setSuperSubOptionId(optionId ?? null);
+      let insertPos = null;
+      if (targetType === 'question') {
+        const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+        insertPos = textarea ? textarea.selectionStart : null;
+      } else if (targetType === 'option' && optionId != null) {
+        const input = document.getElementById(`option-input-${questionId}-${optionId}`) as HTMLTextAreaElement;
+        insertPos = input ? input.selectionStart : null;
+      }
+      setSuperSubInsertPos(insertPos);
     }
-    setSuperSubInsertPos(insertPos);
+    
     setShowSuperSubDialog(type);
   };
 
@@ -500,49 +638,147 @@ const Screen3: React.FC<Screen3Props> = (props) => {
     setShowSuperSubDialog(false);
   };
 
-  // --- Math construct open handlers (excluding Matrix which already has a specialized opener above) ---
-  const openFractionDialog = (questionId: number) => {
-    setMathTargetId(questionId);
+  // --- Math construct open handlers (updated to use focusedField) ---
+  const openFractionDialog = (questionId?: number) => {
+    if (!questionId && focusedField) {
+      setMathInsertTarget(focusedField);
+    } else {
+      const qid = questionId || currentQuestion.id;
+      const textarea = document.getElementById(`question-textarea-${qid}`) as HTMLTextAreaElement;
+      setMathInsertTarget({
+        type: 'question',
+        qid,
+        caretPos: textarea ? textarea.selectionStart : null
+      });
+    }
     setShowFractionDialog(true);
   };
-  const openBinomialDialog = (questionId: number) => {
-    setMathTargetId(questionId);
+  
+  const openBinomialDialog = (questionId?: number) => {
+    if (!questionId && focusedField) {
+      setMathInsertTarget(focusedField);
+    } else {
+      const qid = questionId || currentQuestion.id;
+      const textarea = document.getElementById(`question-textarea-${qid}`) as HTMLTextAreaElement;
+      setMathInsertTarget({
+        type: 'question',
+        qid,
+        caretPos: textarea ? textarea.selectionStart : null
+      });
+    }
     setShowBinomialDialog(true);
   };
-  const openIntegralDialog = (questionId: number) => {
-    setMathTargetId(questionId);
+  
+  const openIntegralDialog = (questionId?: number) => {
+    if (!questionId && focusedField) {
+      setMathInsertTarget(focusedField);
+    } else {
+      const qid = questionId || currentQuestion.id;
+      const textarea = document.getElementById(`question-textarea-${qid}`) as HTMLTextAreaElement;
+      setMathInsertTarget({
+        type: 'question',
+        qid,
+        caretPos: textarea ? textarea.selectionStart : null
+      });
+    }
     setShowIntegralDialog(true);
   };
-  const openDoubleIntegralDialog = (questionId: number) => {
-    setMathTargetId(questionId);
+  
+  const openDoubleIntegralDialog = (questionId?: number) => {
+    if (!questionId && focusedField) {
+      setMathInsertTarget(focusedField);
+    } else {
+      const qid = questionId || currentQuestion.id;
+      const textarea = document.getElementById(`question-textarea-${qid}`) as HTMLTextAreaElement;
+      setMathInsertTarget({
+        type: 'question',
+        qid,
+        caretPos: textarea ? textarea.selectionStart : null
+      });
+    }
     setShowDoubleIntegralDialog(true);
   };
-  const openSummationDialog = (questionId: number) => {
-    setMathTargetId(questionId);
+  
+  const openSummationDialog = (questionId?: number) => {
+    if (!questionId && focusedField) {
+      setMathInsertTarget(focusedField);
+    } else {
+      const qid = questionId || currentQuestion.id;
+      const textarea = document.getElementById(`question-textarea-${qid}`) as HTMLTextAreaElement;
+      setMathInsertTarget({
+        type: 'question',
+        qid,
+        caretPos: textarea ? textarea.selectionStart : null
+      });
+    }
     setShowSummationDialog(true);
   };
-  const openLimitDialog = (questionId: number) => {
-    setMathTargetId(questionId);
+  
+  const openLimitDialog = (questionId?: number) => {
+    if (!questionId && focusedField) {
+      setMathInsertTarget(focusedField);
+    } else {
+      const qid = questionId || currentQuestion.id;
+      const textarea = document.getElementById(`question-textarea-${qid}`) as HTMLTextAreaElement;
+      setMathInsertTarget({
+        type: 'question',
+        qid,
+        caretPos: textarea ? textarea.selectionStart : null
+      });
+    }
     setShowLimitDialog(true);
   };
-  const openRootDialog = (questionId: number) => {
-    setMathTargetId(questionId);
+  
+  const openRootDialog = (questionId?: number) => {
+    if (!questionId && focusedField) {
+      setMathInsertTarget(focusedField);
+    } else {
+      const qid = questionId || currentQuestion.id;
+      const textarea = document.getElementById(`question-textarea-${qid}`) as HTMLTextAreaElement;
+      setMathInsertTarget({
+        type: 'question',
+        qid,
+        caretPos: textarea ? textarea.selectionStart : null
+      });
+    }
     setShowRootDialog(true);
   };
-  const openProductDialog = (questionId: number) => {
-    setMathTargetId(questionId);
+  
+  const openProductDialog = (questionId?: number) => {
+    if (!questionId && focusedField) {
+      setMathInsertTarget(focusedField);
+    } else {
+      const qid = questionId || currentQuestion.id;
+      const textarea = document.getElementById(`question-textarea-${qid}`) as HTMLTextAreaElement;
+      setMathInsertTarget({
+        type: 'question',
+        qid,
+        caretPos: textarea ? textarea.selectionStart : null
+      });
+    }
     setShowProductDialog(true);
   };
 
-  // Open matrix dialog and store cursor position
-  const openMatrixDialog = (questionId: number) => {
+  // Open matrix dialog and store cursor position (updated to use focusedField)
+  const openMatrixDialog = (questionId?: number) => {
     setMatrixRows(2);
     setMatrixCols(2);
     setMatrixElements([['', ''], ['', '']]);
-    setMatrixTargetId(questionId);
-    // Get cursor position
-    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
-    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
+    
+    // Use focusedField if no explicit questionId provided (for unified toolkit)
+    if (!questionId && focusedField) {
+      setMathInsertTarget(focusedField);
+    } else {
+      // Legacy behavior for existing buttons
+      const qid = questionId || currentQuestion.id;
+      const textarea = document.getElementById(`question-textarea-${qid}`) as HTMLTextAreaElement;
+      setMathInsertTarget({
+        type: 'question',
+        qid,
+        caretPos: textarea ? textarea.selectionStart : null
+      });
+    }
+    
     setShowMatrixDialog(true);
   };
 
@@ -558,9 +794,10 @@ const Screen3: React.FC<Screen3Props> = (props) => {
     });
   };
 
-  // Insert matrix into question at cursor as LaTeX (double backslashes for row separation)
+  // Insert matrix using generic target system
   const handleMatrixInsert = () => {
-    if (matrixTargetId == null) return;
+    if (!mathInsertTarget) return;
+    
     // Build LaTeX matrix with double backslashes for row separation, use inline math delimiters
     const latex =
       '\\(' +
@@ -568,18 +805,8 @@ const Screen3: React.FC<Screen3Props> = (props) => {
       matrixElements.map(row => row.join(' & ')).join(' \\\\ ') +
       ' \\end{bmatrix}' +
       '\\)';
-    const q = questions.find(q => q.id === matrixTargetId);
-    if (!q) return;
-    let newValue = q.question;
-    if (matrixInsertPos != null) {
-      newValue =
-        q.question.slice(0, matrixInsertPos) +
-        latex +
-        q.question.slice(matrixInsertPos);
-    } else {
-      newValue = q.question + latex;
-    }
-    updateQuestion(matrixTargetId, 'question', newValue);
+    
+    insertLatexAtTarget(latex);
     setShowMatrixDialog(false);
   };
 
@@ -588,6 +815,90 @@ const Screen3: React.FC<Screen3Props> = (props) => {
     // Replace quadruple backslashes with double, then double with single
     return latex.replace(/\\\\\\\\/g, '\\\\').replace(/\\\\/g, '\\');
   }
+  
+  // Math construct confirm handlers using generic insertion
+  const handleFractionInsert = () => {
+    if (!fractionNumerator.trim() || !fractionDenominator.trim()) return;
+    const latex = `\\(\\frac{${fractionNumerator}}{${fractionDenominator}}\\)`;
+    insertLatexAtTarget(latex);
+    setShowFractionDialog(false);
+    setFractionNumerator('');
+    setFractionDenominator('');
+  };
+  
+  const handleBinomialInsert = () => {
+    if (!binomialN.trim() || !binomialK.trim()) return;
+    const latex = `\\(\\binom{${binomialN}}{${binomialK}}\\)`;
+    insertLatexAtTarget(latex);
+    setShowBinomialDialog(false);
+    setBinomialN('');
+    setBinomialK('');
+  };
+  
+  const handleIntegralInsert = () => {
+    if (!integralFunction.trim()) return;
+    const latex = `\\(\\int_{${integralLower}}^{${integralUpper}} ${integralFunction} \\, d${integralVariable}\\)`;
+    insertLatexAtTarget(latex);
+    setShowIntegralDialog(false);
+    setIntegralLower('');
+    setIntegralUpper('');
+    setIntegralFunction('');
+    setIntegralVariable('x');
+  };
+  
+  const handleDoubleIntegralInsert = () => {
+    if (!doubleIntegralFunction.trim()) return;
+    const latex = `\\(\\iint_{${doubleIntegralLower}}^{${doubleIntegralUpper}} ${doubleIntegralFunction} \\, d${doubleIntegralVariable}\\)`;
+    insertLatexAtTarget(latex);
+    setShowDoubleIntegralDialog(false);
+    setDoubleIntegralLower('');
+    setDoubleIntegralUpper('');
+    setDoubleIntegralFunction('');
+    setDoubleIntegralVariable('x, y');
+  };
+  
+  const handleSummationInsert = () => {
+    if (!summationFunction.trim()) return;
+    const latex = `\\(\\sum_{${summationIndex}=${summationLower}}^{${summationUpper}} ${summationFunction}\\)`;
+    insertLatexAtTarget(latex);
+    setShowSummationDialog(false);
+    setSummationIndex('k');
+    setSummationLower('0');
+    setSummationUpper('n');
+    setSummationFunction('');
+  };
+  
+  const handleLimitInsert = () => {
+    if (!limitFunction.trim()) return;
+    const latex = `\\(\\lim_{${limitVariable} \\to ${limitApproaches}} ${limitFunction}\\)`;
+    insertLatexAtTarget(latex);
+    setShowLimitDialog(false);
+    setLimitVariable('x');
+    setLimitApproaches('0');
+    setLimitFunction('');
+  };
+  
+  const handleRootInsert = () => {
+    if (!rootRadicand.trim()) return;
+    const latex = rootDegree.trim() === 'n' || rootDegree.trim() === '2' 
+      ? `\\(\\sqrt{${rootRadicand}}\\)`
+      : `\\(\\sqrt[${rootDegree}]{${rootRadicand}}\\)`;
+    insertLatexAtTarget(latex);
+    setShowRootDialog(false);
+    setRootDegree('n');
+    setRootRadicand('x');
+  };
+  
+  const handleProductInsert = () => {
+    if (!productFunction.trim()) return;
+    const latex = `\\(\\prod_{${productIndex}=${productLower}}^{${productUpper}} ${productFunction}\\)`;
+    insertLatexAtTarget(latex);
+    setShowProductDialog(false);
+    setProductIndex('i');
+    setProductLower('1');
+    setProductUpper('n');
+    setProductFunction('');
+  };
 
   // Helper to auto-resize textareas based on content
   const autoResize = (el: HTMLTextAreaElement | null) => {
@@ -754,9 +1065,6 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                   Question Text <span className="text-red-500">*</span>
                 </Label>
                 <div className="relative">
-                  {formatTarget?.type === 'question' && formatTarget.qid === currentQuestion.id && hasSelection && (
-                    <FormatToolbar />
-                  )}
                   <Textarea
                     id={`question-textarea-${currentQuestion.id}`}
                     value={currentQuestion.question}
@@ -764,13 +1072,17 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                       autoResize(e.target as HTMLTextAreaElement);
                       handleQuestionTextChange(currentQuestion.id, e.target.value, currentQuestion.question, e);
                     }}
-                    onSelect={(e) => handleSelect(e, 'question', currentQuestion.id)}
+                    onFocus={() => handleFieldFocus('question', currentQuestion.id)}
+                    onSelect={(e) => {
+                      handleSelect(e, 'question', currentQuestion.id);
+                      handleFieldSelect('question', currentQuestion.id);
+                    }}
                     onKeyDown={(e) => handleKeyDownFormat(e, 'question', currentQuestion.id)}
                     placeholder="Enter your question..."
                     className={`min-h-[120px] text-sm pr-32 resize-none overflow-hidden ${currentQuestion.question.trim() === '' ? 'border-red-300 focus:border-red-500' : ''}`}
                     required
                   />
-                  <div className="absolute top-2 right-2 flex flex-col gap-1">
+                  <div className="absolute top-2 right-2 flex flex-col gap-1" style={{ display: 'none' }}>
                     <div className="flex gap-1">
                       <Button
                         variant="ghost"
@@ -999,13 +1311,17 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                       autoResize(e.target as HTMLTextAreaElement);
                       handleQuestionTextChange(currentQuestion.id, e.target.value, currentQuestion.question, e);
                     }}
-                    onSelect={(e) => handleSelect(e, 'question', currentQuestion.id)}
+                    onFocus={() => handleFieldFocus('question', currentQuestion.id)}
+                    onSelect={(e) => {
+                      handleSelect(e, 'question', currentQuestion.id);
+                      handleFieldSelect('question', currentQuestion.id);
+                    }}
                     onKeyDown={(e) => handleKeyDownFormat(e, 'question', currentQuestion.id)}
                     placeholder="Enter your question..."
                     className={`min-h-[120px] text-sm pr-24 resize-none overflow-hidden ${currentQuestion.question.trim() === '' ? 'border-red-300 focus:border-red-500' : ''}`}
                     required
                   />
-                  <div className="absolute top-2 right-2 flex flex-col gap-1">
+                  <div className="absolute top-2 right-2 flex flex-col gap-1" style={{ display: 'none' }}>
                     <div className="flex gap-1">
                       <Button
                         variant="ghost"
@@ -1388,9 +1704,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                       onCheckedChange={(checked) => updateOption(currentQuestion.id, option.id, 'is_correct', !!checked)}
                     />
                     <div className="relative w-full">
-                      {formatTarget?.type === 'option' && formatTarget.qid === currentQuestion.id && formatTarget.oid === option.id && hasSelection && (
-                        <FormatToolbar />
-                      )}
+                      {/* FormatToolbar hidden - replaced by unified FormattingToolkit */}
                       <Textarea
                       id={`option-input-${currentQuestion.id}-${option.id}`}
                       value={option.option_text}
@@ -1398,13 +1712,18 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                         autoResize(e.target as HTMLTextAreaElement);
                         handleOptionTextChange(e, option);
                       }}
-                      onSelect={(e) => handleSelect(e, 'option', currentQuestion.id, option.id)}
+                      onFocus={() => handleFieldFocus('option', currentQuestion.id, option.id)}
+                      onSelect={(e) => {
+                        handleSelect(e, 'option', currentQuestion.id, option.id);
+                        handleFieldSelect('option', currentQuestion.id, option.id);
+                      }}
                       onKeyDown={(e) => handleKeyDownFormat(e, 'option', currentQuestion.id, option.id)}
                       placeholder={`Option ${optionIndex + 1}`}
                       className="flex-1 min-h-[32px] text-sm resize-none overflow-hidden"
                       rows={1}
                       />
                     </div>
+                    <div style={{ display: 'none' }}>
                         <Button
                           variant={formatting === 'superscript' ? 'secondary' : 'ghost'}
                           size="sm"
@@ -1495,6 +1814,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                             </div>
                           </PopoverContent>
                         </Popover>
+                    </div>
                     {currentQuestion.options.length > 2 && (
                       <Button
                         variant="ghost"
@@ -1724,6 +2044,22 @@ const Screen3: React.FC<Screen3Props> = (props) => {
 
   return (
     <>
+      {/* Unified Formatting Toolkit */}
+      {showUnifiedToolkit && (
+        <FormattingToolkit
+          currentSymbolPage={currentSymbolPage}
+          setCurrentSymbolPage={setCurrentSymbolPage}
+          getCurrentSymbols={getCurrentSymbols}
+          getPageTitle={getPageTitle}
+          onOpenSuperscript={() => openSuperSubDialog('sup')}
+          onOpenSubscript={() => openSuperSubDialog('sub')}
+          onInsertSymbol={handleToolkitSymbolInsert}
+          onFormat={handleToolkitFormat}
+          onOpenMathTool={handleToolkitMathTool}
+          visible={showUnifiedToolkit}
+        />
+      )}
+      
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start">
         {mobileSidebar}
         {mainContent}
@@ -1919,6 +2255,375 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                   }
                 }}
               />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {/* Math construct dialogs */}
+      {showFractionDialog && (
+        <Dialog open={showFractionDialog} onOpenChange={setShowFractionDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Insert Fraction</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <Label>Numerator</Label>
+                <Input value={fractionNumerator} onChange={e => setFractionNumerator(e.target.value)} placeholder="Numerator" />
+              </div>
+              <div>
+                <Label>Denominator</Label>
+                <Input value={fractionDenominator} onChange={e => setFractionDenominator(e.target.value)} placeholder="Denominator" />
+              </div>
+              {(fractionNumerator.trim() || fractionDenominator.trim()) && (
+                <div>
+                  <Label>Preview</Label>
+                  <div className="border rounded p-2 bg-gray-50">
+                    <LatexPreview text={`$\\frac{${fractionNumerator || '?'}}{${fractionDenominator || '?'}}$`} small />
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button onClick={() => setShowFractionDialog(false)} variant="outline">Cancel</Button>
+                <Button onClick={handleFractionInsert} disabled={!fractionNumerator.trim() || !fractionDenominator.trim()}>Insert</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {showBinomialDialog && (
+        <Dialog open={showBinomialDialog} onOpenChange={setShowBinomialDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Insert Binomial</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <Label>n (top)</Label>
+                <Input value={binomialN} onChange={e => setBinomialN(e.target.value)} placeholder="n" />
+              </div>
+              <div>
+                <Label>k (bottom)</Label>
+                <Input value={binomialK} onChange={e => setBinomialK(e.target.value)} placeholder="k" />
+              </div>
+              {(binomialN.trim() || binomialK.trim()) && (
+                <div>
+                  <Label>Preview</Label>
+                  <div className="border rounded p-2 bg-gray-50">
+                    <LatexPreview text={`$\\binom{${binomialN || '?'}}{${binomialK || '?'}}$`} small />
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button onClick={() => setShowBinomialDialog(false)} variant="outline">Cancel</Button>
+                <Button onClick={handleBinomialInsert} disabled={!binomialN.trim() || !binomialK.trim()}>Insert</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {showIntegralDialog && (
+        <Dialog open={showIntegralDialog} onOpenChange={setShowIntegralDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Insert Integral</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>Lower bound</Label>
+                  <Input value={integralLower} onChange={e => setIntegralLower(e.target.value)} placeholder="Lower" />
+                </div>
+                <div>
+                  <Label>Upper bound</Label>
+                  <Input value={integralUpper} onChange={e => setIntegralUpper(e.target.value)} placeholder="Upper" />
+                </div>
+              </div>
+              <div>
+                <Label>Function</Label>
+                <Input value={integralFunction} onChange={e => setIntegralFunction(e.target.value)} placeholder="f(x)" />
+              </div>
+              <div>
+                <Label>Variable</Label>
+                <Input value={integralVariable} onChange={e => setIntegralVariable(e.target.value)} placeholder="x" />
+              </div>
+              {(integralFunction.trim() || integralLower.trim() || integralUpper.trim()) && (
+                <div>
+                  <Label>Preview</Label>
+                  <div className="border rounded p-2 bg-gray-50">
+                    <LatexPreview text={`$\\int_{${integralLower || '?'}}^{${integralUpper || '?'}} ${integralFunction || '?'} \\, d${integralVariable || 'x'}$`} small />
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button onClick={() => setShowIntegralDialog(false)} variant="outline">Cancel</Button>
+                <Button onClick={handleIntegralInsert} disabled={!integralFunction.trim()}>Insert</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {showDoubleIntegralDialog && (
+        <Dialog open={showDoubleIntegralDialog} onOpenChange={setShowDoubleIntegralDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Insert Double Integral</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>Lower bound</Label>
+                  <Input value={doubleIntegralLower} onChange={e => setDoubleIntegralLower(e.target.value)} placeholder="Lower" />
+                </div>
+                <div>
+                  <Label>Upper bound</Label>
+                  <Input value={doubleIntegralUpper} onChange={e => setDoubleIntegralUpper(e.target.value)} placeholder="Upper" />
+                </div>
+              </div>
+              <div>
+                <Label>Function</Label>
+                <Input value={doubleIntegralFunction} onChange={e => setDoubleIntegralFunction(e.target.value)} placeholder="f(x,y)" />
+              </div>
+              <div>
+                <Label>Variable</Label>
+                <Input value={doubleIntegralVariable} onChange={e => setDoubleIntegralVariable(e.target.value)} placeholder="x, dy" />
+              </div>
+              {(doubleIntegralFunction.trim() || doubleIntegralLower.trim() || doubleIntegralUpper.trim()) && (
+                <div>
+                  <Label>Preview</Label>
+                  <div className="border rounded p-2 bg-gray-50">
+                    <LatexPreview text={`$\\iint_{${doubleIntegralLower || '?'}}^{${doubleIntegralUpper || '?'}} ${doubleIntegralFunction || '?'} \\, d${doubleIntegralVariable || 'x, dy'}$`} small />
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button onClick={() => setShowDoubleIntegralDialog(false)} variant="outline">Cancel</Button>
+                <Button onClick={handleDoubleIntegralInsert} disabled={!doubleIntegralFunction.trim()}>Insert</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {showSummationDialog && (
+        <Dialog open={showSummationDialog} onOpenChange={setShowSummationDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Insert Summation</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <Label>Index</Label>
+                  <Input value={summationIndex} onChange={e => setSummationIndex(e.target.value)} placeholder="k" />
+                </div>
+                <div>
+                  <Label>From</Label>
+                  <Input value={summationLower} onChange={e => setSummationLower(e.target.value)} placeholder="0" />
+                </div>
+                <div>
+                  <Label>To</Label>
+                  <Input value={summationUpper} onChange={e => setSummationUpper(e.target.value)} placeholder="n" />
+                </div>
+              </div>
+              <div>
+                <Label>Function</Label>
+                <Input value={summationFunction} onChange={e => setSummationFunction(e.target.value)} placeholder="f(k)" />
+              </div>
+              {(summationFunction.trim() || summationLower.trim() || summationUpper.trim()) && (
+                <div>
+                  <Label>Preview</Label>
+                  <div className="border rounded p-2 bg-gray-50">
+                    <LatexPreview text={`$\\sum_{${summationIndex || 'k'}=${summationLower || '?'}}^{${summationUpper || '?'}} ${summationFunction || '?'}$`} small />
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button onClick={() => setShowSummationDialog(false)} variant="outline">Cancel</Button>
+                <Button onClick={handleSummationInsert} disabled={!summationFunction.trim()}>Insert</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {showLimitDialog && (
+        <Dialog open={showLimitDialog} onOpenChange={setShowLimitDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Insert Limit</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>Variable</Label>
+                  <Input value={limitVariable} onChange={e => setLimitVariable(e.target.value)} placeholder="x" />
+                </div>
+                <div>
+                  <Label>Approaches</Label>
+                  <Input value={limitApproaches} onChange={e => setLimitApproaches(e.target.value)} placeholder="0" />
+                </div>
+              </div>
+              <div>
+                <Label>Function</Label>
+                <Input value={limitFunction} onChange={e => setLimitFunction(e.target.value)} placeholder="f(x)" />
+              </div>
+              {(limitFunction.trim() || limitVariable.trim() || limitApproaches.trim()) && (
+                <div>
+                  <Label>Preview</Label>
+                  <div className="border rounded p-2 bg-gray-50">
+                    <LatexPreview text={`$\\lim_{${limitVariable || 'x'} \\to ${limitApproaches || '?'}} ${limitFunction || '?'}$`} small />
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button onClick={() => setShowLimitDialog(false)} variant="outline">Cancel</Button>
+                <Button onClick={handleLimitInsert} disabled={!limitFunction.trim()}>Insert</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {showRootDialog && (
+        <Dialog open={showRootDialog} onOpenChange={setShowRootDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Insert Root</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <Label>Degree (leave as 'n' or '2' for square root)</Label>
+                <Input value={rootDegree} onChange={e => setRootDegree(e.target.value)} placeholder="n" />
+              </div>
+              <div>
+                <Label>Radicand</Label>
+                <Input value={rootRadicand} onChange={e => setRootRadicand(e.target.value)} placeholder="x" />
+              </div>
+              {(rootDegree.trim() || rootRadicand.trim()) && (
+                <div>
+                  <Label>Preview</Label>
+                  <div className="border rounded p-2 bg-gray-50">
+                    <LatexPreview text={`$\\sqrt${rootDegree !== '2' && rootDegree !== '' ? `[${rootDegree || 'n'}]` : ''}{${rootRadicand || '?'}}$`} small />
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button onClick={() => setShowRootDialog(false)} variant="outline">Cancel</Button>
+                <Button onClick={handleRootInsert} disabled={!rootRadicand.trim()}>Insert</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {showProductDialog && (
+        <Dialog open={showProductDialog} onOpenChange={setShowProductDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Insert Product</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <Label>Index</Label>
+                  <Input value={productIndex} onChange={e => setProductIndex(e.target.value)} placeholder="i" />
+                </div>
+                <div>
+                  <Label>From</Label>
+                  <Input value={productLower} onChange={e => setProductLower(e.target.value)} placeholder="1" />
+                </div>
+                <div>
+                  <Label>To</Label>
+                  <Input value={productUpper} onChange={e => setProductUpper(e.target.value)} placeholder="n" />
+                </div>
+              </div>
+              <div>
+                <Label>Function</Label>
+                <Input value={productFunction} onChange={e => setProductFunction(e.target.value)} placeholder="f(i)" />
+              </div>
+              {(productFunction.trim() || productLower.trim() || productUpper.trim()) && (
+                <div>
+                  <Label>Preview</Label>
+                  <div className="border rounded p-2 bg-gray-50">
+                    <LatexPreview text={`$\\prod_{${productIndex || 'i'}=${productLower || '?'}}^{${productUpper || '?'}} ${productFunction || '?'}$`} small />
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button onClick={() => setShowProductDialog(false)} variant="outline">Cancel</Button>
+                <Button onClick={handleProductInsert} disabled={!productFunction.trim()}>Insert</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {/* Matrix dialog */}
+      {showMatrixDialog && (
+        <Dialog open={showMatrixDialog} onOpenChange={setShowMatrixDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Insert Matrix</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="flex gap-4 items-center">
+                <div>
+                  <Label>Rows</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={matrixRows}
+                    onChange={(e) => handleMatrixSizeChange(parseInt(e.target.value) || 2, matrixCols)}
+                    className="w-20"
+                  />
+                </div>
+                <div>
+                  <Label>Columns</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={matrixCols}
+                    onChange={(e) => handleMatrixSizeChange(matrixRows, parseInt(e.target.value) || 2)}
+                    className="w-20"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${matrixCols}, 1fr)` }}>
+                {matrixElements.map((row, i) =>
+                  row.map((cell, j) => (
+                    <Input
+                      key={`${i}-${j}`}
+                      value={cell}
+                      onChange={(e) => {
+                        const newElements = [...matrixElements];
+                        newElements[i][j] = e.target.value;
+                        setMatrixElements(newElements);
+                      }}
+                      placeholder={`(${i + 1},${j + 1})`}
+                      className="text-center"
+                    />
+                  ))
+                )}
+              </div>
+              {matrixElements.some(row => row.some(cell => cell.trim())) && (
+                <div>
+                  <Label>Preview</Label>
+                  <div className="border rounded p-2 bg-gray-50">
+                    <LatexPreview text={`$\\begin{pmatrix} ${matrixElements.map(row => row.map(cell => cell || '?').join(' & ')).join(' \\\\ ')} \\end{pmatrix}$`} small />
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button onClick={() => setShowMatrixDialog(false)} variant="outline">Cancel</Button>
+                <Button onClick={handleMatrixInsert}>Insert</Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
