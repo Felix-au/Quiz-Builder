@@ -2866,6 +2866,14 @@ const QuizCreator = () => {
               <DialogHeader>
                 <DialogTitle>Import from ZIP files</DialogTitle>
               </DialogHeader>
+              {/* Metadata precedence note */}
+              <div className="mb-3 text-sm rounded-md border p-3 text-red-600">
+                <div className="font-medium"><span className="underline"></span></div>
+                <p className="mt-1 leading-snug">
+                  Note: The quiz metadata — for example <em>Quiz Name</em>, <em>Quiz Code</em>, time, visibility etc. — will be taken from the quiz ZIP listed at position <strong>1</strong> below.
+                  
+                </p>
+              </div>
 
               {/* Selection / Drag-drop area */}
               <div
