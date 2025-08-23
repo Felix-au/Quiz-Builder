@@ -1612,7 +1612,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                       />
                     </div>
                     <p className="text-xs text-gray-600">
-                      Note: Date and time are required to add a Google Calendar event 1 hour before your selected time.
+                      Note: Date and time are required so we can include a link to add a Google Calendar event 1 hour before the selected time.
                     </p>
                     <div className="flex flex-col gap-2 pt-4">
                       <Button
