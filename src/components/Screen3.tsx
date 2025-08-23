@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BlockMath, InlineMath } from 'react-katex';
 import 'katex/dist/katex.min.css';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -186,6 +186,212 @@ const Screen3: React.FC<Screen3Props> = (props) => {
   const courseOutcomes = ['N/A', 'CO1', 'CO2', 'CO3', 'CO4', 'CO5', 'CO6'];
   const bloomsLevels = ['N/A', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6'];
 
+  // --- Selection-based formatting state ---
+  const [formatTarget, setFormatTarget] = useState<null | { type: 'question' | 'option'; qid: number; oid?: number }>(null);
+  const [hasSelection, setHasSelection] = useState(false);
+  const [toolbarPos, setToolbarPos] = useState<null | { top: number; left: number }>(null);
+  const [toolbarStrategy, setToolbarStrategy] = useState<'absolute' | 'fixed'>('absolute');
+  const [showToolbar, setShowToolbar] = useState(false);
+  const toolbarTimer = useRef<number | null>(null);
+
+  const getFieldId = (t: 'question' | 'option', qid: number, oid?: number) =>
+    t === 'question' ? `question-textarea-${qid}` : `option-input-${qid}-${oid}`;
+
+  // Keyboard shortcuts for formatting when text is selected
+  const handleKeyDownFormat = (
+    e: React.KeyboardEvent<HTMLTextAreaElement>,
+    t: 'question' | 'option',
+    qid: number,
+    oid?: number
+  ) => {
+    const el = e.currentTarget;
+    const sel = (el.selectionEnd ?? 0) - (el.selectionStart ?? 0);
+    if (sel <= 0) return; // only act when there's a selection
+
+    const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+    // Ctrl/Cmd+B => bold
+    if (isCtrlOrMeta && !e.shiftKey && !e.altKey && (e.key === 'b' || e.key === 'B')) {
+      e.preventDefault();
+      setFormatTarget({ type: t, qid, oid });
+      setHasSelection(true);
+      setTimeout(() => applyMdFormat('bold'), 0);
+      return;
+    }
+    // Ctrl/Cmd+I => italic
+    if (isCtrlOrMeta && !e.shiftKey && !e.altKey && (e.key === 'i' || e.key === 'I')) {
+      e.preventDefault();
+      setFormatTarget({ type: t, qid, oid });
+      setHasSelection(true);
+      setTimeout(() => applyMdFormat('italic'), 0);
+      return;
+    }
+    // Ctrl/Cmd+U => underline
+    if (isCtrlOrMeta && !e.shiftKey && !e.altKey && (e.key === 'u' || e.key === 'U')) {
+      e.preventDefault();
+      setFormatTarget({ type: t, qid, oid });
+      setHasSelection(true);
+      setTimeout(() => applyMdFormat('underline'), 0);
+      return;
+    }
+    // Ctrl/Cmd+/ => strikethrough
+    if (isCtrlOrMeta && !e.shiftKey && !e.altKey && e.key === '/') {
+      e.preventDefault();
+      setFormatTarget({ type: t, qid, oid });
+      setHasSelection(true);
+      setTimeout(() => applyMdFormat('strike'), 0);
+      return;
+    }
+  };
+
+  const handleSelect = (
+    e: React.SyntheticEvent<HTMLTextAreaElement>,
+    t: 'question' | 'option',
+    qid: number,
+    oid?: number
+  ) => {
+    const el = e.currentTarget;
+    const hasSel = el.selectionEnd - el.selectionStart > 0;
+    setHasSelection(hasSel);
+    // reset any pending show timers
+    if (toolbarTimer.current) {
+      window.clearTimeout(toolbarTimer.current);
+      toolbarTimer.current = null;
+    }
+    setShowToolbar(false);
+    if (hasSel) setFormatTarget({ type: t, qid, oid });
+    else setFormatTarget(null);
+
+    if (hasSel) {
+      const container = el.parentElement as HTMLElement | null; // parent has position: relative
+      if (!container) return;
+      // For option fields: anchor toolbar at the top-left of the textarea
+      if (t === 'option') {
+        const rect = el.getBoundingClientRect();
+        // Use fixed positioning relative to viewport so it's not clipped by the option container
+        const left = Math.max(8, Math.min(window.innerWidth - 128, rect.left + window.scrollX + 8));
+        const top = Math.max(0, rect.top + window.scrollY - 34);
+        setToolbarPos({ top, left });
+        setToolbarStrategy('fixed');
+      } else {
+        // For question fields: use caret X and place above (fallback below)
+        const caretPos = el.selectionStart ?? 0;
+        const coords = getCaretCoordinates(el, caretPos);
+        let left = (coords?.left ?? 8) - 12;
+        const maxLeft = Math.max(8, container.clientWidth - 120);
+        if (left < 8) left = 8;
+        if (left > maxLeft) left = maxLeft;
+        const aboveTop = el.offsetTop - 34;
+        const belowTop = el.offsetTop + el.clientHeight + 6;
+        const top = aboveTop >= 0 ? aboveTop : belowTop;
+        setToolbarPos({ top, left });
+        setToolbarStrategy('absolute');
+      }
+      // Delay the toolbar appearance slightly
+      toolbarTimer.current = window.setTimeout(() => setShowToolbar(true), 140);
+    } else {
+      setToolbarPos(null);
+    }
+  };
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (toolbarTimer.current) {
+        window.clearTimeout(toolbarTimer.current);
+      }
+    };
+  }, []);
+
+  // Compute caret pixel coordinates inside a textarea using a mirror element
+  const getCaretCoordinates = (ta: HTMLTextAreaElement, pos: number) => {
+    try {
+      const style = window.getComputedStyle(ta);
+      const div = document.createElement('div');
+      div.style.position = 'absolute';
+      div.style.visibility = 'hidden';
+      div.style.whiteSpace = 'pre-wrap';
+      div.style.wordWrap = 'break-word';
+      div.style.overflow = 'hidden';
+      // Copy typography and box styles that affect layout
+      const props = ['boxSizing','width','paddingTop','paddingRight','paddingBottom','paddingLeft','borderTopWidth','borderRightWidth','borderBottomWidth','borderLeftWidth','fontFamily','fontSize','fontWeight','fontStyle','lineHeight','letterSpacing','textTransform'];
+      props.forEach(p => {
+        // @ts-ignore
+        div.style[p] = style.getPropertyValue(p.replace(/[A-Z]/g, m => '-' + m.toLowerCase())) || (ta as any).style[p];
+      });
+      div.style.width = ta.clientWidth + 'px';
+      // Align mirror to the textarea's position within the container
+      div.style.top = ta.offsetTop + 'px';
+      div.style.left = ta.offsetLeft + 'px';
+      const span = document.createElement('span');
+      const before = ta.value.substring(0, pos);
+      const after = ta.value.substring(pos) || '.'; // ensure span has size
+      div.textContent = before;
+      span.textContent = after;
+      div.appendChild(span);
+      ta.parentElement?.appendChild(div);
+      const containerRect = (ta.parentElement as HTMLElement).getBoundingClientRect();
+      const spanRect = span.getBoundingClientRect();
+      const left = spanRect.left - containerRect.left; // relative to container
+      ta.parentElement?.removeChild(div);
+      // We only use left; top will be computed from textarea offset.
+      return { top: 0, left };
+    } catch {
+      return null;
+    }
+  };
+
+  const applyMdFormat = (kind: 'bold' | 'italic' | 'underline' | 'strike') => {
+    if (!formatTarget) return;
+    const { type, qid, oid } = formatTarget;
+    const el = document.getElementById(getFieldId(type, qid, oid)) as HTMLTextAreaElement | null;
+    if (!el) return;
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
+    if (end <= start) return;
+    const value = el.value;
+    const selected = value.slice(start, end);
+    const tokens =
+      kind === 'bold' ? ['**', '**'] :
+      kind === 'italic' ? ['_', '_'] :
+      kind === 'underline' ? ['__', '__'] : ['~~', '~~'];
+    const newValue = value.slice(0, start) + tokens[0] + selected + tokens[1] + value.slice(end);
+    if (type === 'question') {
+      updateQuestion(qid, 'question', newValue);
+    } else if (type === 'option' && oid != null) {
+      updateOption(qid, oid, 'option_text', newValue);
+    }
+    setTimeout(() => {
+      if (!el) return;
+      el.focus();
+      const newPos = start + tokens[0].length + selected.length + tokens[1].length;
+      el.setSelectionRange(newPos, newPos);
+      autoResize(el);
+    }, 0);
+  };
+
+  const FormatToolbar: React.FC = () => {
+    if (!formatTarget || !hasSelection || !showToolbar) return null;
+    return (
+      <div
+        className={`${toolbarStrategy === 'fixed' ? 'fixed' : 'absolute'} z-10 bg-white border shadow-sm rounded-md px-1 py-0.5 flex gap-1`}
+        style={{ top: Math.max(0, toolbarPos?.top ?? 0), left: Math.max(0, toolbarPos?.left ?? 0) }}
+      >
+        <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => applyMdFormat('bold')} title="Bold">
+          <strong>B</strong>
+        </Button>
+        <Button size="sm" variant="ghost" className="h-6 px-2 italic" onClick={() => applyMdFormat('italic')} title="Italic">
+          I
+        </Button>
+        <Button size="sm" variant="ghost" className="h-6 px-2 underline" onClick={() => applyMdFormat('underline')} title="Underline">
+          U
+        </Button>
+        <Button size="sm" variant="ghost" className="h-6 px-2 line-through" onClick={() => applyMdFormat('strike')} title="Strikethrough">
+          S
+        </Button>
+      </div>
+    );
+  };
+
   // Helper to check if cursor is inside a LaTeX math block (\[ ... \])
   function isCursorInLatexBlock(text: string, cursorPos: number) {
     const before = text.slice(0, cursorPos);
@@ -210,7 +416,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
       const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
       insertPos = textarea ? textarea.selectionStart : null;
     } else if (targetType === 'option' && optionId != null) {
-      const input = document.getElementById(`option-input-${questionId}-${optionId}`) as HTMLInputElement;
+      const input = document.getElementById(`option-input-${questionId}-${optionId}`) as HTMLTextAreaElement;
       insertPos = input ? input.selectionStart : null;
     }
     setSuperSubInsertPos(insertPos);
@@ -323,6 +529,34 @@ const Screen3: React.FC<Screen3Props> = (props) => {
     // Replace quadruple backslashes with double, then double with single
     return latex.replace(/\\\\\\\\/g, '\\\\').replace(/\\\\/g, '\\');
   }
+
+  // Helper to auto-resize textareas based on content
+  const autoResize = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  // Ensure initial sizing and when switching questions/options
+  useEffect(() => {
+    if (!currentQuestion) return;
+    const qDesktop = document.getElementById(`question-textarea-${currentQuestion.id}`) as HTMLTextAreaElement | null;
+    const qMobile = document.getElementById(`question-mobile-${currentQuestion.id}`) as HTMLTextAreaElement | null;
+    autoResize(qDesktop);
+    autoResize(qMobile);
+    if (Array.isArray(currentQuestion.options)) {
+      currentQuestion.options.forEach((o: any) => {
+        const el = document.getElementById(`option-input-${currentQuestion.id}-${o.id}`) as HTMLTextAreaElement | null;
+        if (el) {
+          // Ensure default soft wrapping
+          el.removeAttribute('wrap');
+          el.style.overflowX = '';
+        }
+        autoResize(el);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestionIndex, currentQuestion?.question, JSON.stringify(currentQuestion?.options?.map((o: any) => o.option_text || ''))]);
 
   // 1. Mobile sidebar (question circles)
   const mobileSidebar = (
@@ -460,12 +694,20 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                   Question Text <span className="text-red-500">*</span>
                 </Label>
                 <div className="relative">
+                  {formatTarget?.type === 'question' && formatTarget.qid === currentQuestion.id && hasSelection && (
+                    <FormatToolbar />
+                  )}
                   <Textarea
                     id={`question-textarea-${currentQuestion.id}`}
                     value={currentQuestion.question}
-                    onChange={(e) => handleQuestionTextChange(currentQuestion.id, e.target.value, currentQuestion.question, e)}
+                    onChange={(e) => {
+                      autoResize(e.target as HTMLTextAreaElement);
+                      handleQuestionTextChange(currentQuestion.id, e.target.value, currentQuestion.question, e);
+                    }}
+                    onSelect={(e) => handleSelect(e, 'question', currentQuestion.id)}
+                    onKeyDown={(e) => handleKeyDownFormat(e, 'question', currentQuestion.id)}
                     placeholder="Enter your question..."
-                    className={`min-h-[120px] text-sm pr-32 ${currentQuestion.question.trim() === '' ? 'border-red-300 focus:border-red-500' : ''}`}
+                    className={`min-h-[120px] text-sm pr-32 resize-none overflow-hidden ${currentQuestion.question.trim() === '' ? 'border-red-300 focus:border-red-500' : ''}`}
                     required
                   />
                   <div className="absolute top-2 right-2 flex flex-col gap-1">
@@ -589,7 +831,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                   <p className="text-red-500 text-xs mt-1">Question is required</p>
                 )}
                 {/* Show preview only if question contains LaTeX delimiters */}
-                {currentQuestion.question && /\\\(|\\\[|\$.*\$/.test(currentQuestion.question) && (
+                {currentQuestion.question && (/\\\(|\\\[|\$.*\$|\*\*|__|~~|_/.test(currentQuestion.question)) && (
                   <div className="mt-2 p-2 bg-gray-50 border rounded-lg">
                     <Label className="text-xs text-gray-600">Preview:</Label>
                     <LatexPreview text={currentQuestion.question} />
@@ -689,12 +931,18 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                   Question Text <span className="text-red-500">*</span>
                 </Label>
                 <div className="relative">
+                  <FormatToolbar />
                   <Textarea
                     id={`question-mobile-${currentQuestion.id}`}
                     value={currentQuestion.question}
-                    onChange={(e) => handleQuestionTextChange(currentQuestion.id, e.target.value, currentQuestion.question, e)}
+                    onChange={(e) => {
+                      autoResize(e.target as HTMLTextAreaElement);
+                      handleQuestionTextChange(currentQuestion.id, e.target.value, currentQuestion.question, e);
+                    }}
+                    onSelect={(e) => handleSelect(e, 'question', currentQuestion.id)}
+                    onKeyDown={(e) => handleKeyDownFormat(e, 'question', currentQuestion.id)}
                     placeholder="Enter your question..."
-                    className={`min-h-[120px] text-sm pr-24 ${currentQuestion.question.trim() === '' ? 'border-red-300 focus:border-red-500' : ''}`}
+                    className={`min-h-[120px] text-sm pr-24 resize-none overflow-hidden ${currentQuestion.question.trim() === '' ? 'border-red-300 focus:border-red-500' : ''}`}
                     required
                   />
                   <div className="absolute top-2 right-2 flex flex-col gap-1">
@@ -1000,7 +1248,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                     } else if (formatting === 'subscript') {
                       formattedSymbol = `_{${symbol}}`;
                     }
-                    const input = document.getElementById(`option-input-${currentQuestion.id}-${option.id}`) as HTMLInputElement;
+                    const input = document.getElementById(`option-input-${currentQuestion.id}-${option.id}`) as HTMLTextAreaElement;
                     if (input) {
                       const cursorPos = input.selectionStart ?? option.option_text.length;
                       const newText =
@@ -1012,6 +1260,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                       setTimeout(() => {
                         input.focus();
                         input.setSelectionRange(cursorPos + formattedSymbol.length, cursorPos + formattedSymbol.length);
+                        autoResize(input);
                       }, 0);
                     } else {
                       updateOption(currentQuestion.id, option.id, 'option_text', option.option_text + formattedSymbol);
@@ -1019,7 +1268,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                   };
 
                   // Helper for handling text change with formatting
-                  const handleOptionTextChange = (e: React.ChangeEvent<HTMLInputElement>, option: any) => {
+                  const handleOptionTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>, option: any) => {
                     let value = e.target.value;
                     const formatting = optionFormatting[option.id] || 'none';
                     if (formatting !== 'none') {
@@ -1040,6 +1289,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                           input.focus();
                           const newPos = before.length + 3 + insertedText.length;
                           input.setSelectionRange(newPos, newPos);
+                          autoResize(input as HTMLTextAreaElement);
                         }, 0);
                       }
                     }
@@ -1075,13 +1325,24 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                       checked={option.is_correct}
                       onCheckedChange={(checked) => updateOption(currentQuestion.id, option.id, 'is_correct', !!checked)}
                     />
-                    <Input
-                      value={option.option_text}
-                      onChange={(e) => handleOptionTextChange(e, option)}
-                      placeholder={`Option ${optionIndex + 1}`}
-                      className="flex-1 h-8 text-sm"
+                    <div className="relative w-full">
+                      {formatTarget?.type === 'option' && formatTarget.qid === currentQuestion.id && formatTarget.oid === option.id && hasSelection && (
+                        <FormatToolbar />
+                      )}
+                      <Textarea
                       id={`option-input-${currentQuestion.id}-${option.id}`}
-                    />
+                      value={option.option_text}
+                      onChange={(e) => {
+                        autoResize(e.target as HTMLTextAreaElement);
+                        handleOptionTextChange(e, option);
+                      }}
+                      onSelect={(e) => handleSelect(e, 'option', currentQuestion.id, option.id)}
+                      onKeyDown={(e) => handleKeyDownFormat(e, 'option', currentQuestion.id, option.id)}
+                      placeholder={`Option ${optionIndex + 1}`}
+                      className="flex-1 min-h-[32px] text-sm resize-none overflow-hidden"
+                      rows={1}
+                      />
+                    </div>
                         <Button
                           variant={formatting === 'superscript' ? 'secondary' : 'ghost'}
                           size="sm"
@@ -1184,7 +1445,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                     )}
                   </div>
                       {/* Show preview only if option contains LaTeX delimiters */}
-                      {option.option_text && /\\\(|\\\[|\$.*\$/.test(option.option_text) && (
+                      {option.option_text && (/\\\(|\\\[|\$.*\$|\*\*|__|~~|_/.test(option.option_text)) && (
                         <div className="mt-1 p-1 bg-gray-100 border rounded">
                           <Label className="text-xs text-gray-600">Preview:</Label>
                           <LatexPreview text={option.option_text} small />
@@ -1356,8 +1617,8 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             </div>
           </CardContent>
         </Card>
-      )}
-    </div>
+      )}<br></br><br></br>
+    </div> 
   );
 
   // 3. Desktop sidebar (question circles)
@@ -2470,6 +2731,17 @@ interface LatexPreviewProps {
 }
 const LatexPreview: React.FC<LatexPreviewProps> = ({ text, small }) => {
   const segments = parseLatexSegments(text);
+  // Simple Markdown (tokens only) -> HTML for preview
+  const mdToHtml = (s: string) => {
+    let out = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    out = out.replace(/\*\*(.+?)\*\*/gs, '<strong>$1</strong>');
+    out = out.replace(/__(.+?)__/gs, '<u>$1</u>');
+    out = out.replace(/~~(.+?)~~/gs, '<s>$1</s>');
+    out = out.replace(/_(.+?)_/gs, '<em>$1</em>');
+    out = out.replace(/\n/g, '<br />');
+    return out;
+  };
+
   return (
     <div className={small ? 'text-xs mt-0.5' : 'text-sm mt-1'}>
       {segments.map((seg, i) => {
@@ -2478,13 +2750,10 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ text, small }) => {
         } else if (seg.type === 'block') {
           return <BlockMath key={i}>{seg.content}</BlockMath>;
         } else {
-          // Replace newlines with <br />
-          return seg.content.split(/\n/).map((line, j, arr) => (
-            <React.Fragment key={j}>
-              {line}
-              {j < arr.length - 1 ? <br /> : null}
-            </React.Fragment>
-          ));
+          // Render text with Markdown tokens applied
+          return (
+            <span key={i} dangerouslySetInnerHTML={{ __html: mdToHtml(seg.content) }} />
+          );
         }
       })}
     </div>
