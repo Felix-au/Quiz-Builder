@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText, Sigma, Superscript, Subscript, Calendar, Mail, ChevronRight, HelpCircle, RefreshCw } from 'lucide-react';
+import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText, Sigma, Superscript, Subscript, Calendar, Mail, ChevronRight, HelpCircle, Home, RefreshCw } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -181,6 +181,14 @@ const Screen3: React.FC<Screen3Props> = (props) => {
   // Add to state:
   const [superSubTargetType, setSuperSubTargetType] = useState<'question' | 'option'>('question');
   const [superSubOptionId, setSuperSubOptionId] = useState<number | null>(null);
+  // Generic math construct target
+  const [mathTargetId, setMathTargetId] = useState<number | null>(null);
+  // Distribution dialog state
+  const [showDistributionDialog, setShowDistributionDialog] = useState(false);
+  const [distNumDisplayed, setDistNumDisplayed] = useState<number>(numberOfQuestions || 1);
+  const [distEasy, setDistEasy] = useState<number>(0);
+  const [distMedium, setDistMedium] = useState<number>(numberOfQuestions || 0);
+  const [distHigh, setDistHigh] = useState<number>(0);
 
   // Add these arrays near the top of the component:
   const courseOutcomes = ['N/A', 'CO1', 'CO2', 'CO3', 'CO4', 'CO5', 'CO6'];
@@ -492,6 +500,40 @@ const Screen3: React.FC<Screen3Props> = (props) => {
     setShowSuperSubDialog(false);
   };
 
+  // --- Math construct open handlers (excluding Matrix which already has a specialized opener above) ---
+  const openFractionDialog = (questionId: number) => {
+    setMathTargetId(questionId);
+    setShowFractionDialog(true);
+  };
+  const openBinomialDialog = (questionId: number) => {
+    setMathTargetId(questionId);
+    setShowBinomialDialog(true);
+  };
+  const openIntegralDialog = (questionId: number) => {
+    setMathTargetId(questionId);
+    setShowIntegralDialog(true);
+  };
+  const openDoubleIntegralDialog = (questionId: number) => {
+    setMathTargetId(questionId);
+    setShowDoubleIntegralDialog(true);
+  };
+  const openSummationDialog = (questionId: number) => {
+    setMathTargetId(questionId);
+    setShowSummationDialog(true);
+  };
+  const openLimitDialog = (questionId: number) => {
+    setMathTargetId(questionId);
+    setShowLimitDialog(true);
+  };
+  const openRootDialog = (questionId: number) => {
+    setMathTargetId(questionId);
+    setShowRootDialog(true);
+  };
+  const openProductDialog = (questionId: number) => {
+    setMathTargetId(questionId);
+    setShowProductDialog(true);
+  };
+
   // Open matrix dialog and store cursor position
   const openMatrixDialog = (questionId: number) => {
     setMatrixRows(2);
@@ -686,23 +728,24 @@ const Screen3: React.FC<Screen3Props> = (props) => {
 
   // 2. Main content (question editor)
   const mainContent = (
-    <div className="col-span-1 md:col-span-4">
+    <div className="col-span-1 md:col-span-4 relative">
       {currentQuestion && (
-        <Card className="shadow-lg border-0 h-full">
-          <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-t-lg py-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Question {currentQuestionIndex + 1}</CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => deleteQuestion(currentQuestion.id)}
-                className="text-white hover:text-red-200 hover:bg-red-600/20 h-8 w-8 p-0"
-                title="Delete this question"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardHeader>
+        <>
+          <Card className="shadow-lg border-0">
+            <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-t-lg py-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">Question {currentQuestionIndex + 1}</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => deleteQuestion(currentQuestion.id)}
+                  className="text-white hover:text-red-200 hover:bg-red-600/20 h-8 w-8 p-0"
+                  title="Delete this question"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
           <CardContent className="p-3 space-y-2 overflow-y-auto">
             {/* Desktop Layout */}
             <div className="hidden md:grid grid-cols-3 gap-3">
@@ -1313,6 +1356,8 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                     updateOption(currentQuestion.id, option.id, 'option_text', value);
                   };
 
+  
+
                   // Helper for rendering preview
                   const renderOptionPreview = (text: string) => {
                     const inlineRegex = /\\\((.*?)\\\)/g;
@@ -1501,125 +1546,72 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                 <ChevronLeft className="h-3 w-3 rotate-180" />
               </Button>
             </div>
+            </CardContent>
+          </Card>
+          
+          {/* Bottom action bar positioned absolutely after the Card */}
+          <div className="mt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 items-center gap-2">
+              {/* Left: Instructions & Back to Home */}
+              <div className="flex justify-start gap-2">
+                <Button
+                  onClick={() => setCurrentScreen(2)}
+                  variant="default"
+                  size="sm"
+                  className="flex items-center gap-1 text-sm px-4 h-9 md:h-8 bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-700 hover:to-blue-900"
+                >
+                  <FileText className="h-4 w-4" />
+                  Instructions
+                </Button>
+                <Button
+                  onClick={() => setCurrentScreen(0)}
+                  variant="outline"
+                  className="flex items-center gap-1 text-sm px-4 h-9 md:h-8 text-blue-600 border-blue-600 hover:bg-blue-50"
+                >
+                  <Home className="h-4 w-4" />
+                  Back to Home
+                </Button>
+              </div>
 
-            <div className="flex flex-wrap justify-center gap-2 pt-1 border-t">
-              <Button
-                onClick={() => setCurrentScreen(2)}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-1 text-xs px-3 h-8 md:h-7"
-              >
-                <FileText className="h-3 w-3" />
-                Instructions
-              </Button>
+              {/* Middle: Save, Delete - centered between left/right, stronger right lean */}
+              <div className="flex justify-center gap-2 flex-nowrap relative left-4 md:left-14">
+                <Button
+                  onClick={saveSession}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1 text-sm px-4 h-9 md:h-8 text-green-600 border-green-600 hover:bg-green-50"
+                >
+                  <Save className="h-4 w-4" />
+                  Save Session
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={flushData}
+                  className="flex items-center gap-1 text-red-600 border-red-600 hover:bg-red-50 text-sm px-4 h-9 md:h-8"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Question
+                </Button>
+              </div>
 
-              <Button
-            onClick={() => setCurrentScreen(0)}
-            variant="outline"
-                className="flex items-center gap-1 text-xs px-3 h-8 md:h-7"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Back to Home
-          </Button>
-              
-              <Button
-                onClick={saveSession}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-1 text-xs px-3 h-8 md:h-7"
-              >
-                <Save className="h-3 w-3" />
-                Save Session
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={flushData}
-                className="flex items-center gap-1 text-red-600 border-red-600 hover:bg-red-50 text-xs px-3 h-8 md:h-7"
-              >
-                <Trash2 className="h-3 w-3" />
-                Delete Question
-              </Button>
-              
-                  <Button
-                    size="sm"
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-xs px-3 h-8 md:h-7"
-                onClick={() => setShowDistributionDialog(true)}
-              >
-                <Download className="h-3 w-3 mr-1" />
-                Set Distribution
-              </Button>
-              
-              <Dialog open={showReminderDialog} onOpenChange={setShowReminderDialog}>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <Calendar className="h-5 w-5 text-blue-600" />
-                      Quiz reminder email
-                    </DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="reminder-date">Reminder date</Label>
-                      <Input
-                        id="reminder-date"
-                        type="date"
-                        value={reminderDate}
-                        onChange={(e) => setReminderDate(e.target.value)}
-                        className="w-full"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="reminder-time">Reminder time</Label>
-                      <Input
-                        id="reminder-time"
-                        type="time"
-                        value={reminderTime}
-                        onChange={(e) => setReminderTime(e.target.value)}
-                        className="w-full"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="reminder-email">Email address</Label>
-                      <Input
-                        id="reminder-email"
-                        type="email"
-                        value={reminderEmail}
-                        onChange={(e) => setReminderEmail(e.target.value)}
-                        placeholder="name@example.com"
-                        className="w-full"
-                      />
-                    </div>
-                    <p className="text-xs text-gray-600">
-                      Note: Date and time are required so we can include a link to add a Google Calendar event 1 hour before the selected time.
-                    </p>
-                    <div className="flex flex-col gap-2 pt-4">
-                      <Button
-                        onClick={() => handleReminderSubmit(true)}
-                        className="w-full bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
-                      >
-                        <Mail className="h-4 w-4" />
-                        Email the ZIP and reminder
-                      </Button>
-                      <Button
-                        onClick={() => handleReminderSubmit(false)}
-                        variant="outline"
-                        className="w-full flex items-center gap-2"
-                      >
-                        <Download className="h-4 w-4" />
-                        Download ZIP only
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              {/* Right: Set Distribution */}
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-sm px-4 h-9 md:h-8"
+                  onClick={() => setShowDistributionDialog(true)}
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Set Distribution
+                </Button>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      )}<br></br><br></br>
-    </div> 
-  );
+          </div>
+        </>
+        )}
+      </div>
+    );
 
   // 3. Desktop sidebar (question circles)
   const desktopSidebar = (
@@ -1634,1023 +1626,267 @@ const Screen3: React.FC<Screen3Props> = (props) => {
               <div className="flex items-center gap-2">
                 <Label htmlFor="num-questions-desktop" className="text-xs">Total:</Label>
                 <Input
-                    id="num-questions-desktop"
+                  id="num-questions-desktop"
                   type="number"
                   min="1"
                   max="500"
                   value={numberOfQuestions}
-                    onChange={(e) => {
-                      const newValue = parseInt(e.target.value) || 1;
-                      setNumberOfQuestions(newValue);
-                      // Debounce the actual adjustment
-                      if (questionAdjustTimeout) {
-                        clearTimeout(questionAdjustTimeout);
-                      }
-                      const timeout = setTimeout(() => {
-                        adjustQuestions(newValue);
-                      }, 500);
-                      setQuestionAdjustTimeout(timeout);
-                    }}
+                  onChange={(e) => {
+                    const newValue = parseInt(e.target.value) || 1;
+                    setNumberOfQuestions(newValue);
+                    // Debounce the actual adjustment
+                    if (questionAdjustTimeout) {
+                      clearTimeout(questionAdjustTimeout);
+                    }
+                    const timeout = setTimeout(() => {
+                      adjustQuestions(newValue);
+                    }, 500);
+                    setQuestionAdjustTimeout(timeout);
+                  }}
                   className="w-16 h-6 text-xs"
                 />
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const newValue = Math.max(1, numberOfQuestions - 1);
-                        setNumberOfQuestions(newValue);
-                        adjustQuestions(newValue);
-                      }}
-                      className="h-6 w-6 p-0 text-xs"
-                    >
-                      -
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const newValue = Math.min(500, numberOfQuestions + 1);
-                        setNumberOfQuestions(newValue);
-                        adjustQuestions(newValue);
-                      }}
-                      className="h-6 w-6 p-0 text-xs"
-                    >
-                      +
-                    </Button>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-600">1</span>
-                  <input
-                    type="range"
-                    min="1"
-                    max="500"
-                    value={numberOfQuestions}
-                    onChange={(e) => {
-                      const newValue = parseInt(e.target.value);
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newValue = Math.max(1, numberOfQuestions - 1);
                       setNumberOfQuestions(newValue);
                       adjustQuestions(newValue);
                     }}
-                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                  />
-                  <span className="text-xs text-gray-600">500</span>
+                    className="h-6 w-6 p-0 text-xs"
+                  >
+                    -
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newValue = Math.min(500, numberOfQuestions + 1);
+                      setNumberOfQuestions(newValue);
+                      adjustQuestions(newValue);
+                    }}
+                    className="h-6 w-6 p-0 text-xs"
+                  >
+                    +
+                  </Button>
                 </div>
               </div>
-              
-              <div className="grid grid-cols-4 gap-1">
-                {Array.from({ length: numberOfQuestions }, (_, i) => {
-                  const question = questions[i];
-                  const difficulty = question?.difficulty || 'MEDIUM';
-                  const difficultyLabel = difficulty === 'LOW' ? 'E' : difficulty === 'MEDIUM' ? 'M' : 'H';
-                  let diffBg = 'bg-yellow-200';
-                  let diffText = 'text-yellow-900';
-                  if (difficulty === 'LOW') { diffBg = 'bg-green-200'; diffText = 'text-green-900'; }
-                  if (difficulty === 'HIGH') { diffBg = 'bg-red-200'; diffText = 'text-red-900'; }
-                  return (
-                    <div key={i} className="relative">
-                  <Button
-                    variant={currentQuestionIndex === i ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setCurrentQuestionIndex(i)}
-                        className={`w-8 h-8 md:w-7 md:h-7 rounded-full text-xs p-0 relative ${diffBg} ${diffText}`}
-                  >
-                    {i + 1}
-                  </Button>
-                      <span className="absolute top-0 left-0 text-[8px] font-bold bg-gray-200 text-gray-700 rounded-full w-3 h-3 flex items-center justify-center">
-                        {difficultyLabel}
-                      </span>
-                    </div>
-                  );
-                })}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-600">1</span>
+                <input
+                  type="range"
+                  min="1"
+                  max="500"
+                  value={numberOfQuestions}
+                  onChange={(e) => {
+                    const newValue = parseInt(e.target.value);
+                    setNumberOfQuestions(newValue);
+                    adjustQuestions(newValue);
+                  }}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                />
+                <span className="text-xs text-gray-600">500</span>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-
-  // Matrix Dialog rendered at the root
-  const matrixDialog = (
-    <Dialog open={showMatrixDialog} onOpenChange={setShowMatrixDialog}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Insert Matrix</DialogTitle>
-        </DialogHeader>
-        <div className="flex gap-2 mb-2">
-          <Input
-            type="number"
-            min={1}
-            max={10}
-            value={matrixRows}
-            onChange={e => handleMatrixSizeChange(Number(e.target.value), matrixCols)}
-            className="w-20"
-            placeholder="Rows"
-          />
-          <span>x</span>
-          <Input
-            type="number"
-            min={1}
-            max={10}
-            value={matrixCols}
-            onChange={e => handleMatrixSizeChange(matrixRows, Number(e.target.value))}
-            className="w-20"
-            placeholder="Cols"
-          />
-        </div>
-        <div className="overflow-x-auto">
-          <table className="border border-gray-300 rounded w-full text-center bg-white">
-            <tbody>
-              {Array.from({ length: matrixRows }).map((_, i) => (
-                <tr key={i}>
-                  {Array.from({ length: matrixCols }).map((_, j) => (
-                    <td key={j} className="border border-gray-300 p-1">
-                      <Input
-                        value={matrixElements[i]?.[j] || ''}
-                        onChange={e => {
-                          const val = e.target.value;
-                          setMatrixElements(prev => {
-                            const copy = prev.map(row => [...row]);
-                            copy[i][j] = val;
-                            return copy;
-                          });
-                        }}
-                        className="w-16 text-center bg-gray-50 focus:bg-white focus:border-blue-400 rounded shadow-sm"
-                      />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex justify-end gap-2 mt-4">
-          <Button onClick={() => setShowMatrixDialog(false)} variant="outline">Cancel</Button>
-          <Button onClick={handleMatrixInsert}>Insert</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+            
+            <div className="grid grid-cols-4 gap-1">
+              {Array.from({ length: numberOfQuestions }, (_, i) => {
+                const question = questions[i];
+                const difficulty = question?.difficulty || 'MEDIUM';
+                const difficultyLabel = difficulty === 'LOW' ? 'E' : difficulty === 'MEDIUM' ? 'M' : 'H';
+                let diffBg = 'bg-yellow-200';
+                let diffText = 'text-yellow-900';
+                if (difficulty === 'LOW') { diffBg = 'bg-green-200'; diffText = 'text-green-900'; }
+                if (difficulty === 'HIGH') { diffBg = 'bg-red-200'; diffText = 'text-red-900'; }
+                return (
+                  <div key={i} className="relative">
+                    <Button
+                      variant={currentQuestionIndex === i ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentQuestionIndex(i)}
+                      className={`w-8 h-8 md:w-7 md:h-7 rounded-full text-xs p-0 relative ${diffBg} ${diffText}`}
+                    >
+                      {i + 1}
+                    </Button>
+                    <span className="absolute top-0 left-0 text-[8px] font-bold bg-gray-200 text-gray-700 rounded-full w-3 h-3 flex items-center justify-center">
+                      {difficultyLabel}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
-
-  // Scaffold Dialogs for each construct (Fraction, Binomial, etc.) with input fields, labels, and a live LaTeX preview (use MathJax rendering as in matrixDialog). Do not implement insertion yet.
-
-  // Helper: build inline LaTeX for each construct
-  function buildFractionLatex(numerator: string, denominator: string) {
-    return `\\( \\frac{${numerator || '?'}}{${denominator || '?'}} \\)`;
-  }
-  function buildBinomialLatex(n: string, k: string) {
-    return `\\( \\binom{${n || '?'}}{${k || '?'}} \\)`;
-  }
-  function buildIntegralLatex(lower: string, upper: string, func: string, variable: string) {
-    return `\\( \\int_{${lower || '?'}}^{${upper || '?'}} ${func || '?'} \, d${variable || 'x'} \\)`;
-  }
-  function buildDoubleIntegralLatex(lower: string, upper: string, func: string, variable: string) {
-    return `\\( \\iint_{${lower || '?'}}^{${upper || '?'}} ${func || '?'} \, d${variable || 'x, y'} \\)`;
-  }
-  function buildSummationLatex(index: string, lower: string, upper: string, func: string) {
-    return `\\( \\sum_{${index || 'k'}=${lower || '0'}}^{${upper || 'n'}} ${func || '?'} \\)`;
-  }
-  function buildLimitLatex(variable: string, approaches: string, func: string) {
-    return `\\( \\lim_{${variable || 'x'} \\to ${approaches || '0'}} ${func || '?'} \\)`;
-  }
-  function buildRootLatex(degree: string, radicand: string) {
-    return `\\( \\sqrt[${degree || 'n'}]{${radicand || 'x'}} \\)`;
-  }
-  function buildProductLatex(index: string, lower: string, upper: string, func: string) {
-    return `\\( \\prod_{${index || 'i'}=${lower || '1'}}^{${upper || 'n'}} ${func || '?'} \\)`;
-  }
-
-  const fractionDialog = (
-    <Dialog open={showFractionDialog} onOpenChange={setShowFractionDialog}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Insert Fraction</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="fraction-numerator">Numerator</Label>
-            <Input
-              id="fraction-numerator"
-              value={fractionNumerator}
-              onChange={(e) => setFractionNumerator(e.target.value)}
-              placeholder="e.g., a, x, 1"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="fraction-denominator">Denominator</Label>
-            <Input
-              id="fraction-denominator"
-              value={fractionDenominator}
-              onChange={(e) => setFractionDenominator(e.target.value)}
-              placeholder="e.g., b, y, 2"
-              className="w-full"
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button onClick={() => setShowFractionDialog(false)} variant="outline">Cancel</Button>
-            <Button onClick={() => {
-              const latex = buildFractionLatex(fractionNumerator, fractionDenominator);
-              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
-              let newValue = currentQuestion.question;
-              if (matrixInsertPos != null) {
-                newValue =
-                  currentQuestion.question.slice(0, matrixInsertPos) +
-                  latex +
-                  currentQuestion.question.slice(matrixInsertPos);
-              } else {
-                newValue = currentQuestion.question + latex;
-              }
-              updateQuestion(matrixTargetId, 'question', newValue);
-              setShowFractionDialog(false);
-            }}>Insert</Button>
-          </div>
-        </div>
-        <div className="mt-4 p-2 bg-gray-50 border rounded">
-          <Label className="text-xs text-gray-600">Preview:</Label>
-          <div
-            className="text-sm mt-1"
-            ref={el => {
-              if (el) {
-                el.textContent = normalizeLatexInput(buildFractionLatex(fractionNumerator, fractionDenominator));
-                if (window.MathJax && window.MathJax.typesetPromise) {
-                  window.MathJax.typesetPromise([el]);
-                }
-              }
-            }}
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-
-  const binomialDialog = (
-    <Dialog open={showBinomialDialog} onOpenChange={setShowBinomialDialog}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Insert Binomial</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="binomial-n">N</Label>
-            <Input
-              id="binomial-n"
-              value={binomialN}
-              onChange={(e) => setBinomialN(e.target.value)}
-              placeholder="e.g., 5, n"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="binomial-k">K</Label>
-            <Input
-              id="binomial-k"
-              value={binomialK}
-              onChange={(e) => setBinomialK(e.target.value)}
-              placeholder="e.g., 2, k"
-              className="w-full"
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button onClick={() => setShowBinomialDialog(false)} variant="outline">Cancel</Button>
-            <Button onClick={() => {
-              const latex = buildBinomialLatex(binomialN, binomialK);
-              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
-              let newValue = currentQuestion.question;
-              if (matrixInsertPos != null) {
-                newValue =
-                  currentQuestion.question.slice(0, matrixInsertPos) +
-                  latex +
-                  currentQuestion.question.slice(matrixInsertPos);
-              } else {
-                newValue = currentQuestion.question + latex;
-              }
-              updateQuestion(matrixTargetId, 'question', newValue);
-              setShowBinomialDialog(false);
-            }}>Insert</Button>
-          </div>
-        </div>
-        <div className="mt-4 p-2 bg-gray-50 border rounded">
-          <Label className="text-xs text-gray-600">Preview:</Label>
-          <div
-            className="text-sm mt-1"
-            ref={el => {
-              if (el) {
-                el.textContent = normalizeLatexInput(buildBinomialLatex(binomialN, binomialK));
-                if (window.MathJax && window.MathJax.typesetPromise) {
-                  window.MathJax.typesetPromise([el]);
-                }
-              }
-            }}
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-
-  const integralDialog = (
-    <Dialog open={showIntegralDialog} onOpenChange={setShowIntegralDialog}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Insert Integral</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="integral-lower">Lower Bound</Label>
-            <Input
-              id="integral-lower"
-              value={integralLower}
-              onChange={(e) => setIntegralLower(e.target.value)}
-              placeholder="e.g., 0, a"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="integral-upper">Upper Bound</Label>
-            <Input
-              id="integral-upper"
-              value={integralUpper}
-              onChange={(e) => setIntegralUpper(e.target.value)}
-              placeholder="e.g., 1, b"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="integral-function">Function</Label>
-            <Input
-              id="integral-function"
-              value={integralFunction}
-              onChange={(e) => setIntegralFunction(e.target.value)}
-              placeholder="e.g., x^2, sin(x)"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="integral-variable">Variable</Label>
-            <Input
-              id="integral-variable"
-              value={integralVariable}
-              onChange={(e) => setIntegralVariable(e.target.value)}
-              placeholder="e.g., x, t"
-              className="w-full"
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button onClick={() => setShowIntegralDialog(false)} variant="outline">Cancel</Button>
-            <Button onClick={() => {
-              const latex = buildIntegralLatex(integralLower, integralUpper, integralFunction, integralVariable);
-              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
-              let newValue = currentQuestion.question;
-              if (matrixInsertPos != null) {
-                newValue =
-                  currentQuestion.question.slice(0, matrixInsertPos) +
-                  latex +
-                  currentQuestion.question.slice(matrixInsertPos);
-              } else {
-                newValue = currentQuestion.question + latex;
-              }
-              updateQuestion(matrixTargetId, 'question', newValue);
-              setShowIntegralDialog(false);
-            }}>Insert</Button>
-          </div>
-        </div>
-        <div className="mt-4 p-2 bg-gray-50 border rounded">
-          <Label className="text-xs text-gray-600">Preview:</Label>
-          <div
-            className="text-sm mt-1"
-            ref={el => {
-              if (el) {
-                el.textContent = normalizeLatexInput(buildIntegralLatex(integralLower, integralUpper, integralFunction, integralVariable));
-                if (window.MathJax && window.MathJax.typesetPromise) {
-                  window.MathJax.typesetPromise([el]);
-                }
-              }
-            }}
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-
-  const doubleIntegralDialog = (
-    <Dialog open={showDoubleIntegralDialog} onOpenChange={setShowDoubleIntegralDialog}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Insert Double Integral</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="double-integral-lower">Lower Bound (x)</Label>
-            <Input
-              id="double-integral-lower"
-              value={doubleIntegralLower}
-              onChange={(e) => setDoubleIntegralLower(e.target.value)}
-              placeholder="e.g., 0, a"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="double-integral-upper">Upper Bound (x)</Label>
-            <Input
-              id="double-integral-upper"
-              value={doubleIntegralUpper}
-              onChange={(e) => setDoubleIntegralUpper(e.target.value)}
-              placeholder="e.g., 1, b"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="double-integral-function">Function (y)</Label>
-            <Input
-              id="double-integral-function"
-              value={doubleIntegralFunction}
-              onChange={(e) => setDoubleIntegralFunction(e.target.value)}
-              placeholder="e.g., x^2, sin(y)"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="double-integral-variable">Variable (y)</Label>
-            <Input
-              id="double-integral-variable"
-              value={doubleIntegralVariable}
-              onChange={(e) => setDoubleIntegralVariable(e.target.value)}
-              placeholder="e.g., y, t"
-              className="w-full"
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button onClick={() => setShowDoubleIntegralDialog(false)} variant="outline">Cancel</Button>
-            <Button onClick={() => {
-              const latex = buildDoubleIntegralLatex(doubleIntegralLower, doubleIntegralUpper, doubleIntegralFunction, doubleIntegralVariable);
-              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
-              let newValue = currentQuestion.question;
-              if (matrixInsertPos != null) {
-                newValue =
-                  currentQuestion.question.slice(0, matrixInsertPos) +
-                  latex +
-                  currentQuestion.question.slice(matrixInsertPos);
-              } else {
-                newValue = currentQuestion.question + latex;
-              }
-              updateQuestion(matrixTargetId, 'question', newValue);
-              setShowDoubleIntegralDialog(false);
-            }}>Insert</Button>
-          </div>
-        </div>
-        <div className="mt-4 p-2 bg-gray-50 border rounded">
-          <Label className="text-xs text-gray-600">Preview:</Label>
-          <div
-            className="text-sm mt-1"
-            ref={el => {
-              if (el) {
-                el.textContent = normalizeLatexInput(buildDoubleIntegralLatex(doubleIntegralLower, doubleIntegralUpper, doubleIntegralFunction, doubleIntegralVariable));
-                if (window.MathJax && window.MathJax.typesetPromise) {
-                  window.MathJax.typesetPromise([el]);
-                }
-              }
-            }}
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-
-  const summationDialog = (
-    <Dialog open={showSummationDialog} onOpenChange={setShowSummationDialog}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Insert Summation</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="summation-index">Index</Label>
-            <Input
-              id="summation-index"
-              value={summationIndex}
-              onChange={(e) => setSummationIndex(e.target.value)}
-              placeholder="e.g., i, k"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="summation-lower">Lower Bound</Label>
-            <Input
-              id="summation-lower"
-              value={summationLower}
-              onChange={(e) => setSummationLower(e.target.value)}
-              placeholder="e.g., 1, a"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="summation-upper">Upper Bound</Label>
-            <Input
-              id="summation-upper"
-              value={summationUpper}
-              onChange={(e) => setSummationUpper(e.target.value)}
-              placeholder="e.g., n, b"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="summation-function">Function</Label>
-            <Input
-              id="summation-function"
-              value={summationFunction}
-              onChange={(e) => setSummationFunction(e.target.value)}
-              placeholder="e.g., i^2, sin(i)"
-              className="w-full"
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button onClick={() => setShowSummationDialog(false)} variant="outline">Cancel</Button>
-            <Button onClick={() => {
-              const latex = buildSummationLatex(summationIndex, summationLower, summationUpper, summationFunction);
-              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
-              let newValue = currentQuestion.question;
-              if (matrixInsertPos != null) {
-                newValue =
-                  currentQuestion.question.slice(0, matrixInsertPos) +
-                  latex +
-                  currentQuestion.question.slice(matrixInsertPos);
-              } else {
-                newValue = currentQuestion.question + latex;
-              }
-              updateQuestion(matrixTargetId, 'question', newValue);
-              setShowSummationDialog(false);
-            }}>Insert</Button>
-          </div>
-        </div>
-        <div className="mt-4 p-2 bg-gray-50 border rounded">
-          <Label className="text-xs text-gray-600">Preview:</Label>
-          <div
-            className="text-sm mt-1"
-            ref={el => {
-              if (el) {
-                el.textContent = normalizeLatexInput(buildSummationLatex(summationIndex, summationLower, summationUpper, summationFunction));
-                if (window.MathJax && window.MathJax.typesetPromise) {
-                  window.MathJax.typesetPromise([el]);
-                }
-              }
-            }}
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-
-  const limitDialog = (
-    <Dialog open={showLimitDialog} onOpenChange={setShowLimitDialog}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Insert Limit</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="limit-variable">Variable</Label>
-            <Input
-              id="limit-variable"
-              value={limitVariable}
-              onChange={(e) => setLimitVariable(e.target.value)}
-              placeholder="e.g., x, t"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="limit-approaches">Approaches</Label>
-            <Input
-              id="limit-approaches"
-              value={limitApproaches}
-              onChange={(e) => setLimitApproaches(e.target.value)}
-              placeholder="e.g., 0, a"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="limit-function">Function</Label>
-            <Input
-              id="limit-function"
-              value={limitFunction}
-              onChange={(e) => setLimitFunction(e.target.value)}
-              placeholder="e.g., \\frac{1}{x}, \\sin(x)"
-              className="w-full"
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button onClick={() => setShowLimitDialog(false)} variant="outline">Cancel</Button>
-            <Button onClick={() => {
-              const latex = buildLimitLatex(limitVariable, limitApproaches, limitFunction);
-              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
-              let newValue = currentQuestion.question;
-              if (matrixInsertPos != null) {
-                newValue =
-                  currentQuestion.question.slice(0, matrixInsertPos) +
-                  latex +
-                  currentQuestion.question.slice(matrixInsertPos);
-              } else {
-                newValue = currentQuestion.question + latex;
-              }
-              updateQuestion(matrixTargetId, 'question', newValue);
-              setShowLimitDialog(false);
-            }}>Insert</Button>
-          </div>
-        </div>
-        <div className="mt-4 p-2 bg-gray-50 border rounded">
-          <Label className="text-xs text-gray-600">Preview:</Label>
-          <div
-            className="text-sm mt-1"
-            ref={el => {
-              if (el) {
-                el.textContent = normalizeLatexInput(buildLimitLatex(limitVariable, limitApproaches, limitFunction));
-                if (window.MathJax && window.MathJax.typesetPromise) {
-                  window.MathJax.typesetPromise([el]);
-                }
-              }
-            }}
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-
-  const rootDialog = (
-    <Dialog open={showRootDialog} onOpenChange={setShowRootDialog}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Insert Root</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="root-degree">Degree</Label>
-            <Input
-              id="root-degree"
-              value={rootDegree}
-              onChange={(e) => setRootDegree(e.target.value)}
-              placeholder="e.g., 2, n"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="root-radicand">Radicand</Label>
-            <Input
-              id="root-radicand"
-              value={rootRadicand}
-              onChange={(e) => setRootRadicand(e.target.value)}
-              placeholder="e.g., x, 1"
-              className="w-full"
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button onClick={() => setShowRootDialog(false)} variant="outline">Cancel</Button>
-            <Button onClick={() => {
-              const latex = buildRootLatex(rootDegree, rootRadicand);
-              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
-              let newValue = currentQuestion.question;
-              if (matrixInsertPos != null) {
-                newValue =
-                  currentQuestion.question.slice(0, matrixInsertPos) +
-                  latex +
-                  currentQuestion.question.slice(matrixInsertPos);
-              } else {
-                newValue = currentQuestion.question + latex;
-              }
-              updateQuestion(matrixTargetId, 'question', newValue);
-              setShowRootDialog(false);
-            }}>Insert</Button>
-          </div>
-        </div>
-        <div className="mt-4 p-2 bg-gray-50 border rounded">
-          <Label className="text-xs text-gray-600">Preview:</Label>
-          <div
-            className="text-sm mt-1"
-            ref={el => {
-              if (el) {
-                el.textContent = normalizeLatexInput(buildRootLatex(rootDegree, rootRadicand));
-                if (window.MathJax && window.MathJax.typesetPromise) {
-                  window.MathJax.typesetPromise([el]);
-                }
-              }
-            }}
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-
-  const productDialog = (
-    <Dialog open={showProductDialog} onOpenChange={setShowProductDialog}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Insert Product</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="product-index">Index</Label>
-            <Input
-              id="product-index"
-              value={productIndex}
-              onChange={(e) => setProductIndex(e.target.value)}
-              placeholder="e.g., i, k"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="product-lower">Lower Bound</Label>
-            <Input
-              id="product-lower"
-              value={productLower}
-              onChange={(e) => setProductLower(e.target.value)}
-              placeholder="e.g., 1, a"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="product-upper">Upper Bound</Label>
-            <Input
-              id="product-upper"
-              value={productUpper}
-              onChange={(e) => setProductUpper(e.target.value)}
-              placeholder="e.g., n, b"
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="product-function">Function</Label>
-            <Input
-              id="product-function"
-              value={productFunction}
-              onChange={(e) => setProductFunction(e.target.value)}
-              placeholder="e.g., i^2, sin(i)"
-              className="w-full"
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button onClick={() => setShowProductDialog(false)} variant="outline">Cancel</Button>
-            <Button onClick={() => {
-              const latex = buildProductLatex(productIndex, productLower, productUpper, productFunction);
-              const textarea = document.getElementById(`question-textarea-${matrixTargetId}`) as HTMLTextAreaElement;
-              let newValue = currentQuestion.question;
-              if (matrixInsertPos != null) {
-                newValue =
-                  currentQuestion.question.slice(0, matrixInsertPos) +
-                  latex +
-                  currentQuestion.question.slice(matrixInsertPos);
-              } else {
-                newValue = currentQuestion.question + latex;
-              }
-              updateQuestion(matrixTargetId, 'question', newValue);
-              setShowProductDialog(false);
-            }}>Insert</Button>
-          </div>
-        </div>
-        <div className="mt-4 p-2 bg-gray-50 border rounded">
-          <Label className="text-xs text-gray-600">Preview:</Label>
-          <div
-            className="text-sm mt-1"
-            ref={el => {
-              if (el) {
-                el.textContent = normalizeLatexInput(buildProductLatex(productIndex, productLower, productUpper, productFunction));
-                if (window.MathJax && window.MathJax.typesetPromise) {
-                  window.MathJax.typesetPromise([el]);
-                }
-              }
-            }}
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-
-  // Trigger MathJax typeset after preview updates
-  React.useEffect(() => {
-    if (window.MathJax && window.MathJax.typesetPromise) {
-      window.MathJax.typesetPromise();
-    }
-  }, [currentQuestion?.question]);
-
-  // Move openXDialog handler function definitions above the JSX where the buttons are rendered
-  const openFractionDialog = (questionId) => {
-    setMatrixTargetId(questionId);
-    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
-    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
-    setShowFractionDialog(true);
-  };
-  const openBinomialDialog = (questionId) => {
-    setMatrixTargetId(questionId);
-    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
-    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
-    setShowBinomialDialog(true);
-  };
-  const openIntegralDialog = (questionId) => {
-    setMatrixTargetId(questionId);
-    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
-    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
-    setShowIntegralDialog(true);
-  };
-  const openDoubleIntegralDialog = (questionId) => {
-    setMatrixTargetId(questionId);
-    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
-    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
-    setShowDoubleIntegralDialog(true);
-  };
-  const openSummationDialog = (questionId) => {
-    setMatrixTargetId(questionId);
-    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
-    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
-    setShowSummationDialog(true);
-  };
-  const openLimitDialog = (questionId) => {
-    setMatrixTargetId(questionId);
-    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
-    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
-    setShowLimitDialog(true);
-  };
-  const openRootDialog = (questionId) => {
-    setMatrixTargetId(questionId);
-    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
-    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
-    setShowRootDialog(true);
-  };
-  const openProductDialog = (questionId) => {
-    setMatrixTargetId(questionId);
-    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
-    setMatrixInsertPos(textarea ? textarea.selectionStart : null);
-    setShowProductDialog(true);
-  };
-
-  // Set Distribution Dialog
-  const [showDistributionDialog, setShowDistributionDialog] = useState(false);
-  const [distributionGrid, setDistributionGrid] = useState<any>({});
-
-  // Helper: count questions by subject and difficulty
-  function getAddedCounts() {
-    const counts: any = {};
-    subjects.forEach(subj => {
-      counts[subj] = { LOW: 0, MEDIUM: 0, HIGH: 0, total: 0 };
-    });
-    questions.forEach(q => {
-      if (q.subject && counts[q.subject]) {
-        counts[q.subject][q.difficulty] = (counts[q.subject][q.difficulty] || 0) + 1;
-        counts[q.subject].total++;
-      }
-    });
-    return counts;
-  }
-
-  // Open dialog and prepopulate grid
-  useEffect(() => {
-    if (showDistributionDialog) {
-      const added = getAddedCounts();
-      const grid: any = {};
-      subjects.forEach(subj => {
-        grid[subj] = {
-          LOW: added[subj]?.LOW || 0,
-          MEDIUM: added[subj]?.MEDIUM || 0,
-          HIGH: added[subj]?.HIGH || 0,
-          total: added[subj]?.total || 0,
-          added: { ...added[subj] }
-        };
-      });
-      setDistributionGrid(grid);
-    }
-    // eslint-disable-next-line
-  }, [showDistributionDialog]);
-
-  // Update grid cell
-  const updateGridCell = (subj: string, diff: 'LOW'|'MEDIUM'|'HIGH', value: string) => {
-    setDistributionGrid((prev: any) => {
-      const n = parseInt(value) || 0;
-      const updated = { ...prev };
-      updated[subj] = { ...updated[subj], [diff]: n };
-      updated[subj].total = (updated[subj].LOW || 0) + (updated[subj].MEDIUM || 0) + (updated[subj].HIGH || 0);
-      return updated;
-    });
-  };
-
-  // Build question_distribution string
-  function buildQuestionDistribution() {
-    const obj: any = { subjects: {} };
-    subjects.forEach(subj => {
-      obj.subjects[subj] = {
-        LOW: distributionGrid[subj]?.LOW || 0,
-        MEDIUM: distributionGrid[subj]?.MEDIUM || 0,
-        HIGH: distributionGrid[subj]?.HIGH || 0
-      };
-    });
-    return JSON.stringify(obj);
-  }
-
-const distributionDialog = (
-  <Dialog open={showDistributionDialog} onOpenChange={setShowDistributionDialog}>
-    <DialogContent className="max-w-3xl p-0 max-h-[calc(97.5vh-2rem)] overflow-y-auto">
-      <DialogHeader className="px-6 pt-6 pb-2">
-        <DialogTitle className="text-xl font-bold text-blue-800 flex items-center gap-2">
-          <Download className="h-6 w-6 text-green-600" />
-          Set Question Distribution
-        </DialogTitle>
-        <p className="text-sm text-gray-600 mt-1">Distribute the number of questions per topic and difficulty. <span className='font-semibold text-blue-700'>"To be set"</span> is your target, <span className='font-semibold text-green-700'>"Added"</span> is how many you have created.</p>
-      </DialogHeader>
-      <div className="overflow-x-auto px-6 pb-2">
-        <table className="min-w-full border text-sm rounded-lg overflow-hidden shadow">
-          <thead className="sticky top-0 z-10">
-            <tr className="bg-gradient-to-r from-blue-200 to-blue-100 text-blue-900">
-              <th className="p-3 border font-semibold text-left">Topic</th>
-              <th className="p-3 border font-semibold text-center">Easy<br/><span className='text-xs'>(To be shown<span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)</span></th>
-              <th className="p-3 border font-semibold text-center">Medium<br/><span className='text-xs'>(To be shown<span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)</span></th>
-              <th className="p-3 border font-semibold text-center">High<br/><span className='text-xs'>(To be shown<span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)</span></th>
-              <th className="p-3 border font-semibold text-center">Total<br/><span className='text-xs'>(To be shown<span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)</span></th>
-            </tr>
-          </thead>
-          <tbody>
-            {subjects.map(subj => (
-              <tr key={subj} className="hover:bg-blue-50 transition">
-                <td className="p-3 border font-semibold text-blue-800 bg-blue-50">{subj}</td>
-                {['LOW','MEDIUM','HIGH'].map(diff => (
-                  <td className="p-3 border text-center" key={diff}>
-                    <input
-                      type="number"
-                      min={0}
-                      value={distributionGrid[subj]?.[diff] ?? 0}
-                      onChange={e => updateGridCell(subj, diff as any, e.target.value)}
-                      className="w-16 border rounded px-2 py-1 text-sm mr-2 focus:ring-2 focus:ring-blue-300 bg-white text-blue-900 font-semibold shadow-sm"
-                    />
-                    <span className="text-green-700 font-semibold">{distributionGrid[subj]?.added?.[diff] ?? 0}</span>
-                  </td>
-                ))}
-                <td className="p-3 border font-bold text-center bg-blue-100">
-                  <span className="text-blue-800">{distributionGrid[subj]?.total ?? 0}</span>
-                  <span className="text-green-700 font-semibold ml-2">{distributionGrid[subj]?.added?.total ?? 0}</span>
-                </td>
-              </tr>
-            ))}
-            {/* Total row */}
-            <tr className="bg-green-100 font-bold sticky bottom-0">
-              <td className="p-3 border text-green-900">Total</td>
-              {['LOW','MEDIUM','HIGH'].map(diff => (
-                <td className="p-3 border text-green-900 text-center" key={diff}>
-                  {subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.[diff] ?? 0), 0)}
-                  <span className="text-green-700 font-semibold ml-2">{subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.added?.[diff] ?? 0), 0)}</span>
-                </td>
-              ))}
-              <td className="p-3 border text-green-900 text-center bg-green-200">
-                {subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.total ?? 0), 0)}
-                <span className="text-green-700 font-semibold ml-2">{subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.added?.total ?? 0), 0)}</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <div className="flex flex-wrap gap-4 mt-4 justify-between items-center border-t pt-4">
-          <div className="text-sm text-gray-700">
-            <span className="font-semibold text-blue-800">Tip:</span> The <span className="font-semibold text-blue-800">To Be Shown</span> values must be less than the <span className="font-semibold text-green-700">added</span> values for each cell.
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowDistributionDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold shadow"
-              onClick={() => {
-                setShowDistributionDialog(false);
-                // Calculate totals for all subjects
-                const numEasy = subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.LOW || 0), 0);
-                const numMedium = subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.MEDIUM || 0), 0);
-                const numHigh = subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.HIGH || 0), 0);
-                const numDisplayed = subjects.reduce((sum, subj) => sum + (distributionGrid[subj]?.total || 0), 0);
-                if (props.onDistributionSet) {
-                  props.onDistributionSet(numDisplayed, numEasy, numMedium, numHigh);
-                }
-                window.latestQuestionDistribution = buildQuestionDistribution();
-                setShowReminderDialog(true);
-              }}
-            >
-              <Download className="h-4 w-4 mr-1" />
-              Generate ZIP
-            </Button>
-          </div>
-        </div>
-      </div>
-    </DialogContent>
-  </Dialog>
-);
 
   return (
     <>
-      {matrixDialog}
-      {fractionDialog}
-      {binomialDialog}
-      {integralDialog}
-      {doubleIntegralDialog}
-      {summationDialog}
-      {limitDialog}
-      {rootDialog}
-      {productDialog}
-      {distributionDialog}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 h-[calc(100vh-14rem)]">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start">
         {mobileSidebar}
         {mainContent}
         {desktopSidebar}
       </div>
+
+      {/* Reminder dialog at root */}
+      <Dialog open={showReminderDialog} onOpenChange={setShowReminderDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-blue-600" />
+              Quiz reminder email
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="reminder-date">Reminder date</Label>
+              <Input
+                id="reminder-date"
+                type="date"
+                value={reminderDate}
+                onChange={(e) => setReminderDate(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reminder-time">Reminder time</Label>
+              <Input
+                id="reminder-time"
+                type="time"
+                value={reminderTime}
+                onChange={(e) => setReminderTime(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reminder-email">Email address</Label>
+              <Input
+                id="reminder-email"
+                type="email"
+                value={reminderEmail}
+                onChange={(e) => setReminderEmail(e.target.value)}
+                placeholder="name@example.com"
+                className="w-full"
+              />
+            </div>
+            <p className="text-xs text-gray-600">
+              Note: Date and time are required so we can include a link to add a Google Calendar event 1 hour before the selected time.
+            </p>
+            <div className="flex flex-col gap-2 pt-4">
+              <Button
+                onClick={() => handleReminderSubmit(true)}
+                className="w-full bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
+              >
+                <Mail className="h-4 w-4" />
+                Email the ZIP and reminder
+              </Button>
+              <Button
+                onClick={() => handleReminderSubmit(false)}
+                variant="outline"
+                className="w-full flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Download ZIP only
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Distribution dialog at root */}
+      <Dialog open={showDistributionDialog} onOpenChange={setShowDistributionDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Set Question Distribution</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="dist-total" className="text-xs">Questions to display</Label>
+                <Input
+                  id="dist-total"
+                  type="number"
+                  min={1}
+                  max={numberOfQuestions}
+                  value={distNumDisplayed}
+                  onChange={(e) => {
+                    const v = Math.max(1, Math.min(numberOfQuestions, parseInt(e.target.value || '0')));
+                    setDistNumDisplayed(v);
+                  }}
+                  className="h-8 text-xs"
+                />
+                <p className="text-[11px] text-gray-500 mt-1">Max {numberOfQuestions}</p>
+              </div>
+              <div className="col-span-1">
+                <Label className="text-xs">Totals</Label>
+                <div className="text-xs text-gray-700 mt-1">Easy + Medium + High must equal Questions to display</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label htmlFor="dist-easy" className="text-xs">Easy</Label>
+                <Input
+                  id="dist-easy"
+                  type="number"
+                  min={0}
+                  max={distNumDisplayed}
+                  value={distEasy}
+                  onChange={(e) => setDistEasy(Math.max(0, Math.min(distNumDisplayed, parseInt(e.target.value || '0'))))}
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div>
+                <Label htmlFor="dist-medium" className="text-xs">Medium</Label>
+                <Input
+                  id="dist-medium"
+                  type="number"
+                  min={0}
+                  max={distNumDisplayed}
+                  value={distMedium}
+                  onChange={(e) => setDistMedium(Math.max(0, Math.min(distNumDisplayed, parseInt(e.target.value || '0'))))}
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div>
+                <Label htmlFor="dist-high" className="text-xs">High</Label>
+                <Input
+                  id="dist-high"
+                  type="number"
+                  min={0}
+                  max={distNumDisplayed}
+                  value={distHigh}
+                  onChange={(e) => setDistHigh(Math.max(0, Math.min(distNumDisplayed, parseInt(e.target.value || '0'))))}
+                  className="h-8 text-xs"
+                />
+              </div>
+            </div>
+
+            {distEasy + distMedium + distHigh !== distNumDisplayed && (
+              <div className="text-xs text-red-600">The sum of Easy, Medium, and High must equal {distNumDisplayed}.</div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" size="sm" onClick={() => setShowDistributionDialog(false)}>Cancel</Button>
+              <Button
+                size="sm"
+                disabled={distNumDisplayed < 1 || distNumDisplayed > numberOfQuestions || (distEasy + distMedium + distHigh !== distNumDisplayed)}
+                onClick={() => {
+                  if (props.onDistributionSet) {
+                    props.onDistributionSet(distNumDisplayed, distEasy, distMedium, distHigh);
+                  }
+                  setShowDistributionDialog(false);
+                }}
+              >
+                Apply
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {showSuperSubDialog && (
         <Dialog open={!!showSuperSubDialog} onOpenChange={setShowSuperSubDialog as any}>
           <DialogContent>

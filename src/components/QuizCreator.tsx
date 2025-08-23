@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText, Sigma, Superscript, Subscript, Calendar, Mail, ChevronRight, HelpCircle, FileUp, PlayCircle, RefreshCw, LogOut, Sun, Moon, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
+import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText, Sigma, Superscript, Subscript, Calendar, Mail, ChevronRight, HelpCircle, FileUp, PlayCircle, RefreshCw, LogOut, Sun, Moon, ChevronUp, ChevronDown, GripVertical, Home } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -2522,9 +2522,9 @@ const QuizCreator = () => {
                   <Button
                 onClick={() => setCurrentScreen(0)}
                 variant="outline"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 text-blue-600 border-blue-600 hover:bg-blue-50"
               >
-                <RefreshCw className="h-4 w-4" />
+                <Home className="h-4 w-4" />
                 Back to Home
               </Button>
                 </div>
@@ -2532,7 +2532,7 @@ const QuizCreator = () => {
                   <Button
                     onClick={saveSession}
                     variant="outline"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 text-green-600 border-green-600 hover:bg-green-50"
                   >
                     <Save className="h-4 w-4" />
                     Save Session
@@ -2570,7 +2570,7 @@ const QuizCreator = () => {
                 <div>
                           <Button
                     onClick={handleNext}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
                     disabled={currentScreen === 1 && !checkAllRequiredFieldsFilled()}
                   >
                     Next
@@ -2583,7 +2583,7 @@ const QuizCreator = () => {
                       <Button
                     onClick={saveSession}
                         variant="outline"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 text-green-600 border-green-600 hover:bg-green-50"
                   >
                     <Save className="h-4 w-4" />
                     Save Session
@@ -2621,14 +2621,14 @@ const QuizCreator = () => {
                     <Button
                     onClick={() => setCurrentScreen(0)}
                 variant="outline" 
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 text-blue-600 border-blue-600 hover:bg-blue-50"
               >
-                    <RefreshCw className="h-4 w-4" />
+                    <Home className="h-4 w-4" />
                     Back to Home
               </Button>
               <Button 
                     onClick={handleNext}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
                     disabled={currentScreen === 1 && !checkAllRequiredFieldsFilled()}
                   >
                     Next
@@ -2656,8 +2656,7 @@ const QuizCreator = () => {
             <div className="flex gap-4">
                 <Button
                     onClick={() => setCurrentScreen(1)}
-                  variant="outline"
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white"
                 >
                   <ChevronLeft className="h-4 w-4" />
                   Previous
@@ -2665,17 +2664,17 @@ const QuizCreator = () => {
               <Button
                 onClick={() => setCurrentScreen(0)}
                 variant="outline"
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 text-blue-600 border-blue-600 hover:bg-blue-50"
               >
-                <RefreshCw className="h-4 w-4" />
+                <Home className="h-4 w-4" />
                 Back to Home
               </Button>
             </div>
-            <div className="flex gap-4">
+            <div className="flex gap-4 relative -left-8 md:-left-16">
               <Button
                 onClick={saveSession}
                 variant="outline"
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 text-green-600 border-green-600 hover:bg-green-50"
               >
                 <Save className="h-4 w-4" />
                 Save Session
@@ -2712,7 +2711,7 @@ const QuizCreator = () => {
             <div>
               <Button
                 onClick={handleNext}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
               >
                 Next
               </Button>
@@ -2761,8 +2760,7 @@ const QuizCreator = () => {
               <div className="grid grid-cols-2 gap-3">
                   <Button
                     onClick={() => setCurrentScreen(1)}
-                    variant="outline"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     Previous
@@ -2770,16 +2768,16 @@ const QuizCreator = () => {
                   <Button
                     onClick={() => setCurrentScreen(0)}
                     variant="outline"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 text-blue-600 border-blue-600 hover:bg-blue-50"
                   >
-                    <RefreshCw className="h-4 w-4" />
+                    <Home className="h-4 w-4" />
                     Back to Home
                   </Button>
                 </div>
                 <div className="flex justify-center">
                 <Button
                   onClick={handleNext}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
                 >
                   Next
                 </Button>
