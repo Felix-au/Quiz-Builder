@@ -1370,16 +1370,11 @@ const QuizCreator = () => {
         break;
       }
       case 3: {
-        // Screen 3: Questions & Options
-        initializeDefaultQuestion();
-        setNumberOfQuestions(1);
-        setCurrentQuestionIndex(0);
-        setOptionFormatting({});
-        setOptionSymbolPage({});
-        if (questionAdjustTimeout) {
-          clearTimeout(questionAdjustTimeout);
+        // Screen 3: Delete the current question (same behavior as the trash button)
+        const current = questions[currentQuestionIndex];
+        if (current) {
+          deleteQuestion(current.id);
         }
-        setQuestionAdjustTimeout(null);
         break;
       }
       default: {
@@ -1389,10 +1384,16 @@ const QuizCreator = () => {
     }
 
     setShowFlushDialog(false);
-    toast({
-      title: 'Screen Cleared',
-      description: 'Only the current screen\'s fields were cleared. Saved session remains intact.',
-    });
+    if (currentScreen === 3) {
+      toast({
+        title: 'Question Deleted',
+      });
+    } else {
+      toast({
+        title: 'Screen Cleared',
+        description: 'Only the current screen\'s fields were cleared. Saved session remains intact.',
+      });
+    }
   };
 
   const adjustQuestions = (newCount: number) => {
@@ -1586,7 +1587,6 @@ const QuizCreator = () => {
     
     toast({
       title: "Question Deleted",
-      description: "The question has been successfully deleted.",
     });
   };
 
@@ -2368,7 +2368,7 @@ const QuizCreator = () => {
                     className="flex items-center space-x-2 text-red-600 border-red-600 hover:bg-red-50"
                   >
                     <Trash2 className="h-4 w-4" />
-                    <span>Flush All Screens</span>
+                    <span>Flush Quiz</span>
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -2378,13 +2378,13 @@ const QuizCreator = () => {
                       Confirm Flush All
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will clear fields on all three screens. Your saved session will remain intact.
+                      This will clear fields on all three screens including Metadata(Quiz Code, Quiz Name, Course Code, Program, Semester, Department, Section etc.), Instructions and Tpoic List and all questions. Your saved session will remain intact.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={flushAllScreens} className="bg-red-600 hover:bg-red-700">
-                      Yes, Clear All Screens
+                      Yes, Flush Entire Quiz
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -2439,13 +2439,13 @@ const QuizCreator = () => {
                       Confirm Flush All
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will clear fields on all three screens. Your saved session will remain intact.
+                    This will clear fields on all three screens including Metadata(Quiz Code, Quiz Name, Course Code, Program, Semester, Department, Section etc.), Instructions and Tpoic List and all questions. Your saved session will remain intact.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={flushAllScreens} className="bg-red-600 hover:bg-red-700">
-                      Yes, Clear All Screens
+                      Yes, Flush Entire Quiz
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

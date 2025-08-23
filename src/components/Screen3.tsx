@@ -1532,35 +1532,15 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                 Save Session
               </Button>
               
-              <AlertDialog open={showFlushDialog} onOpenChange={setShowFlushDialog}>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-1 text-red-600 border-red-600 hover:bg-red-50 text-xs px-3 h-8 md:h-7"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    Flush Data
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-red-500" />
-                      Confirm Data Flush
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action will clear the fields of the current screen, user can still revert to last saved session.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={flushData} className="bg-red-600 hover:bg-red-700">
-                      Yes, Clear This Screen
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={flushData}
+                className="flex items-center gap-1 text-red-600 border-red-600 hover:bg-red-50 text-xs px-3 h-8 md:h-7"
+              >
+                <Trash2 className="h-3 w-3" />
+                Delete Question
+              </Button>
               
                   <Button
                     size="sm"
