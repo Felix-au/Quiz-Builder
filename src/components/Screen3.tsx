@@ -302,6 +302,23 @@ const Screen3: React.FC<Screen3Props> = (props) => {
     };
   }, []);
 
+  // When the reminder dialog opens, default date/time to now + 6 hours if not already set
+  useEffect(() => {
+    if (!showReminderDialog) return;
+    const toPadded = (n: number) => String(n).padStart(2, '0');
+    const nowPlus6 = new Date();
+    nowPlus6.setMinutes(0, 0, 0);
+    nowPlus6.setHours(nowPlus6.getHours() + 6);
+    const yyyy = nowPlus6.getFullYear();
+    const mm = toPadded(nowPlus6.getMonth() + 1);
+    const dd = toPadded(nowPlus6.getDate());
+    const hh = toPadded(nowPlus6.getHours());
+    const min = toPadded(nowPlus6.getMinutes());
+    if (!reminderDate) setReminderDate(`${yyyy}-${mm}-${dd}`);
+    if (!reminderTime) setReminderTime(`${hh}:${min}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showReminderDialog]);
+
   // Compute caret pixel coordinates inside a textarea using a mirror element
   const getCaretCoordinates = (ta: HTMLTextAreaElement, pos: number) => {
     try {
@@ -1559,12 +1576,12 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                       <Calendar className="h-5 w-5 text-blue-600" />
-                      Quiz Reminder
+                      Quiz reminder email
                     </DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <Label htmlFor="reminder-date">Date</Label>
+                      <Label htmlFor="reminder-date">Reminder date</Label>
                       <Input
                         id="reminder-date"
                         type="date"
@@ -1574,7 +1591,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="reminder-time">Time</Label>
+                      <Label htmlFor="reminder-time">Reminder time</Label>
                       <Input
                         id="reminder-time"
                         type="time"
@@ -1584,23 +1601,26 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="reminder-email">Email Address</Label>
+                      <Label htmlFor="reminder-email">Email address</Label>
                       <Input
                         id="reminder-email"
                         type="email"
                         value={reminderEmail}
                         onChange={(e) => setReminderEmail(e.target.value)}
-                        placeholder="Enter email address"
+                        placeholder="name@example.com"
                         className="w-full"
                       />
                     </div>
+                    <p className="text-xs text-gray-600">
+                      Note: Date and time are required to add a Google Calendar event 1 hour before your selected time.
+                    </p>
                     <div className="flex flex-col gap-2 pt-4">
                       <Button
                         onClick={() => handleReminderSubmit(true)}
                         className="w-full bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
                       >
                         <Mail className="h-4 w-4" />
-                        Yes, Send an email along with the Generated ZIP
+                        Email the ZIP and reminder
                       </Button>
                       <Button
                         onClick={() => handleReminderSubmit(false)}
@@ -1608,7 +1628,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                         className="w-full flex items-center gap-2"
                       >
                         <Download className="h-4 w-4" />
-                        Just Generate ZIP
+                        Download ZIP only
                       </Button>
                     </div>
                   </div>
