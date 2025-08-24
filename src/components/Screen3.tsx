@@ -210,6 +210,31 @@ const Screen3: React.FC<Screen3Props> = (props) => {
   const [distMedium, setDistMedium] = useState<number>(numberOfQuestions || 0);
   const [distHigh, setDistHigh] = useState<number>(0);
 
+  // Missing required fields validation state
+  const [showMissingFieldsDialog, setShowMissingFieldsDialog] = useState(false);
+  const [missingFieldsList, setMissingFieldsList] = useState<Array<{ index: number; id: number; missingFields: string[] }>>([]);
+
+  // Validate questions for required fields before opening distribution
+  const openDistributionValidated = () => {
+    const missing = questions
+      .map((q: any, idx: number) => {
+        const missingFields: string[] = [];
+        if (!q.question || q.question.trim() === '') missingFields.push('Question Text');
+        if (!q.difficulty || q.difficulty === 'N/A') missingFields.push('Difficulty');
+        if (!q.subject || q.subject === 'N/A' || q.subject === '') missingFields.push('Topic');
+        if (!q.topic || q.topic === 'N/A - N/A' || q.topic === 'N/A') missingFields.push('Course Outcome & Bloom\'s Taxonomy');
+        return { index: idx + 1, id: q.id, missingFields };
+      })
+      .filter(item => item.missingFields.length > 0);
+
+    if (missing.length > 0) {
+      setMissingFieldsList(missing);
+      setShowMissingFieldsDialog(true);
+      return;
+    }
+    setShowDistributionDialog(true);
+  };
+
   // Old per-topic distribution grid state and helpers
   const [distributionGrid, setDistributionGrid] = useState<any>({});
 
@@ -1093,6 +1118,14 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                 let diffText = 'text-yellow-900';
                 if (difficulty === 'LOW') { diffBg = 'bg-green-200'; diffText = 'text-green-900'; }
                 if (difficulty === 'HIGH') { diffBg = 'bg-red-200'; diffText = 'text-red-900'; }
+                
+                // Check if question has missing required fields
+                const hasEmptyQuestion = !question?.question || question.question.trim() === '';
+                const hasEmptyDifficulty = !question?.difficulty || question.difficulty === 'N/A';
+                const hasEmptySubject = !question?.subject || question.subject === 'N/A' || question.subject === '';
+                const hasEmptyTopic = !question?.topic || question.topic === 'N/A - N/A' || question.topic === 'N/A';
+                const hasRequiredFieldMissing = hasEmptyQuestion || hasEmptyDifficulty || hasEmptySubject || hasEmptyTopic;
+                
                 return (
                   <div key={i} className="relative">
                     <Button
@@ -1102,6 +1135,9 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                       className={`w-8 h-8 md:w-7 md:h-7 rounded-full text-xs p-0 relative ${diffBg} ${diffText}`}
                     >
                       {i + 1}
+                      {hasRequiredFieldMissing && (
+                        <span className="absolute -top-1 -right-1 text-red-500 text-xs font-bold">*</span>
+                      )}
                     </Button>
                     <span className="absolute top-0 left-0 text-[8px] font-bold bg-gray-200 text-gray-700 rounded-full w-3 h-3 flex items-center justify-center">
                       {difficultyLabel}
@@ -1309,13 +1345,13 @@ const Screen3: React.FC<Screen3Props> = (props) => {
               <div className="space-y-1">
                 <div className="flex gap-2 items-end">
                   <div>
-                    <Label htmlFor={`difficulty-${currentQuestion.id}`} className="text-xs">Difficulty</Label>
+                    <Label htmlFor={`difficulty-${currentQuestion.id}`} className="text-xs">Difficulty <span className="text-red-500">*</span></Label>
                     <Select 
                       value={currentQuestion.difficulty} 
                       onValueChange={(value) => updateQuestion(currentQuestion.id, 'difficulty', value)}
                     >
-                      <SelectTrigger className="h-5 text-xs w-32">
-                        <SelectValue />
+                      <SelectTrigger className={`h-5 text-xs w-32 ${!currentQuestion.difficulty || currentQuestion.difficulty === 'N/A' ? 'border-red-300 focus:border-red-500' : ''}`}>
+                        <SelectValue placeholder="Select difficulty" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="LOW">Easy</SelectItem>
@@ -1325,12 +1361,12 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor={`subject-${currentQuestion.id}`} className="text-xs">Topic</Label>
+                    <Label htmlFor={`subject-${currentQuestion.id}`} className="text-xs">Topic <span className="text-red-500">*</span></Label>
                     <Select
                       value={currentQuestion.subject || ''}
                       onValueChange={value => updateQuestion(currentQuestion.id, 'subject', value)}
                     >
-                      <SelectTrigger className="h-5 text-xs w-40">
+                      <SelectTrigger className={`h-5 text-xs w-40 ${!currentQuestion.subject || currentQuestion.subject === 'N/A' || currentQuestion.subject === '' ? 'border-red-300 focus:border-red-500' : ''}`}>
                         <SelectValue placeholder="Select topic" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1341,6 +1377,12 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                     </Select>
                   </div>
                 </div>
+                {(!currentQuestion.difficulty || currentQuestion.difficulty === 'N/A') && (
+                  <p className="text-red-500 text-xs mt-1">Difficulty is required</p>
+                )}
+                {(!currentQuestion.subject || currentQuestion.subject === 'N/A' || currentQuestion.subject === '') && (
+                  <p className="text-red-500 text-xs mt-1">Topic is required</p>
+                )}
                 <div>
                   <Label htmlFor={`topic-${currentQuestion.id}`} className="text-xs">Course Outcome & Bloom's Taxonomy <span className="text-red-500">*</span></Label>
                   <div className="flex gap-2">
@@ -2015,7 +2057,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                 <Button
                   size="sm"
                   className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-sm px-4 h-9 md:h-8"
-                  onClick={() => setShowDistributionDialog(true)}
+                  onClick={openDistributionValidated}
                 >
                   <Download className="h-4 w-4 mr-1" />
                   Set Distribution
@@ -2146,6 +2188,32 @@ const Screen3: React.FC<Screen3Props> = (props) => {
         {mainContent}
         {desktopSidebar}
       </div>
+
+      {/* Missing Required Fields Dialog */}
+      <AlertDialog open={showMissingFieldsDialog} onOpenChange={setShowMissingFieldsDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Complete Required Fields</AlertDialogTitle>
+            <AlertDialogDescription>
+              Please fill in all required fields before setting distribution. The following questions have missing required fields:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="max-h-60 overflow-auto rounded border bg-muted/30 p-2">
+            {missingFieldsList.map(item => (
+              <div key={item.id} className="text-sm py-1 px-2">
+                <span className="font-medium">Q{item.index}</span>:
+                <span className="text-red-600 ml-2">{item.missingFields.join(', ')}</span>
+              </div>
+            ))}
+            {missingFieldsList.length === 0 && (
+              <div className="text-sm text-muted-foreground">All questions are complete.</div>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowMissingFieldsDialog(false)}>Okay</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Reminder dialog at root */}
       <Dialog open={showReminderDialog} onOpenChange={setShowReminderDialog}>

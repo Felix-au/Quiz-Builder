@@ -627,6 +627,7 @@ const QuizCreator = () => {
     setQuestionAdjustTimeout(null);
 
     setShowFlushAllDialog(false);
+    setCurrentScreen(0);
     toast({
       title: 'All Screens Cleared',
       description: 'All fields were cleared. Saved session remains intact.',
