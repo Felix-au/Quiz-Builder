@@ -598,6 +598,9 @@ const QuizCreator = () => {
     setCustomProgram('');
     setCustomDepartments('');
     setCustomSections('');
+    // Clear Screen 2 topic/subject list
+    setSubjects([]);
+    setNewSubject('');
 
     // Screen 2 fields
     const defaultInstruction: Instruction = {
@@ -1397,22 +1400,16 @@ const QuizCreator = () => {
   };
 
   const adjustQuestions = (newCount: number) => {
-    const minCount = metadata.num_displayed_questions;
-    const actualCount = Math.max(newCount, minCount);
-    
-    if (actualCount !== newCount) {
-      toast({
-        title: "Question Count Adjusted",
-        description: `Cannot have fewer than ${minCount} questions (Number of Displayed Questions).`,
-        variant: "destructive",
-      });
-    }
+    // Use the requested count directly; no minimum enforcement based on num_displayed_questions
+    const actualCount = Math.max(newCount, 0);
     
     if (actualCount > questions.length) {
       const additionalQuestions = [];
+      // Generate unique IDs starting after the current max ID
+      const startId = (questions.reduce((m, q) => Math.max(m, q.id || 0), 0)) + 1;
       for (let i = questions.length; i < actualCount; i++) {
         additionalQuestions.push({
-          id: i + 1,
+          id: startId + (i - questions.length),
           question: '',
           topic: 'NA',
           summary: 'NA',
@@ -1438,9 +1435,11 @@ const QuizCreator = () => {
       }
     } else if (questions.length === 0 && actualCount > 0) {
       const newQuestions = [];
+      // Start IDs from 1 when list is empty
+      const startId = 1;
       for (let i = 0; i < actualCount; i++) {
         newQuestions.push({
-          id: i + 1,
+          id: startId + i,
           question: '',
           topic: 'NA',
           summary: 'NA',
