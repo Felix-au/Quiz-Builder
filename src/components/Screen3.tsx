@@ -1165,7 +1165,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                   variant="ghost"
                   size="sm"
                   onClick={() => deleteQuestion(currentQuestion.id)}
-                  className="text-white hover:text-red-200 hover:bg-red-600/20 h-8 w-8 p-0"
+                  className="invisible text-white hover:text-red-200 hover:bg-red-600/20 h-8 w-8 p-0"
                   title="Delete this question"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -2044,7 +2044,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={flushData}
+                  onClick={() => deleteQuestion(currentQuestion.id)}
                   className="flex items-center gap-1 text-red-600 border-red-600 hover:bg-red-50 text-sm px-4 h-9 md:h-8"
                 >
                   <Trash2 className="h-4 w-4" />
