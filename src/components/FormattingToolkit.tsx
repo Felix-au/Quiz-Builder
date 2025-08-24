@@ -53,6 +53,51 @@ const FormattingToolkit: React.FC<FormattingToolkitProps> = ({
             : 'inline-flex items-center gap-1'
         }
       >
+        {/* Bold */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 hover:bg-gray-100 flex items-center justify-center"
+          onClick={() => onFormat('bold')}
+        >
+          <Bold className="h-4 w-4" />
+        </Button>
+
+        {/* Italic */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 hover:bg-gray-100 flex items-center justify-center"
+          onClick={() => onFormat('italic')}
+        >
+          <Italic className="h-4 w-4" />
+        </Button>
+
+        {/* Underline */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 hover:bg-gray-100 flex items-center justify-center"
+          onClick={() => onFormat('underline')}
+        >
+          <Underline className="h-4 w-4" />
+        </Button>
+
+        {/* Strikethrough */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 hover:bg-gray-100 flex items-center justify-center"
+          onClick={() => onFormat('strike')}
+        >
+          <Strikethrough className="h-4 w-4" />
+        </Button>
+
+        {/* Divider (only for fixed-left variant) */}
+        {variant === 'fixed-left' && (
+          <div className="border-t border-gray-200 my-1"></div>
+        )}
+
         {/* Superscript */}
         <Button
           variant="ghost"
@@ -166,51 +211,6 @@ const FormattingToolkit: React.FC<FormattingToolkitProps> = ({
             </div>
           </PopoverContent>
         </Popover>
-
-        {/* Divider (only for fixed-left variant) */}
-        {variant === 'fixed-left' && (
-          <div className="border-t border-gray-200 my-1"></div>
-        )}
-
-        {/* Bold */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0 hover:bg-gray-100 flex items-center justify-center"
-          onClick={() => onFormat('bold')}
-        >
-          <Bold className="h-4 w-4" />
-        </Button>
-
-        {/* Italic */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0 hover:bg-gray-100 flex items-center justify-center"
-          onClick={() => onFormat('italic')}
-        >
-          <Italic className="h-4 w-4" />
-        </Button>
-
-        {/* Underline */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0 hover:bg-gray-100 flex items-center justify-center"
-          onClick={() => onFormat('underline')}
-        >
-          <Underline className="h-4 w-4" />
-        </Button>
-
-        {/* Strikethrough */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0 hover:bg-gray-100 flex items-center justify-center"
-          onClick={() => onFormat('strike')}
-        >
-          <Strikethrough className="h-4 w-4" />
-        </Button>
 
         {/* Divider (only for fixed-left variant) */}
         {variant === 'fixed-left' && (
