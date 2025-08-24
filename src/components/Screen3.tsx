@@ -210,6 +210,67 @@ const Screen3: React.FC<Screen3Props> = (props) => {
   const [distMedium, setDistMedium] = useState<number>(numberOfQuestions || 0);
   const [distHigh, setDistHigh] = useState<number>(0);
 
+  // Old per-topic distribution grid state and helpers
+  const [distributionGrid, setDistributionGrid] = useState<any>({});
+
+  // Count questions already added by subject and difficulty
+  function getAddedCounts() {
+    const counts: any = {};
+    subjects.forEach(subj => {
+      counts[subj] = { LOW: 0, MEDIUM: 0, HIGH: 0, total: 0 };
+    });
+    questions.forEach((q: any) => {
+      if (q.subject && counts[q.subject]) {
+        const diff = q.difficulty as 'LOW' | 'MEDIUM' | 'HIGH';
+        counts[q.subject][diff] = (counts[q.subject][diff] || 0) + 1;
+        counts[q.subject].total++;
+      }
+    });
+    return counts;
+  }
+
+  // Prefill the grid when dialog opens
+  useEffect(() => {
+    if (!showDistributionDialog) return;
+    const added = getAddedCounts();
+    const grid: any = {};
+    subjects.forEach(subj => {
+      grid[subj] = {
+        LOW: added[subj]?.LOW || 0,
+        MEDIUM: added[subj]?.MEDIUM || 0,
+        HIGH: added[subj]?.HIGH || 0,
+        total: added[subj]?.total || 0,
+        added: { ...added[subj] },
+      };
+    });
+    setDistributionGrid(grid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showDistributionDialog]);
+
+  // Update a single cell and recompute row total
+  const updateGridCell = (subj: string, diff: 'LOW' | 'MEDIUM' | 'HIGH', value: string) => {
+    setDistributionGrid((prev: any) => {
+      const n = parseInt(value) || 0;
+      const updated = { ...prev };
+      updated[subj] = { ...updated[subj], [diff]: n };
+      updated[subj].total = (updated[subj].LOW || 0) + (updated[subj].MEDIUM || 0) + (updated[subj].HIGH || 0);
+      return updated;
+    });
+  };
+
+  // Build question_distribution string for downstream consumers
+  function buildQuestionDistribution() {
+    const obj: any = { subjects: {} };
+    subjects.forEach(subj => {
+      obj.subjects[subj] = {
+        LOW: distributionGrid[subj]?.LOW || 0,
+        MEDIUM: distributionGrid[subj]?.MEDIUM || 0,
+        HIGH: distributionGrid[subj]?.HIGH || 0,
+      };
+    });
+    return JSON.stringify(obj);
+  }
+
   // Add these arrays near the top of the component:
   const courseOutcomes = ['N/A', 'CO1', 'CO2', 'CO3', 'CO4', 'CO5', 'CO6'];
   const bloomsLevels = ['N/A', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6'];
@@ -490,6 +551,15 @@ const Screen3: React.FC<Screen3Props> = (props) => {
       const textarea = document.getElementById(`question-textarea-${currentQuestion.id}`) as HTMLTextAreaElement;
       const cursorPos = textarea ? textarea.selectionStart : 0;
       insertMathSymbol(currentQuestion.id, symbol, cursorPos);
+      // Restore focus and advance caret for multiple inserts
+      setTimeout(() => {
+        if (textarea) {
+          const newPos = cursorPos + symbol.length;
+          textarea.focus();
+          textarea.setSelectionRange(newPos, newPos);
+          autoResize(textarea);
+        }
+      }, 0);
       return;
     }
     
@@ -497,6 +567,15 @@ const Screen3: React.FC<Screen3Props> = (props) => {
       const textarea = document.getElementById(`question-textarea-${focusedField.qid}`) as HTMLTextAreaElement;
       const cursorPos = textarea ? textarea.selectionStart : undefined;
       insertMathSymbol(focusedField.qid, symbol, cursorPos);
+      // Restore focus and advance caret for multiple inserts
+      setTimeout(() => {
+        if (textarea && cursorPos != null) {
+          const newPos = cursorPos + symbol.length;
+          textarea.focus();
+          textarea.setSelectionRange(newPos, newPos);
+          autoResize(textarea);
+        }
+      }, 0);
     } else if (focusedField.type === 'option' && focusedField.oid != null) {
       // Insert symbol into option at caret
       const q = questions.find(q => q.id === focusedField.qid);
@@ -1061,6 +1140,22 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             {/* Desktop Layout */}
             <div className="hidden md:grid grid-cols-3 gap-3">
               <div className="col-span-2">
+                {/* Inline horizontal formatting toolkit above the question label */}
+                <div className="mb-2">
+                  <FormattingToolkit
+                    currentSymbolPage={currentSymbolPage}
+                    setCurrentSymbolPage={setCurrentSymbolPage}
+                    getCurrentSymbols={getCurrentSymbols}
+                    getPageTitle={getPageTitle}
+                    onOpenSuperscript={() => openSuperSubDialog('sup')}
+                    onOpenSubscript={() => openSuperSubDialog('sub')}
+                    onInsertSymbol={handleToolkitSymbolInsert}
+                    onFormat={handleToolkitFormat}
+                    onOpenMathTool={handleToolkitMathTool}
+                    visible={showUnifiedToolkit}
+                    variant="inline-horizontal"
+                  />
+                </div>
                 <Label htmlFor={`question-${currentQuestion.id}`} className="text-sm">
                   Question Text <span className="text-red-500">*</span>
                 </Label>
@@ -2044,21 +2139,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
 
   return (
     <>
-      {/* Unified Formatting Toolkit */}
-      {showUnifiedToolkit && (
-        <FormattingToolkit
-          currentSymbolPage={currentSymbolPage}
-          setCurrentSymbolPage={setCurrentSymbolPage}
-          getCurrentSymbols={getCurrentSymbols}
-          getPageTitle={getPageTitle}
-          onOpenSuperscript={() => openSuperSubDialog('sup')}
-          onOpenSubscript={() => openSuperSubDialog('sub')}
-          onInsertSymbol={handleToolkitSymbolInsert}
-          onFormat={handleToolkitFormat}
-          onOpenMathTool={handleToolkitMathTool}
-          visible={showUnifiedToolkit}
-        />
-      )}
+      {/* Removed global fixed-left FormattingToolkit; now rendered inline above question field */}
       
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start">
         {mobileSidebar}
@@ -2131,93 +2212,93 @@ const Screen3: React.FC<Screen3Props> = (props) => {
         </DialogContent>
       </Dialog>
 
-      {/* Distribution dialog at root */}
+      {/* Distribution dialog at root (restored per-topic grid) */}
       <Dialog open={showDistributionDialog} onOpenChange={setShowDistributionDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Set Question Distribution</DialogTitle>
+        <DialogContent className="max-w-3xl p-0 max-h-[calc(97.5vh-2rem)] overflow-y-auto">
+          <DialogHeader className="px-6 pt-6 pb-2">
+            <DialogTitle className="text-xl font-bold text-blue-800 flex items-center gap-2">
+              <Download className="h-6 w-6 text-green-600" />
+              Set Question Distribution
+            </DialogTitle>
+            <p className="text-sm text-gray-600 mt-1">Distribute the number of questions per topic and difficulty. <span className='font-semibold text-blue-700'>"To be set"</span> is your target, <span className='font-semibold text-green-700'>"Added"</span> is how many you have created.</p>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="dist-total" className="text-xs">Questions to display</Label>
-                <Input
-                  id="dist-total"
-                  type="number"
-                  min={1}
-                  max={numberOfQuestions}
-                  value={distNumDisplayed}
-                  onChange={(e) => {
-                    const v = Math.max(1, Math.min(numberOfQuestions, parseInt(e.target.value || '0')));
-                    setDistNumDisplayed(v);
+          <div className="overflow-x-auto px-6 pb-2">
+            <table className="min-w-full border text-sm rounded-lg overflow-hidden shadow">
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-gradient-to-r from-blue-200 to-blue-100 text-blue-900">
+                  <th className="p-3 border font-semibold text-left">Topic</th>
+                  <th className="p-3 border font-semibold text-center">Easy<br/><span className='text-xs'>(To be shown<span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)</span></th>
+                  <th className="p-3 border font-semibold text-center">Medium<br/><span className='text-xs'>(To be shown<span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)</span></th>
+                  <th className="p-3 border font-semibold text-center">High<br/><span className='text-xs'>(To be shown<span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)</span></th>
+                  <th className="p-3 border font-semibold text-center">Total<br/><span className='text-xs'>(To be shown<span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {subjects.map(subj => (
+                  <tr key={subj} className="hover:bg-blue-50 transition">
+                    <td className="p-3 border font-semibold text-blue-800 bg-blue-50">{subj}</td>
+                    {(['LOW','MEDIUM','HIGH'] as const).map(diff => (
+                      <td className="p-3 border text-center" key={diff}>
+                        <input
+                          type="number"
+                          min={0}
+                          value={distributionGrid[subj]?.[diff] ?? 0}
+                          onChange={e => updateGridCell(subj, diff, e.target.value)}
+                          className="w-16 border rounded px-2 py-1 text-sm mr-2 focus:ring-2 focus:ring-blue-300 bg-white text-blue-900 font-semibold shadow-sm"
+                        />
+                        <span className="text-green-700 font-semibold">{distributionGrid[subj]?.added?.[diff] ?? 0}</span>
+                      </td>
+                    ))}
+                    <td className="p-3 border font-bold text-center bg-blue-100">
+                      <span className="text-blue-800">{distributionGrid[subj]?.total ?? 0}</span>
+                      <span className="text-green-700 font-semibold ml-2">{distributionGrid[subj]?.added?.total ?? 0}</span>
+                    </td>
+                  </tr>
+                ))}
+                {/* Total row */}
+                <tr className="bg-green-100 font-bold sticky bottom-0">
+                  <td className="p-3 border text-green-900">Total</td>
+                  {(['LOW','MEDIUM','HIGH'] as const).map(diff => (
+                    <td className="p-3 border text-green-900 text-center" key={diff}>
+                      {subjects.reduce((sum, s) => sum + (distributionGrid[s]?.[diff] ?? 0), 0)}
+                      <span className="text-green-700 font-semibold ml-2">{subjects.reduce((sum, s) => sum + (distributionGrid[s]?.added?.[diff] ?? 0), 0)}</span>
+                    </td>
+                  ))}
+                  <td className="p-3 border text-green-900 text-center bg-green-200">
+                    {subjects.reduce((sum, s) => sum + (distributionGrid[s]?.total ?? 0), 0)}
+                    <span className="text-green-700 font-semibold ml-2">{subjects.reduce((sum, s) => sum + (distributionGrid[s]?.added?.total ?? 0), 0)}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div className="flex flex-wrap gap-4 mt-4 justify-between items-center border-t pt-4">
+              <div className="text-sm text-gray-700">
+                <span className="font-semibold text-blue-800">Tip:</span> The <span className="font-semibold text-blue-800">To Be Shown</span> values must be less than the <span className="font-semibold text-green-700">added</span> values for each cell.
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowDistributionDialog(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold shadow"
+                  onClick={() => {
+                    setShowDistributionDialog(false);
+                    // Calculate totals for all subjects
+                    const numEasy = subjects.reduce((sum, s) => sum + (distributionGrid[s]?.LOW || 0), 0);
+                    const numMedium = subjects.reduce((sum, s) => sum + (distributionGrid[s]?.MEDIUM || 0), 0);
+                    const numHigh = subjects.reduce((sum, s) => sum + (distributionGrid[s]?.HIGH || 0), 0);
+                    const numDisplayed = subjects.reduce((sum, s) => sum + (distributionGrid[s]?.total || 0), 0);
+                    if (props.onDistributionSet) {
+                      props.onDistributionSet(numDisplayed, numEasy, numMedium, numHigh);
+                    }
+                    (window as any).latestQuestionDistribution = buildQuestionDistribution();
+                    setShowReminderDialog(true);
                   }}
-                  className="h-8 text-xs"
-                />
-                <p className="text-[11px] text-gray-500 mt-1">Max {numberOfQuestions}</p>
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Generate ZIP
+                </Button>
               </div>
-              <div className="col-span-1">
-                <Label className="text-xs">Totals</Label>
-                <div className="text-xs text-gray-700 mt-1">Easy + Medium + High must equal Questions to display</div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <Label htmlFor="dist-easy" className="text-xs">Easy</Label>
-                <Input
-                  id="dist-easy"
-                  type="number"
-                  min={0}
-                  max={distNumDisplayed}
-                  value={distEasy}
-                  onChange={(e) => setDistEasy(Math.max(0, Math.min(distNumDisplayed, parseInt(e.target.value || '0'))))}
-                  className="h-8 text-xs"
-                />
-              </div>
-              <div>
-                <Label htmlFor="dist-medium" className="text-xs">Medium</Label>
-                <Input
-                  id="dist-medium"
-                  type="number"
-                  min={0}
-                  max={distNumDisplayed}
-                  value={distMedium}
-                  onChange={(e) => setDistMedium(Math.max(0, Math.min(distNumDisplayed, parseInt(e.target.value || '0'))))}
-                  className="h-8 text-xs"
-                />
-              </div>
-              <div>
-                <Label htmlFor="dist-high" className="text-xs">High</Label>
-                <Input
-                  id="dist-high"
-                  type="number"
-                  min={0}
-                  max={distNumDisplayed}
-                  value={distHigh}
-                  onChange={(e) => setDistHigh(Math.max(0, Math.min(distNumDisplayed, parseInt(e.target.value || '0'))))}
-                  className="h-8 text-xs"
-                />
-              </div>
-            </div>
-
-            {distEasy + distMedium + distHigh !== distNumDisplayed && (
-              <div className="text-xs text-red-600">The sum of Easy, Medium, and High must equal {distNumDisplayed}.</div>
-            )}
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" size="sm" onClick={() => setShowDistributionDialog(false)}>Cancel</Button>
-              <Button
-                size="sm"
-                disabled={distNumDisplayed < 1 || distNumDisplayed > numberOfQuestions || (distEasy + distMedium + distHigh !== distNumDisplayed)}
-                onClick={() => {
-                  if (props.onDistributionSet) {
-                    props.onDistributionSet(distNumDisplayed, distEasy, distMedium, distHigh);
-                  }
-                  setShowDistributionDialog(false);
-                }}
-              >
-                Apply
-              </Button>
             </div>
           </div>
         </DialogContent>

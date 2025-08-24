@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Superscript, Subscript, Sigma, Bold, Italic, Underline, Strikethrough } from 'lucide-react';
+import { Superscript, Subscript, Sigma, Bold, Italic, Underline, Strikethrough, HelpCircle } from 'lucide-react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface FormattingToolkitProps {
@@ -21,6 +21,8 @@ interface FormattingToolkitProps {
   
   // Optional: show/hide toolkit
   visible?: boolean;
+  // Layout variant: fixed vertical on left, or inline horizontal in-pane
+  variant?: 'fixed-left' | 'inline-horizontal';
 }
 
 const FormattingToolkit: React.FC<FormattingToolkitProps> = ({
@@ -34,12 +36,23 @@ const FormattingToolkit: React.FC<FormattingToolkitProps> = ({
   onFormat,
   onOpenMathTool,
   visible = true,
+  variant = 'fixed-left',
 }) => {
   if (!visible) return null;
 
+  // Keep symbols popover open for multi-insert
+  const [symbolsOpen, setSymbolsOpen] = useState(false);
+  const symbolClickGuard = useRef(false);
+
   return (
     <TooltipProvider>
-      <div className="fixed left-3 top-1/2 transform -translate-y-1/2 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2 flex flex-col items-center gap-2 max-h-[80vh] overflow-y-auto">
+      <div
+        className={
+          variant === 'fixed-left'
+            ? 'fixed left-3 top-1/2 transform -translate-y-1/2 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2 flex flex-col items-center gap-2 max-h-[80vh] overflow-y-auto'
+            : 'w-full bg-white border border-gray-200 rounded-lg shadow p-2 flex flex-row flex-wrap items-center justify-center gap-2'
+        }
+      >
         {/* Superscript */}
         <Button
           variant="ghost"
@@ -61,7 +74,18 @@ const FormattingToolkit: React.FC<FormattingToolkitProps> = ({
         </Button>
 
         {/* Math Symbols */}
-        <Popover>
+        <Popover
+          open={symbolsOpen}
+          onOpenChange={(open) => {
+            if (!open && symbolClickGuard.current) {
+              // Prevent closing due to internal focus changes from symbol clicks
+              symbolClickGuard.current = false;
+              setSymbolsOpen(true);
+              return;
+            }
+            setSymbolsOpen(open);
+          }}
+        >
           <PopoverTrigger asChild>
             <Button
               variant="ghost"
@@ -78,6 +102,16 @@ const FormattingToolkit: React.FC<FormattingToolkitProps> = ({
             align="start"
             avoidCollisions={true}
             collisionPadding={20}
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            onFocusOutside={(e) => {
+              // Prevent closing when we programmatically refocus the textarea for multi-insert
+              e.preventDefault();
+            }}
+            onPointerDownOutside={(e) => {
+              // We'll decide closability ourselves to avoid symbol-click race conditions
+              e.preventDefault();
+              setSymbolsOpen(false);
+            }}
           >
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -113,7 +147,16 @@ const FormattingToolkit: React.FC<FormattingToolkitProps> = ({
                     variant="outline"
                     size="sm"
                     className="h-8 w-8 p-0 text-sm hover:bg-blue-50"
-                    onClick={() => onInsertSymbol(item.symbol)}
+                    onMouseDown={(e) => {
+                      // Mark that an internal symbol click is happening before any outside events fire
+                      symbolClickGuard.current = true;
+                      e.preventDefault();
+                    }}
+                    onClick={() => {
+                      onInsertSymbol(item.symbol);
+                      // Keep popover open for multi-insert until user clicks outside or toggles trigger
+                      setSymbolsOpen(true);
+                    }}
                     title={item.name}
                   >
                     {item.symbol}
@@ -188,6 +231,7 @@ const FormattingToolkit: React.FC<FormattingToolkitProps> = ({
             align="start"
             avoidCollisions={true}
             collisionPadding={20}
+            onOpenAutoFocus={(e) => e.preventDefault()}
           >
             <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => onOpenMathTool('matrix')}>Matrix</Button>
             <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => onOpenMathTool('fraction')}>Fraction</Button>
@@ -200,6 +244,31 @@ const FormattingToolkit: React.FC<FormattingToolkitProps> = ({
             <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => onOpenMathTool('product')}>Product</Button>
           </PopoverContent>
         </Popover>
+
+        {/* Help tooltip */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 hover:bg-gray-100 flex items-center justify-center"
+              aria-label="Formatting help"
+              title="Formatting help"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-sm p-3 text-xs">
+            <p className="mb-1 font-medium">Formatting help</p>
+            <p className="mb-2">Use this toolbox to format Question or Option text. Select text, then click a button or use keyboard shortcuts:</p>
+            <ul className="list-disc pl-4 space-y-0.5">
+              <li><span className="font-semibold">Bold</span> — Ctrl + B</li>
+              <li><span className="font-semibold">Italic</span> — Ctrl + I</li>
+              <li><span className="font-semibold">Underline</span> — Ctrl + U</li>
+              <li><span className="font-semibold">Strikethrough</span> — Ctrl + /</li>
+            </ul>
+          </TooltipContent>
+        </Tooltip>
       </div>
     </TooltipProvider>
   );
