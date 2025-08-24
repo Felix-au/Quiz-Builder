@@ -1140,8 +1140,11 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             {/* Desktop Layout */}
             <div className="hidden md:grid grid-cols-3 gap-3">
               <div className="col-span-2">
-                {/* Inline horizontal formatting toolkit above the question label */}
-                <div className="mb-2">
+                {/* Label + inline formatting toolkit in same row */}
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <Label htmlFor={`question-${currentQuestion.id}`} className="text-sm">
+                    Question Text <span className="text-red-500">*</span>
+                  </Label>
                   <FormattingToolkit
                     currentSymbolPage={currentSymbolPage}
                     setCurrentSymbolPage={setCurrentSymbolPage}
@@ -1156,9 +1159,6 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                     variant="inline-horizontal"
                   />
                 </div>
-                <Label htmlFor={`question-${currentQuestion.id}`} className="text-sm">
-                  Question Text <span className="text-red-500">*</span>
-                </Label>
                 <div className="relative">
                   <Textarea
                     id={`question-textarea-${currentQuestion.id}`}

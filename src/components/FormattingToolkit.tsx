@@ -50,7 +50,7 @@ const FormattingToolkit: React.FC<FormattingToolkitProps> = ({
         className={
           variant === 'fixed-left'
             ? 'fixed left-3 top-1/2 transform -translate-y-1/2 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2 flex flex-col items-center gap-2 max-h-[80vh] overflow-y-auto'
-            : 'w-full bg-white border border-gray-200 rounded-lg shadow p-2 flex flex-row flex-wrap items-center justify-center gap-2'
+            : 'inline-flex items-center gap-1'
         }
       >
         {/* Superscript */}
@@ -167,8 +167,10 @@ const FormattingToolkit: React.FC<FormattingToolkitProps> = ({
           </PopoverContent>
         </Popover>
 
-        {/* Divider */}
-        <div className="border-t border-gray-200 my-1"></div>
+        {/* Divider (only for fixed-left variant) */}
+        {variant === 'fixed-left' && (
+          <div className="border-t border-gray-200 my-1"></div>
+        )}
 
         {/* Bold */}
         <Button
@@ -210,8 +212,10 @@ const FormattingToolkit: React.FC<FormattingToolkitProps> = ({
           <Strikethrough className="h-4 w-4" />
         </Button>
 
-        {/* Divider */}
-        <div className="border-t border-gray-200 my-1"></div>
+        {/* Divider (only for fixed-left variant) */}
+        {variant === 'fixed-left' && (
+          <div className="border-t border-gray-200 my-1"></div>
+        )}
 
         {/* Math Toolbox */}
         <Popover>
@@ -219,9 +223,11 @@ const FormattingToolkit: React.FC<FormattingToolkitProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-16 p-0 hover:bg-gray-100 text-xs flex items-center justify-center"
+              className="h-8 w-8 p-0 hover:bg-gray-100 flex items-center justify-center"
+              aria-label="Math toolbox"
+              title="Math toolbox"
             >
-              Math🧰
+              <span className="text-[13px] leading-none">🧰</span>
             </Button>
           </PopoverTrigger>
           <PopoverContent 
