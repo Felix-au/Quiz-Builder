@@ -601,6 +601,9 @@ const QuizCreator = () => {
     // Clear Screen 2 topic/subject list
     setSubjects([]);
     setNewSubject('');
+    // Clear Screen 2 topic/subject list
+    setSubjects([]);
+    setNewSubject('');
 
     // Screen 2 fields
     const defaultInstruction: Instruction = {
@@ -1038,6 +1041,9 @@ const QuizCreator = () => {
     setCustomProgram('');
     setCustomDepartments('');
     setCustomSections('');
+    // Clear Screen 2 topic/subject list
+    setSubjects([]);
+    setNewSubject('');
     
     toast({
       title: "New Quiz Started",
