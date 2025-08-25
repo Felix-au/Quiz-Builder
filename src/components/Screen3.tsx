@@ -222,7 +222,6 @@ const Screen3: React.FC<Screen3Props> = (props) => {
         if (!q.question || q.question.trim() === '') missingFields.push('Question Text');
         if (!q.difficulty || q.difficulty === 'N/A') missingFields.push('Difficulty');
         if (!q.subject || q.subject === 'N/A' || q.subject === '') missingFields.push('Topic');
-        if (!q.topic || q.topic === 'N/A - N/A' || q.topic === 'N/A') missingFields.push('Course Outcome & Bloom\'s Taxonomy');
         return { index: idx + 1, id: q.id, missingFields };
       })
       .filter(item => item.missingFields.length > 0);
