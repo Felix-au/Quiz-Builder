@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, X } from 'lucide-react';
+import FormattingToolkit from './FormattingToolkit';
 
 // Define the props type for Screen2
 interface Screen2Props {
@@ -31,6 +32,96 @@ const Screen2: React.FC<Screen2Props> = ({
   newSubject,
   setNewSubject,
 }) => {
+  // Local refs/state for formatting and preview
+  const newInstructionRef = useRef<HTMLTextAreaElement | null>(null);
+  const [symbolPage, setSymbolPage] = useState(1);
+
+  // BIUS markdown wrapper
+  const applyMdFormat = (kind: 'bold' | 'italic' | 'underline' | 'strike') => {
+    const el = newInstructionRef.current;
+    if (!el) return;
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
+    if (end <= start) return; // only when there's selection
+    const value = newInstruction;
+    const selected = value.slice(start, end);
+    const tokens =
+      kind === 'bold' ? ['**', '**'] :
+      kind === 'italic' ? ['_', '_'] :
+      kind === 'underline' ? ['__', '__'] : ['~~', '~~'];
+    const newValue = value.slice(0, start) + tokens[0] + selected + tokens[1] + value.slice(end);
+    setNewInstruction(newValue);
+    // Restore caret
+    setTimeout(() => {
+      el.focus();
+      const newPos = start + tokens[0].length + selected.length + tokens[1].length;
+      el.setSelectionRange(newPos, newPos);
+    }, 0);
+  };
+
+  // Keyboard shortcuts for BIUS and Enter submit (on keydown to suppress browser defaults like Ctrl+U)
+  const handleEditorKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const el = e.currentTarget;
+    const selLen = (el.selectionEnd ?? 0) - (el.selectionStart ?? 0);
+    const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+
+    // BIUS formatting when selection exists
+    if (isCtrlOrMeta && !e.shiftKey && !e.altKey && selLen > 0) {
+      const k = e.key;
+      if (k === 'b' || k === 'B') {
+        e.preventDefault();
+        e.stopPropagation();
+        applyMdFormat('bold');
+        return;
+      }
+      if (k === 'i' || k === 'I') {
+        e.preventDefault();
+        e.stopPropagation();
+        applyMdFormat('italic');
+        return;
+      }
+      if (k === 'u' || k === 'U') {
+        e.preventDefault();
+        e.stopPropagation();
+        applyMdFormat('underline');
+        return;
+      }
+      if (k === '/') {
+        e.preventDefault();
+        e.stopPropagation();
+        applyMdFormat('strike');
+        return;
+      }
+    }
+
+    // Pressing Enter adds instruction (legacy behavior)
+    if (!isCtrlOrMeta && !e.shiftKey && !e.altKey && e.key === 'Enter') {
+      e.preventDefault();
+      addInstruction();
+      return;
+    }
+  };
+
+  // Safe BIUS-only preview renderer
+  const renderPreviewHtml = useMemo(() => {
+    const escapeHtml = (s: string) => s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    // Escape first
+    let html = escapeHtml(newInstruction || '');
+    // Apply BIUS patterns (non-greedy, multiline)
+    // Order: bold (**)**, underline (__)__ (double underscore), italic _ _, strike ~~ ~~
+    html = html.replace(/\*\*(.+?)\*\*/gms, '<strong>$1</strong>');
+    html = html.replace(/__([^_]+?)__/gms, '<u>$1</u>');
+    // Avoid conflict with underline: italic uses single underscore not surrounded by another underscore
+    html = html.replace(/(?<!_)_([^_]+?)_(?!_)/gms, '<em>$1</em>');
+    html = html.replace(/~~(.+?)~~/gms, '<del>$1</del>');
+    // Convert line breaks
+    html = html.replace(/\n/g, '<br />');
+    return html;
+  }, [newInstruction]);
+
   // Handler to add a subject
   const handleAddSubject = () => {
     if (newSubject.trim()) {
@@ -38,10 +129,12 @@ const Screen2: React.FC<Screen2Props> = ({
       setNewSubject('');
     }
   };
+
   // Handler to remove a subject
   const handleRemoveSubject = (subject: string) => {
     setSubjects((prev: string[]) => prev.filter((s) => s !== subject));
   };
+
   return (
     <div className="flex flex-row gap-6 w-full">
       {/* Instructions - 80% */}
@@ -51,19 +144,48 @@ const Screen2: React.FC<Screen2Props> = ({
             <CardTitle className="text-lg">Instructions</CardTitle>
           </CardHeader>
           <CardContent className="p-4 flex-1 flex flex-col">
-            <span className="text-sm font-medium mb-1">Quiz Instructions</span>
-            <div className="flex gap-2 mb-2">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-medium">Quiz Instructions</span>
+              {/* Inline BIUS-only toolkit aligned with label */}
+              <FormattingToolkit
+                variant="inline-horizontal"
+                visible={true}
+                // BIUS only
+                showBasicStyles={true}
+                showSuperSub={false}
+                showSymbols={false}
+                showMathToolbox={false}
+                showHelp={true}
+                // Required props (stubbed when hidden)
+                currentSymbolPage={symbolPage}
+                setCurrentSymbolPage={setSymbolPage}
+                getCurrentSymbols={() => []}
+                getPageTitle={() => ''}
+                onOpenSuperscript={() => {}}
+                onOpenSubscript={() => {}}
+                onInsertSymbol={() => {}}
+                onFormat={applyMdFormat}
+                onOpenMathTool={() => {}}
+              />
+            </div>
+            <div className="flex gap-2 mb-2 items-start">
               <Textarea
                 placeholder="Add instruction..."
                 value={newInstruction}
                 onChange={(e) => setNewInstruction(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addInstruction()}
-                className="resize-none min-h-[80px] flex-1"
+                onKeyDown={handleEditorKeyDown}
+                ref={newInstructionRef}
+                className="resize-none min-h-[100px] flex-1"
                 rows={3}
               />
               <Button onClick={addInstruction} className="bg-blue-600 hover:bg-blue-700 self-start" disabled={!newInstruction.trim()}>
                 <Plus className="h-4 w-4" />
               </Button>
+            </div>
+            {/* Live Preview for in-progress newInstruction */}
+            <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded text-sm">
+              <div className="text-xs text-gray-600 mb-1">Preview</div>
+              <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderPreviewHtml }} />
             </div>
             <div className="space-y-2 flex-1 overflow-y-auto">
               <ol className="list-decimal list-inside space-y-2">
