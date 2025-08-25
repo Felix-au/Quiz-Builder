@@ -549,6 +549,8 @@ const QuizCreator = () => {
       setSubjects(Array.from(subjectsSet));
       setQuestions(allQuestions);
       setNumberOfQuestions(allQuestions.length);
+      // Reset autosave to prevent accidental overwrites
+      setAutoSaveOn(false);
       setCurrentScreen(1);
 
       setIsImportingZips(false);
@@ -996,6 +998,8 @@ const QuizCreator = () => {
   const startNewQuiz = () => {
     // Set flag to skip loading saved data
     setSkipLoadSavedData(true);
+    // Reset autosave to prevent accidental overwrites
+    setAutoSaveOn(false);
     
     // Reset metadata to default values (don't clear localStorage)
     setMetadata({
@@ -1199,6 +1203,8 @@ const QuizCreator = () => {
 
       setQuestions(questionsWithImages);
       setNumberOfQuestions(questionsWithImages.length);
+      // Reset autosave to prevent accidental overwrites
+      setAutoSaveOn(false);
       setCurrentScreen(1);
       
       toast({
@@ -1267,7 +1273,7 @@ const QuizCreator = () => {
     }
   };
 
-  const saveSession = async () => {
+  const saveSession = async (showToast: boolean = true) => {
     try {
       const questionsWithUploadedImages = await Promise.all(
         questions.map(async (q) => {
@@ -1281,11 +1287,13 @@ const QuizCreator = () => {
               };
             } catch (error) {
               console.error('Failed to upload image for question', q.id, error);
-              toast({
-                title: "Image Upload Failed",
-                description: `Failed to save image for question ${q.id}`,
-                variant: "destructive",
-              });
+              if (showToast) {
+                toast({
+                  title: "Image Upload Failed",
+                  description: `Failed to save image for question ${q.id}`,
+                  variant: "destructive",
+                });
+              }
               return q;
             }
           }
@@ -1317,17 +1325,21 @@ const QuizCreator = () => {
       };
       
       localStorage.setItem('quizCreatorData', JSON.stringify(dataToSave));
-      toast({
-        title: "Session Saved",
-        description: "Your progress and images have been saved successfully.",
-      });
+      if (showToast) {
+        toast({
+          title: "Session Saved",
+          description: "Your progress and images have been saved successfully.",
+        });
+      }
     } catch (error) {
       console.error('Error saving session:', error);
-      toast({
-        title: "Save Failed",
-        description: "Failed to save session. Please try again.",
-        variant: "destructive",
-      });
+      if (showToast) {
+        toast({
+          title: "Save Failed",
+          description: "Failed to save session. Please try again.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -1765,6 +1777,8 @@ const QuizCreator = () => {
       setInstructions(firstInstructions);
       setQuestions(allQuestions);
       setNumberOfQuestions(allQuestions.length);
+      // Reset autosave to prevent accidental overwrites
+      setAutoSaveOn(false);
       setCurrentScreen(1);
       
       setShowMultiImportDialog(false);
@@ -2327,6 +2341,48 @@ const QuizCreator = () => {
     return rendered;
   };
 
+  // Autosave toggle state and interval management
+  const [autoSaveOn, setAutoSaveOn] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const autoSaveIntervalRef = useRef<number | null>(null);
+  const saveSessionRef = useRef<(showToast?: boolean) => Promise<void>>();
+
+  // Keep saveSession ref updated with latest function
+  useEffect(() => {
+    saveSessionRef.current = saveSession;
+  });
+
+  useEffect(() => {
+    if (autoSaveOn) {
+      if (autoSaveIntervalRef.current) {
+        clearInterval(autoSaveIntervalRef.current);
+      }
+      autoSaveIntervalRef.current = window.setInterval(async () => {
+        setIsSaving(true);
+        // Use ref to get fresh saveSession function with current state, no toast for autosave
+        if (saveSessionRef.current) {
+          await saveSessionRef.current(false);
+        }
+        // Stop animation after 2 seconds
+        setTimeout(() => setIsSaving(false), 2000);
+      }, 10000);
+    } else {
+      if (autoSaveIntervalRef.current) {
+        clearInterval(autoSaveIntervalRef.current);
+        autoSaveIntervalRef.current = null;
+      }
+      setIsSaving(false);
+    }
+
+    // Cleanup on unmount or toggle off
+    return () => {
+      if (autoSaveIntervalRef.current) {
+        clearInterval(autoSaveIntervalRef.current);
+        autoSaveIntervalRef.current = null;
+      }
+    };
+  }, [autoSaveOn]);
+
   return (
     <div className={`relative z-10 min-h-screen overflow-x-hidden overflow-y-auto no-scrollbar ${isDark ? 'bg-black' : 'bg-[#fdf6e3]'}`}>
       {/* Fixed background overlays to cover during scroll */}
@@ -2366,6 +2422,16 @@ const QuizCreator = () => {
               <span className={`text-sm ${isDark ? 'text-white/85' : 'text-gray-700'}`}>
                 Welcome, {user?.displayName || user?.email}
               </span>
+              <Button
+                variant={autoSaveOn ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setAutoSaveOn(v => !v)}
+                className={`flex items-center space-x-2 ${autoSaveOn ? 'bg-green-600 text-white hover:bg-green-700' : ''}`}
+                title={autoSaveOn ? 'Autosave is ON (saving every 10s)' : 'Autosave is OFF'}
+              >
+                <RefreshCw className={`h-4 w-4 ${isSaving ? 'animate-spin' : ''}`} />
+                <span>Auto Save Session {autoSaveOn ? 'On' : 'Off'}</span>
+              </Button>
               <AlertDialog open={showFlushAllDialog} onOpenChange={setShowFlushAllDialog}>
                 <AlertDialogTrigger asChild>
                   <Button
@@ -2427,6 +2493,16 @@ const QuizCreator = () => {
               <div className="flex items-center gap-0 cursor-pointer h-full" onClick={() => (currentScreen === 0 ? navigate('/') : setCurrentScreen(0))}>
                 <img src={isDark ? "/logo1dark.png" : "/logo1light.png"} alt="PrashnaSetu Logo" className="h-[90%] w-auto object-contain" />
               </div>
+              <Button
+                variant={autoSaveOn ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setAutoSaveOn(v => !v)}
+                className={`flex items-center space-x-1 h-8 px-2 ${autoSaveOn ? 'bg-green-600 text-white hover:bg-green-700' : ''} ${isDark ? 'bg-white/10' : ''}`}
+                title={autoSaveOn ? 'Autosave is ON (saving every 10s)' : 'Autosave is OFF'}
+              >
+                <RefreshCw className={`h-3 w-3 ${isSaving ? 'animate-spin' : ''}`} />
+                <span className="text-xs">Auto Save {autoSaveOn ? 'On' : 'Off'}</span>
+              </Button>
               <AlertDialog open={showFlushAllDialog} onOpenChange={setShowFlushAllDialog}>
                 <AlertDialogTrigger asChild>
                   <Button
@@ -2536,7 +2612,7 @@ const QuizCreator = () => {
                 </div>
                 <div className="flex gap-4">
                   <Button
-                    onClick={saveSession}
+                    onClick={() => saveSession()}
                     variant="outline"
                     className="flex items-center gap-2 text-green-600 border-green-600 hover:bg-green-50"
                   >
@@ -2587,7 +2663,7 @@ const QuizCreator = () => {
               <div className="md:hidden space-y-3 mt-6">
                 <div className="grid grid-cols-2 gap-3">
                       <Button
-                    onClick={saveSession}
+                    onClick={() => saveSession()}
                         variant="outline"
                     className="flex items-center gap-2 text-green-600 border-green-600 hover:bg-green-50"
                   >
@@ -2678,7 +2754,7 @@ const QuizCreator = () => {
             </div>
             <div className="flex gap-4 relative -left-8 md:-left-16">
               <Button
-                onClick={saveSession}
+                onClick={() => saveSession()}
                 variant="outline"
                 className="flex items-center gap-2 text-green-600 border-green-600 hover:bg-green-50"
               >
@@ -2727,7 +2803,7 @@ const QuizCreator = () => {
               <div className="md:hidden space-y-3 mt-6">
               <div className="grid grid-cols-2 gap-3">
                 <Button
-                  onClick={saveSession}
+                  onClick={() => saveSession()}
                   variant="outline"
                   className="flex items-center gap-2"
                 >
