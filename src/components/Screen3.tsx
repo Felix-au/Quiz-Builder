@@ -12,7 +12,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText, Sigma, Superscript, Subscript, Calendar, Mail, ChevronRight, HelpCircle, Home, RefreshCw } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Plus, Download, X, Upload, Check, ChevronLeft, Save, Trash2, AlertTriangle, FileText, Sigma, Superscript, Subscript, Calendar, Mail, ChevronRight, HelpCircle, Home, RefreshCw, ToggleLeft, ToggleRight } from 'lucide-react';
 import FormattingToolkit from './FormattingToolkit';
 
 declare global {
@@ -36,6 +37,9 @@ interface Screen3Props {
   updateOption: (questionId: number, optionId: number, field: string, value: any) => void;
   addOption: (questionId: number) => void;
   removeOption: (questionId: number, optionId: number) => void;
+  addBlank: (questionId: number) => void;
+  removeBlank: (questionId: number, blankIndex: number) => void;
+  updateBlank: (questionId: number, blankIndex: number, field: string, value: any) => void;
   handleImageUpload: (questionId: number, file: File) => void;
   removeImage: (questionId: number) => void;
   deleteQuestion: (questionId: number) => void;
@@ -73,7 +77,7 @@ interface Screen3Props {
   setCurrentScreen: React.Dispatch<React.SetStateAction<number>>;
   toast: any;
   subjects: string[];
-  onDistributionSet?: (numDisplayed: number, numEasy: number, numMedium: number, numHigh: number) => void;
+  onDistributionSet: (numDisplayed: number, numEasy: number, numMedium: number, numHigh: number, totalPoints?: number) => void;
 }
 
 const Screen3: React.FC<Screen3Props> = (props) => {
@@ -91,6 +95,9 @@ const Screen3: React.FC<Screen3Props> = (props) => {
     updateOption,
     addOption,
     removeOption,
+    addBlank,
+    removeBlank,
+    updateBlank,
     handleImageUpload,
     removeImage,
     deleteQuestion,
@@ -130,6 +137,39 @@ const Screen3: React.FC<Screen3Props> = (props) => {
     subjects,
   } = props;
   const currentQuestion = questions[currentQuestionIndex];
+
+  // Debug: log active question details when switching/rendering
+  useEffect(() => {
+    try {
+      console.debug('[Screen3] Active question', {
+        index: currentQuestionIndex,
+        id: currentQuestion?.id,
+        type: currentQuestion?.question_type,
+        blanks: Array.isArray(currentQuestion?.blanks) ? currentQuestion.blanks.length : 0,
+        options: Array.isArray(currentQuestion?.options) ? currentQuestion.options.length : 0,
+      });
+    } catch {}
+  }, [currentQuestionIndex, questions]);
+
+  // Ensure question_type is always set; derive when missing
+  useEffect(() => {
+    if (!currentQuestion) return;
+    if (!currentQuestion.question_type) {
+      const qText = currentQuestion.question || '';
+      const hasPlaceholders = /<blank\s+index="(\d+)"\s*\/>/.test(qText);
+      const hasBlanks = Array.isArray(currentQuestion.blanks) && currentQuestion.blanks.length > 0;
+      const inferred = hasPlaceholders || hasBlanks ? 'FILL_BLANK' : 'MULTIPLE_CHOICE';
+      try {
+        console.debug('[Screen3] Auto-setting missing question_type', {
+          id: currentQuestion.id,
+          inferred,
+          hasPlaceholders,
+          blanksCount: hasBlanks ? currentQuestion.blanks.length : 0,
+        });
+      } catch {}
+      updateQuestion(currentQuestion.id, 'question_type', inferred);
+    }
+  }, [currentQuestionIndex, questions]);
 
   // Matrix dialog state
   const [showMatrixDialog, setShowMatrixDialog] = useState(false);
@@ -210,6 +250,16 @@ const Screen3: React.FC<Screen3Props> = (props) => {
   const [distMedium, setDistMedium] = useState<number>(numberOfQuestions || 0);
   const [distHigh, setDistHigh] = useState<number>(0);
 
+  // Marking scheme state
+  const [markingScheme, setMarkingScheme] = useState<'normal' | 'detailed'>('normal');
+  const [topicMarks, setTopicMarks] = useState<{[topic: string]: number}>({});
+  const [cellMarks, setCellMarks] = useState<{[key: string]: number}>({});
+
+  // Quiz settings toggles
+  const [freeTraversal, setFreeTraversal] = useState<boolean>(true);
+  const [allowPartialMarking, setAllowPartialMarking] = useState<boolean>(false);
+  const [allowNegativeMarking, setAllowNegativeMarking] = useState<boolean>(false);
+
   // Missing required fields validation state
   const [showMissingFieldsDialog, setShowMissingFieldsDialog] = useState(false);
   const [missingFieldsList, setMissingFieldsList] = useState<Array<{ index: number; id: number; missingFields: string[] }>>([]);
@@ -270,6 +320,51 @@ const Screen3: React.FC<Screen3Props> = (props) => {
     setDistributionGrid(grid);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showDistributionDialog]);
+
+  // Calculate total points based on marking scheme
+  const calculateTotalPoints = () => {
+    let totalPoints = 0;
+    
+    if (markingScheme === 'normal') {
+      // Normal view: sum of (questions_in_topic * marks_per_question_for_topic)
+      subjects.forEach(subj => {
+        const topicTotal = distributionGrid[subj]?.total ?? 0;
+        const marksPerQuestion = topicMarks[subj] ?? 1;
+        totalPoints += topicTotal * marksPerQuestion;
+      });
+    } else {
+      // Detailed view: sum of (questions_in_cell * marks_per_question_for_cell)
+      subjects.forEach(subj => {
+        (['LOW', 'MEDIUM', 'HIGH'] as const).forEach(diff => {
+          const questionsInCell = distributionGrid[subj]?.[diff] ?? 0;
+          const marksPerQuestion = cellMarks[`${subj}-${diff}`] ?? 1;
+          totalPoints += questionsInCell * marksPerQuestion;
+        });
+      });
+    }
+    
+    return totalPoints.toFixed(1);
+  };
+
+  // Update question points based on current marking scheme
+  const updateQuestionPoints = () => {
+    const updatedQuestions = questions.map(q => {
+      let points = 1; // default
+      
+      if (markingScheme === 'normal') {
+        // Use topic-based marks
+        points = topicMarks[q.subject] ?? 1;
+      } else {
+        // Use cell-based marks
+        const cellKey = `${q.subject}-${q.difficulty}`;
+        points = cellMarks[cellKey] ?? 1;
+      }
+      
+      return { ...q, points };
+    });
+    
+    setQuestions(updatedQuestions);
+  };
 
   // Update a single cell and recompute row total
   const updateGridCell = (subj: string, diff: 'LOW' | 'MEDIUM' | 'HIGH', value: string) => {
@@ -541,9 +636,9 @@ const Screen3: React.FC<Screen3Props> = (props) => {
     const value = el.value;
     const selected = value.slice(start, end);
     const tokens =
-      kind === 'bold' ? ['**', '**'] :
-      kind === 'italic' ? ['_', '_'] :
-      kind === 'underline' ? ['__', '__'] : ['~~', '~~'];
+      kind === 'bold' ? ['{bold}', '{bold}'] :
+      kind === 'italic' ? ['{italic}', '{italic}'] :
+      kind === 'underline' ? ['{underline}', '{underline}'] : ['{strike}', '{strike}'];
     const newValue = value.slice(0, start) + tokens[0] + selected + tokens[1] + value.slice(end);
     if (type === 'question') {
       updateQuestion(qid, 'question', newValue);
@@ -1175,6 +1270,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             {/* Desktop Layout */}
             <div className="hidden md:grid grid-cols-3 gap-3">
               <div className="col-span-2">
+                
                 {/* Label + inline formatting toolkit in same row */}
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <Label htmlFor={`question-${currentQuestion.id}`} className="text-sm">
@@ -1333,15 +1429,65 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                   <p className="text-red-500 text-xs mt-1">Question is required</p>
                 )}
                 {/* Show preview only if question contains LaTeX delimiters */}
-                {currentQuestion.question && (/\\\(|\\\[|\$.*\$|\*\*|__|~~|_/.test(currentQuestion.question)) && (
+                {currentQuestion.question && (/\\\(|\\\[|\$.*\$|\{bold\}|\{italic\}|\{underline\}|\{strike\}/.test(currentQuestion.question)) && (
                   <div className="mt-2 p-2 bg-gray-50 border rounded-lg">
                     <Label className="text-xs text-gray-600">Preview:</Label>
                     <LatexPreview text={currentQuestion.question} />
                   </div>
                 )}
+                {/* Blank/Answer helper messages */}
+                {currentQuestion?.question_type === 'FILL_BLANK' && (
+                  <div className="mt-2">
+                    {(!currentQuestion.blanks || currentQuestion.blanks.length === 0) ? (
+                      <p className="text-xs text-gray-600">
+                        No blanks added yet. Click "Add Blank" to insert a blank placeholder in your question.
+                      </p>
+                    ) : null}
+                  </div>
+                )}
               </div>
               
               <div className="space-y-1">
+                {/* Question Type above Difficulty/Topic (same column) */}
+                <div>
+                  <Label className="text-xs mb-1 block">Question Type</Label>
+                  <Select
+                    value={currentQuestion?.question_type || 'MULTIPLE_CHOICE'}
+                    onValueChange={(value) => {
+                      updateQuestion(currentQuestion.id, 'question_type', value);
+                      
+                      // Auto-detect blanks when switching to FILL_BLANK
+                      if (value === 'FILL_BLANK' && (!currentQuestion.blanks || currentQuestion.blanks.length === 0)) {
+                        const questionText = currentQuestion.question || '';
+                        if (questionText.includes('<blank')) {
+                          const blankMatches = questionText.match(/<blank\s+index="(\d+)"\s*\/>/g);
+                          if (blankMatches) {
+                            const detectedBlanks = blankMatches.map(match => {
+                              const indexMatch = match.match(/index="(\d+)"/);
+                              const blankIndex = indexMatch ? parseInt(indexMatch[1]) : 1;
+                              return {
+                                blank_index: blankIndex,
+                                accepted_answers: [''],
+                                case_sensitive: false,
+                              };
+                            });
+                            // Sort by blank_index and update
+                            detectedBlanks.sort((a, b) => a.blank_index - b.blank_index);
+                            updateQuestion(currentQuestion.id, 'blanks', detectedBlanks);
+                          }
+                        }
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-5 text-xs w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MULTIPLE_CHOICE">Multiple Choice</SelectItem>
+                      <SelectItem value="FILL_BLANK">Fill in the Blanks</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="flex gap-2 items-end">
                   <div>
                     <Label htmlFor={`difficulty-${currentQuestion.id}`} className="text-xs">Difficulty <span className="text-red-500">*</span></Label>
@@ -1383,7 +1529,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                   <p className="text-red-500 text-xs mt-1">Topic is required</p>
                 )}
                 <div>
-                  <Label htmlFor={`topic-${currentQuestion.id}`} className="text-xs">Course Outcome & Bloom's Taxonomy <span className="text-red-500">*</span></Label>
+                  <Label htmlFor={`topic-${currentQuestion.id}`} className="text-xs">Course Outcome & Bloom's Taxonomy</Label>
                   <div className="flex gap-2">
                     <Select
                       value={currentQuestion.topic?.split(' - ')[0] || 'N/A'}
@@ -1618,6 +1764,21 @@ const Screen3: React.FC<Screen3Props> = (props) => {
               
               <div className="grid grid-cols-1 gap-3">
                 <div>
+                  <Label htmlFor={`question-type-mobile-${currentQuestion.id}`} className="text-sm">Question Type</Label>
+                  <Select 
+                    value={currentQuestion.question_type} 
+                    onValueChange={(value) => updateQuestion(currentQuestion.id, 'question_type', value)}
+                  >
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MULTIPLE_CHOICE">Multiple Choice</SelectItem>
+                      <SelectItem value="FILL_BLANK">Fill in the Blanks</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <Label htmlFor={`difficulty-mobile-${currentQuestion.id}`} className="text-sm">Difficulty</Label>
                   <Select 
                     value={currentQuestion.difficulty} 
@@ -1634,7 +1795,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor={`topic-mobile-${currentQuestion.id}`} className="text-sm">Course Outcome & Bloom's Taxonomy <span className="text-red-500">*</span></Label>
+                  <Label htmlFor={`topic-mobile-${currentQuestion.id}`} className="text-sm">Course Outcome & Bloom's Taxonomy</Label>
                   <div className="flex gap-2">
                     <Select
                       value={currentQuestion.topic?.split(' - ')[0] || 'N/A'}
@@ -1733,20 +1894,123 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             </div>
 
             <div className="space-y-1">
-              <div className="flex justify-between items-center">
-                <Label className="text-sm">Answer Options</Label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addOption(currentQuestion.id)}
-                  className="text-blue-600 border-blue-600 hover:bg-blue-50 h-7 text-xs px-2"
-                >
-                  <Plus className="h-3 w-3 mr-1" />
-                  Add
-                </Button>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {/* Conditional rendering based on question type */}
+              {currentQuestion.question_type === 'FILL_BLANK' ? (
+                // Fill-in-the-Blanks UI
+                <>
+                  <div className="flex justify-between items-center">
+                    <Label className="text-sm">Answer Blanks</Label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addBlank(currentQuestion.id)}
+                      className="text-blue-600 border-blue-600 hover:bg-blue-50 h-7 text-xs px-2"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add Blank
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {(currentQuestion.blanks || []).map((blank) => (
+                      <div key={blank.blank_index} className="border rounded-lg p-3 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <Label className="text-sm font-medium">Blank {blank.blank_index}</Label>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeBlank(currentQuestion.id, blank.blank_index)}
+                            className="text-red-600 hover:text-red-800 h-6 w-6 p-0"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {(!blank.accepted_answers || blank.accepted_answers.length === 0 || blank.accepted_answers.every(a => (a ?? '').trim() === '')) && (
+                            <p className="text-xs text-black/60">
+                              Blank {blank.blank_index}: Click "Add Answer" to add an answer.
+                            </p>
+                          )}
+                          <Label className="text-xs">Accepted Answers</Label>
+                          {blank.accepted_answers.map((answer, answerIndex) => (
+                            <div key={answerIndex} className="flex gap-2">
+                              <Input
+                                value={answer}
+                                onChange={(e) => {
+                                  const newAnswers = [...blank.accepted_answers];
+                                  newAnswers[answerIndex] = e.target.value;
+                                  updateBlank(currentQuestion.id, blank.blank_index, 'accepted_answers', newAnswers);
+                                }}
+                                placeholder="Enter accepted answer"
+                                className="text-xs h-7"
+                              />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const newAnswers = blank.accepted_answers.filter((_, i) => i !== answerIndex);
+                                  updateBlank(currentQuestion.id, blank.blank_index, 'accepted_answers', newAnswers);
+                                }}
+                                className="text-red-600 hover:text-red-800 h-7 w-7 p-0"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const newAnswers = [...blank.accepted_answers, ''];
+                              updateBlank(currentQuestion.id, blank.blank_index, 'accepted_answers', newAnswers);
+                            }}
+                            className="text-xs h-6"
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Add Answer
+                          </Button>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`case-sensitive-${blank.blank_index}`}
+                            checked={blank.case_sensitive}
+                            onCheckedChange={(checked) => 
+                              updateBlank(currentQuestion.id, blank.blank_index, 'case_sensitive', checked)
+                            }
+                          />
+                          <Label htmlFor={`case-sensitive-${blank.blank_index}`} className="text-xs">
+                            Case Sensitive
+                          </Label>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {(!currentQuestion.blanks || currentQuestion.blanks.length === 0) && (
+                      <p className="text-gray-500 text-xs text-center py-4">
+                        No blanks added yet. Click "Add Blank" to insert a blank placeholder in your question.
+                      </p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                // Multiple Choice UI (existing)
+                <>
+                  <div className="flex justify-between items-center">
+                    <Label className="text-sm">Answer Options</Label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addOption(currentQuestion.id)}
+                      className="text-blue-600 border-blue-600 hover:bg-blue-50 h-7 text-xs px-2"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add Option
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {currentQuestion.options.map((option, optionIndex) => {
                   // Use formatting and symbol page from state objects
                   const formatting = optionFormatting[option.id] || 'none';
@@ -1963,7 +2227,7 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                     )}
                   </div>
                       {/* Show preview only if option contains LaTeX delimiters */}
-                      {option.option_text && (/\\\(|\\\[|\$.*\$|\*\*|__|~~|_/.test(option.option_text)) && (
+                      {option.option_text && (/\\\(|\\\[|\$.*\$|\{bold\}|\{italic\}|\{underline\}|\{strike\}/.test(option.option_text)) && (
                         <div className="mt-1 p-1 bg-gray-100 border rounded">
                           <Label className="text-xs text-gray-600">Preview:</Label>
                           <LatexPreview text={option.option_text} small />
@@ -1972,7 +2236,9 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                     </div>
                   );
                 })}
-              </div>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="flex justify-between items-center pt-1 border-t">
@@ -2065,9 +2331,9 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             </div>
           </div>
         </>
-        )}
-      </div>
-    );
+      )}
+    </div>
+  );
 
   // 3. Desktop sidebar (question circles)
   const desktopSidebar = (
@@ -2281,23 +2547,133 @@ const Screen3: React.FC<Screen3Props> = (props) => {
 
       {/* Distribution dialog at root (restored per-topic grid) */}
       <Dialog open={showDistributionDialog} onOpenChange={setShowDistributionDialog}>
-        <DialogContent className="max-w-3xl p-0 max-h-[calc(97.5vh-2rem)] overflow-y-auto">
+        <DialogContent className="max-w-6xl w-[75vw] p-0 max-h-[calc(97.5vh-2rem)] overflow-y-auto">
           <DialogHeader className="px-6 pt-6 pb-2">
             <DialogTitle className="text-xl font-bold text-blue-800 flex items-center gap-2">
               <Download className="h-6 w-6 text-green-600" />
               Set Question Distribution
             </DialogTitle>
             <p className="text-sm text-gray-600 mt-1">Distribute the number of questions per topic and difficulty. <span className='font-semibold text-blue-700'>"To be set"</span> is your target, <span className='font-semibold text-green-700'>"Added"</span> is how many you have created.</p>
+            
+            {/* Marking Scheme Toggle */}
+            <div className="flex items-center gap-3 mt-4 p-3 bg-blue-50 rounded-lg border">
+              <Label htmlFor="marking-scheme-toggle" className="text-sm font-semibold text-blue-800">
+                Marking Scheme:
+              </Label>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm ${markingScheme === 'normal' ? 'font-semibold text-blue-800' : 'text-gray-600'}`}>
+                  Normal View
+                </span>
+                <Switch
+                  id="marking-scheme-toggle"
+                  checked={markingScheme === 'detailed'}
+                  onCheckedChange={(checked) => setMarkingScheme(checked ? 'detailed' : 'normal')}
+                  className="data-[state=checked]:bg-blue-600"
+                />
+                <span className={`text-sm ${markingScheme === 'detailed' ? 'font-semibold text-blue-800' : 'text-gray-600'}`}>
+                  Detailed View
+                </span>
+              </div>
+              <div className="text-xs text-gray-600 ml-2">
+                {markingScheme === 'normal' ? 'Set marks per question for each topic' : 'Set marks per question for each difficulty level'}
+              </div>
+            </div>
+            
+            {/* Quiz Settings Toggles */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
+                <Switch
+                  id="free-traversal-toggle"
+                  checked={freeTraversal}
+                  onCheckedChange={setFreeTraversal}
+                  className="data-[state=checked]:bg-green-600"
+                />
+                <div className="flex flex-col">
+                  <Label htmlFor="free-traversal-toggle" className="text-sm font-semibold text-gray-800">
+                    Free Traversal
+                  </Label>
+                  <span className="text-xs text-gray-600">
+                    Allow jumping between questions
+                  </span>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
+                <Switch
+                  id="partial-marking-toggle"
+                  checked={allowPartialMarking}
+                  onCheckedChange={setAllowPartialMarking}
+                  className="data-[state=checked]:bg-orange-600"
+                />
+                <div className="flex flex-col">
+                  <Label htmlFor="partial-marking-toggle" className="text-sm font-semibold text-gray-800">
+                    Partial Marking
+                  </Label>
+                  <span className="text-xs text-gray-600">
+                    Allow partial credit for answers
+                  </span>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
+                <Switch
+                  id="negative-marking-toggle"
+                  checked={allowNegativeMarking}
+                  onCheckedChange={setAllowNegativeMarking}
+                  className="data-[state=checked]:bg-red-600"
+                />
+                <div className="flex flex-col">
+                  <Label htmlFor="negative-marking-toggle" className="text-sm font-semibold text-gray-800">
+                    Negative Marking
+                  </Label>
+                  <span className="text-xs text-gray-600">
+                    Deduct marks for wrong answers
+                  </span>
+                </div>
+              </div>
+            </div>
           </DialogHeader>
           <div className="overflow-x-auto px-6 pb-2">
+            <div className="text-xs text-gray-700 mb-2">
+              Legend: <span className="text-blue-700 font-semibold">Blue</span> = To be shown | <span className="text-green-700 font-semibold">Green</span> = Added | <span className="text-red-600 font-semibold">Red</span> = Marks
+            </div>
             <table className="min-w-full border text-sm rounded-lg overflow-hidden shadow">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-200 to-blue-100 text-blue-900">
                   <th className="p-3 border font-semibold text-left">Topic</th>
-                  <th className="p-3 border font-semibold text-center">Easy<br/><span className='text-xs'>(To be shown<span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)</span></th>
-                  <th className="p-3 border font-semibold text-center">Medium<br/><span className='text-xs'>(To be shown<span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)</span></th>
-                  <th className="p-3 border font-semibold text-center">High<br/><span className='text-xs'>(To be shown<span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)</span></th>
-                  <th className="p-3 border font-semibold text-center">Total<br/><span className='text-xs'>(To be shown<span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)</span></th>
+                  <th className="p-3 border font-semibold text-center">
+                    <div className="flex flex-col items-center leading-tight">
+                      <span>Easy</span>
+                      <div className="text-xs h-5 leading-none flex items-center gap-1 whitespace-nowrap">
+                        (<span>To be shown</span><span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)
+                      </div>
+                    </div>
+                  </th>
+                  <th className="p-3 border font-semibold text-center">
+                    <div className="flex flex-col items-center leading-tight">
+                      <span>Medium</span>
+                      <div className="text-xs h-5 leading-none flex items-center gap-1 whitespace-nowrap">
+                        (<span>To be shown</span><span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)
+                      </div>
+                    </div>
+                  </th>
+                  <th className="p-3 border font-semibold text-center">
+                    <div className="flex flex-col items-center leading-tight">
+                      <span>High</span>
+                      <div className="text-xs h-5 leading-none flex items-center gap-1 whitespace-nowrap">
+                        (<span>To be shown</span><span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)
+                      </div>
+                    </div>
+                  </th>
+                  <th className="p-3 border font-semibold text-center">
+                    <div className="flex flex-col items-center leading-tight">
+                      <span>Total</span>
+                      <div className="text-xs h-5 leading-none flex items-center gap-1 whitespace-nowrap">
+                        (<span>To be shown</span><span className='text-blue-700'>|</span> <span className='text-green-700'>Added</span>)
+                      </div>
+                    </div>
+                  </th>
+                  {markingScheme === 'normal' && <th className="p-3 border font-semibold text-center">Marks per Question</th>}
                 </tr>
               </thead>
               <tbody>
@@ -2305,42 +2681,90 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                   <tr key={subj} className="hover:bg-blue-50 transition">
                     <td className="p-3 border font-semibold text-blue-800 bg-blue-50">{subj}</td>
                     {(['LOW','MEDIUM','HIGH'] as const).map(diff => (
-                      <td className="p-3 border text-center" key={diff}>
-                        <input
-                          type="number"
-                          min={0}
-                          value={distributionGrid[subj]?.[diff] ?? 0}
-                          onChange={e => updateGridCell(subj, diff, e.target.value)}
-                          className="w-16 border rounded px-2 py-1 text-sm mr-2 focus:ring-2 focus:ring-blue-300 bg-white text-blue-900 font-semibold shadow-sm"
-                        />
-                        <span className="text-green-700 font-semibold">{distributionGrid[subj]?.added?.[diff] ?? 0}</span>
+                      <td className="p-3 border align-middle text-center" key={diff}>
+                        <div className="grid grid-cols-[4rem,auto] gap-x-2 gap-y-1 place-items-center justify-center w-full">
+                          <div className="contents">
+                            <input
+                              type="number"
+                              min={0}
+                              max={distributionGrid[subj]?.added?.[diff] ?? 0}
+                              value={distributionGrid[subj]?.[diff] ?? 0}
+                              onChange={e => {
+                                const added = distributionGrid[subj]?.added?.[diff] ?? 0;
+                                const raw = parseInt(e.target.value || '0', 10);
+                                const clamped = Math.max(0, Math.min(added, isNaN(raw) ? 0 : raw));
+                                updateGridCell(subj, diff, String(clamped));
+                              }}
+                              className="w-16 border rounded px-2 py-1 text-sm mr-2 focus:ring-2 focus:ring-blue-300 bg-white text-blue-900 font-semibold shadow-sm text-center"
+                            />
+                            <span className="text-green-700 font-semibold">{distributionGrid[subj]?.added?.[diff] ?? 0}</span>
+                          </div>
+                          {markingScheme === 'detailed' && (
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              inputMode="numeric"
+                              placeholder="Marks"
+                              value={cellMarks[`${subj}-${diff}`] ?? 1}
+                              onChange={e => setCellMarks(prev => ({ ...prev, [`${subj}-${diff}`]: Math.max(0, parseInt(e.target.value || '0', 10) || 0) }))}
+                              className="w-16 border rounded px-2 py-1 text-xs focus:ring-2 focus:ring-red-400 bg-red-50 text-red-700 font-semibold shadow-sm col-start-1 justify-self-center text-center -ml-1.5"
+                            />
+                          )}
+                        </div>
                       </td>
                     ))}
                     <td className="p-3 border font-bold text-center bg-blue-100">
                       <span className="text-blue-800">{distributionGrid[subj]?.total ?? 0}</span>
                       <span className="text-green-700 font-semibold ml-2">{distributionGrid[subj]?.added?.total ?? 0}</span>
                     </td>
+                    {markingScheme === 'normal' && (
+                      <td className="p-3 border text-center">
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          inputMode="numeric"
+                          placeholder="Marks"
+                          value={topicMarks[subj] ?? 1}
+                          onChange={e => setTopicMarks(prev => ({ ...prev, [subj]: Math.max(0, parseInt(e.target.value || '0', 10) || 0) }))}
+                          className="w-20 border rounded px-2 py-1 text-sm focus:ring-2 focus:ring-red-400 bg-red-50 text-red-700 font-semibold shadow-sm"
+                        />
+                      </td>
+                    )}
                   </tr>
                 ))}
                 {/* Total row */}
                 <tr className="bg-green-100 font-bold sticky bottom-0">
-                  <td className="p-3 border text-green-900">Total</td>
+                  <td className="p-3 border">Total</td>
                   {(['LOW','MEDIUM','HIGH'] as const).map(diff => (
-                    <td className="p-3 border text-green-900 text-center" key={diff}>
-                      {subjects.reduce((sum, s) => sum + (distributionGrid[s]?.[diff] ?? 0), 0)}
+                    <td className="p-3 border text-center" key={diff}>
+                      <span className="text-blue-800">{subjects.reduce((sum, s) => sum + (distributionGrid[s]?.[diff] ?? 0), 0)}</span>
                       <span className="text-green-700 font-semibold ml-2">{subjects.reduce((sum, s) => sum + (distributionGrid[s]?.added?.[diff] ?? 0), 0)}</span>
                     </td>
                   ))}
-                  <td className="p-3 border text-green-900 text-center bg-green-200">
-                    {subjects.reduce((sum, s) => sum + (distributionGrid[s]?.total ?? 0), 0)}
+                  <td className="p-3 border text-center bg-green-200">
+                    <span className="text-blue-800">{subjects.reduce((sum, s) => sum + (distributionGrid[s]?.total ?? 0), 0)}</span>
                     <span className="text-green-700 font-semibold ml-2">{subjects.reduce((sum, s) => sum + (distributionGrid[s]?.added?.total ?? 0), 0)}</span>
                   </td>
+                  {markingScheme === 'normal' && (
+                    <td className="p-3 border text-green-900 text-center bg-green-200">
+                      <span className="text-sm font-semibold">
+                        Total Marks: {calculateTotalPoints()}
+                      </span>
+                    </td>
+                  )}
                 </tr>
               </tbody>
             </table>
             <div className="flex flex-wrap gap-4 mt-4 justify-between items-center border-t pt-4">
               <div className="text-sm text-gray-700">
                 <span className="font-semibold text-blue-800">Tip:</span> The <span className="font-semibold text-blue-800">To Be Shown</span> values must be less than the <span className="font-semibold text-green-700">added</span> values for each cell.
+                {markingScheme === 'detailed' && (
+                  <div className="mt-2 p-2 bg-orange-50 rounded border">
+                    <span className="font-semibold text-orange-800">Total Marks: {calculateTotalPoints()}</span>
+                  </div>
+                )}
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setShowDistributionDialog(false)}>
@@ -2355,10 +2779,22 @@ const Screen3: React.FC<Screen3Props> = (props) => {
                     const numMedium = subjects.reduce((sum, s) => sum + (distributionGrid[s]?.MEDIUM || 0), 0);
                     const numHigh = subjects.reduce((sum, s) => sum + (distributionGrid[s]?.HIGH || 0), 0);
                     const numDisplayed = subjects.reduce((sum, s) => sum + (distributionGrid[s]?.total || 0), 0);
+                    
+                    // Calculate total points and update metadata
+                    const totalPoints = parseFloat(calculateTotalPoints());
+                    
+                    // Update question points based on marking scheme
+                    updateQuestionPoints();
+                    
                     if (props.onDistributionSet) {
-                      props.onDistributionSet(numDisplayed, numEasy, numMedium, numHigh);
+                      props.onDistributionSet(numDisplayed, numEasy, numMedium, numHigh, totalPoints);
                     }
                     (window as any).latestQuestionDistribution = buildQuestionDistribution();
+                    (window as any).latestQuizSettings = {
+                      free_traversal: freeTraversal,
+                      allowPartialMarking: allowPartialMarking,
+                      allowNegativeMarking: allowNegativeMarking
+                    };
                     setShowReminderDialog(true);
                   }}
                 >
@@ -2823,10 +3259,11 @@ const LatexPreview: React.FC<LatexPreviewProps> = ({ text, small }) => {
   // Simple Markdown (tokens only) -> HTML for preview
   const mdToHtml = (s: string) => {
     let out = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    out = out.replace(/\*\*(.+?)\*\*/gs, '<strong>$1</strong>');
-    out = out.replace(/__(.+?)__/gs, '<u>$1</u>');
-    out = out.replace(/~~(.+?)~~/gs, '<s>$1</s>');
-    out = out.replace(/_(.+?)_/gs, '<em>$1</em>');
+    // New curly-brace tags
+    out = out.replace(/\{bold\}(.+?)\{bold\}/gs, '<strong>$1</strong>');
+    out = out.replace(/\{italic\}(.+?)\{italic\}/gs, '<em>$1</em>');
+    out = out.replace(/\{underline\}(.+?)\{underline\}/gs, '<u>$1</u>');
+    out = out.replace(/\{strike\}(.+?)\{strike\}/gs, '<s>$1</s>');
     out = out.replace(/\n/g, '<br />');
     return out;
   };

@@ -46,9 +46,9 @@ const Screen2: React.FC<Screen2Props> = ({
     const value = newInstruction;
     const selected = value.slice(start, end);
     const tokens =
-      kind === 'bold' ? ['**', '**'] :
-      kind === 'italic' ? ['_', '_'] :
-      kind === 'underline' ? ['__', '__'] : ['~~', '~~'];
+      kind === 'bold' ? ['{bold}', '{bold}'] :
+      kind === 'italic' ? ['{italic}', '{italic}'] :
+      kind === 'underline' ? ['{underline}', '{underline}'] : ['{strike}', '{strike}'];
     const newValue = value.slice(0, start) + tokens[0] + selected + tokens[1] + value.slice(end);
     setNewInstruction(newValue);
     // Restore caret
@@ -112,11 +112,11 @@ const Screen2: React.FC<Screen2Props> = ({
     let html = escapeHtml(newInstruction || '');
     // Apply BIUS patterns (non-greedy, multiline)
     // Order: bold (**)**, underline (__)__ (double underscore), italic _ _, strike ~~ ~~
-    html = html.replace(/\*\*(.+?)\*\*/gms, '<strong>$1</strong>');
-    html = html.replace(/__([^_]+?)__/gms, '<u>$1</u>');
-    // Avoid conflict with underline: italic uses single underscore not surrounded by another underscore
-    html = html.replace(/(?<!_)_([^_]+?)_(?!_)/gms, '<em>$1</em>');
-    html = html.replace(/~~(.+?)~~/gms, '<del>$1</del>');
+    // New curly-brace tags only
+    html = html.replace(/\{bold\}(.+?)\{bold\}/gms, '<strong>$1</strong>');
+    html = html.replace(/\{italic\}(.+?)\{italic\}/gms, '<em>$1</em>');
+    html = html.replace(/\{underline\}(.+?)\{underline\}/gms, '<u>$1</u>');
+    html = html.replace(/\{strike\}(.+?)\{strike\}/gms, '<del>$1</del>');
     // Convert line breaks
     html = html.replace(/\n/g, '<br />');
     return html;
@@ -182,11 +182,13 @@ const Screen2: React.FC<Screen2Props> = ({
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
-            {/* Live Preview for in-progress newInstruction */}
-            <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded text-sm">
-              <div className="text-xs text-gray-600 mb-1">Preview</div>
-              <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderPreviewHtml }} />
-            </div>
+            {/* Live Preview for in-progress newInstruction (only when content needs rendering) */}
+            {newInstruction && (/(\{bold\}|\{italic\}|\{underline\}|\{strike\})/.test(newInstruction)) && (
+              <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded text-sm">
+                <div className="text-xs text-gray-600 mb-1">Preview</div>
+                <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderPreviewHtml }} />
+              </div>
+            )}
             <div className="space-y-2 flex-1 overflow-y-auto">
               <ol className="list-decimal list-inside space-y-2">
                 {instructions.map((instruction) => (

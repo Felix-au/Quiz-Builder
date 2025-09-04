@@ -32,6 +32,12 @@ interface Option {
   option_order: number;
 }
 
+interface Blank {
+  blank_index: number;
+  accepted_answers: string[];
+  case_sensitive: boolean;
+}
+
 interface Question {
   id: number;
   question: string;
@@ -44,7 +50,9 @@ interface Question {
   image: string;
   difficulty: 'LOW' | 'MEDIUM' | 'HIGH';
   subject?: string;
+  question_type: 'MULTIPLE_CHOICE' | 'FILL_BLANK';
   options: Option[];
+  blanks: Blank[];
   imageFile?: File;
   originalImageFileName?: string;
   imgbbUrl?: string;
@@ -90,6 +98,10 @@ interface QuizMetadata {
   departments?: string[];
   sections?: string[];
   courseDisplay?: string;
+  // Quiz settings
+  free_traversal?: boolean;
+  allowPartialMarking?: boolean;
+  allowNegativeMarking?: boolean;
 }
 
 const QuizCreator = () => {
@@ -480,9 +492,37 @@ const QuizCreator = () => {
                 }
               }
             }
-            return {
+
+            // Infer blanks and question type
+            const questionText: string = q.question || '';
+            let parsedBlanks: any[] = Array.isArray(q.blanks) ? q.blanks : [];
+            if (parsedBlanks.length === 0 && questionText.includes('<blank')) {
+              const blankMatches = questionText.match(/<blank\s+index="(\d+)"\s*\/>/g);
+              if (blankMatches) {
+                parsedBlanks = blankMatches.map((match: string) => {
+                  const indexMatch = match.match(/index="(\d+)"/);
+                  const blankIndex = indexMatch ? parseInt(indexMatch[1]) : 1;
+                  return {
+                    blank_index: blankIndex,
+                    accepted_answers: [],
+                    case_sensitive: false,
+                  };
+                });
+                parsedBlanks.sort((a, b) => a.blank_index - b.blank_index);
+              }
+            }
+            // Clean accepted_answers
+            parsedBlanks = parsedBlanks.map((b: any) => ({
+              ...b,
+              accepted_answers: (b.accepted_answers || []).filter((ans: string) => (ans || '').trim() !== ''),
+              case_sensitive: !!b.case_sensitive,
+            }));
+            const hasPlaceholders = /<blank\s+index="(\d+)"\s*\/>/.test(questionText);
+            const inferredType: 'MULTIPLE_CHOICE' | 'FILL_BLANK' = q.question_type || ((hasPlaceholders || (parsedBlanks.length > 0)) ? 'FILL_BLANK' : 'MULTIPLE_CHOICE');
+
+            const built: Question = {
               id: questionIdCounter++,
-              question: q.question || '',
+              question: questionText,
               topic: q.topic || 'NA',
               summary: q.summary || 'NA',
               question_order: allQuestions.length,
@@ -497,10 +537,25 @@ const QuizCreator = () => {
               options: q.options?.map((opt: any) => ({
                 id: opt.id,
                 option_text: opt.option_text || '',
-                is_correct: opt.is_correct || false,
+                is_correct: !!opt.is_correct,
                 option_order: opt.option_order || 0,
               })) || [],
-            } as Question;
+              question_type: inferredType,
+              blanks: parsedBlanks,
+            };
+
+            try {
+              console.debug('[ZIP Import] Normalized question', {
+                id: built.id,
+                original_type: q.question_type,
+                normalized_type: built.question_type,
+                blanks_in_json: Array.isArray(q.blanks) ? q.blanks.length : 0,
+                parsed_blanks: parsedBlanks.length,
+                has_blank_placeholders: hasPlaceholders,
+              });
+            } catch {}
+
+            return built;
           }) || []
         );
         allQuestions = [...allQuestions, ...questionsWithImages];
@@ -869,12 +924,14 @@ const QuizCreator = () => {
       image_url: '',
       image: '',
       difficulty: 'MEDIUM',
+      question_type: 'MULTIPLE_CHOICE',
       options: [
         { id: 1, option_text: '', is_correct: false, option_order: 0 },
         { id: 2, option_text: '', is_correct: false, option_order: 0 },
         { id: 3, option_text: '', is_correct: false, option_order: 0 },
         { id: 4, option_text: '', is_correct: false, option_order: 0 },
       ],
+      blanks: [],
     };
     setQuestions([defaultQuestion]);
   };
@@ -931,10 +988,59 @@ const QuizCreator = () => {
       
       const questionsWithImages = await Promise.all(
         loadedQuestions.map(async (q: Question) => {
+          // Parse blank placeholders from question text if blanks array is empty
+          const questionText = q.question || '';
+          let parsedBlanks = q.blanks || [];
+          
+          if (parsedBlanks.length === 0 && questionText.includes('<blank')) {
+            // Extract blank indices from question text
+            const blankMatches = questionText.match(/<blank\s+index="(\d+)"\s*\/>/g);
+            if (blankMatches) {
+              parsedBlanks = blankMatches.map(match => {
+                const indexMatch = match.match(/index="(\d+)"/); 
+                const blankIndex = indexMatch ? parseInt(indexMatch[1]) : 1;
+                return {
+                  blank_index: blankIndex,
+                  accepted_answers: [],
+                  case_sensitive: false,
+                };
+              });
+              // Sort by blank_index to maintain order
+              parsedBlanks.sort((a, b) => a.blank_index - b.blank_index);
+            }
+          }
+          
+          // Clean up accepted_answers arrays
+          parsedBlanks = parsedBlanks.map(blank => ({
+            ...blank,
+            accepted_answers: blank.accepted_answers.filter(answer => answer.trim() !== '')
+          }));
+          
+          // Add backward compatibility for new fields
+          const hasPlaceholders = /<blank\s+index="(\d+)"\s*\/>/.test(questionText);
+          const inferredType = q.question_type || ((hasPlaceholders || (Array.isArray(parsedBlanks) && parsedBlanks.length > 0)) ? 'FILL_BLANK' : 'MULTIPLE_CHOICE');
+          const questionWithDefaults = {
+            ...q,
+            question_type: inferredType,
+            blanks: parsedBlanks,
+          };
+
+          // Debug: trace normalization per question
+          try {
+            console.debug('[Import] Normalized question', {
+              id: q.id,
+              original_type: (q as any)?.question_type,
+              normalized_type: (questionWithDefaults as any)?.question_type,
+              blanks_in_json: Array.isArray((q as any)?.blanks) ? (q as any).blanks.length : 0,
+              parsed_blanks: Array.isArray(parsedBlanks) ? parsedBlanks.length : 0,
+              has_blank_placeholders: hasPlaceholders,
+            });
+          } catch {}
+          
           if (q.imgbbUrl && q.originalImageFileName) {
             try {
               const imageFile = await downloadImageAsFile(q.imgbbUrl, q.originalImageFileName);
-              return { ...q, imageFile };
+              return { ...questionWithDefaults, imageFile };
             } catch (error) {
               console.error('Failed to download image for question', q.id, error);
               toast({
@@ -942,13 +1048,23 @@ const QuizCreator = () => {
                 description: `Failed to restore image for question ${q.id}`,
                 variant: "destructive",
               });
-              return { ...q, imageFile: undefined };
+              return { ...questionWithDefaults, imageFile: undefined };
             }
           }
-          return { ...q, imageFile: undefined };
+          return { ...questionWithDefaults, imageFile: undefined };
         })
       );
       
+      // Debug: summary of types after import
+      try {
+        const typeCounts = questionsWithImages.reduce((acc: any, it: any) => {
+          const t = it?.question_type || 'UNKNOWN';
+          acc[t] = (acc[t] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        console.debug('[Import] Type summary', typeCounts);
+      } catch {}
+
       setQuestions(questionsWithImages);
       
       const displayedQuestions = parsed.metadata?.num_displayed_questions || 1;
@@ -993,6 +1109,7 @@ const QuizCreator = () => {
   const loadFromSavedSession = async () => {
     await loadSavedDataFromStorage();
     setCurrentScreen(1);
+    setAutoSaveOn(true);
   };
 
   const startNewQuiz = () => {
@@ -1107,6 +1224,10 @@ const QuizCreator = () => {
         created_at: quiz.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString(),
         created_by: quiz.created_by || null,
+        // Import quiz settings
+        free_traversal: quiz.free_traversal !== undefined ? quiz.free_traversal : true,
+        allowPartialMarking: quiz.allowPartialMarking !== undefined ? quiz.allowPartialMarking : false,
+        allowNegativeMarking: quiz.allowNegativeMarking !== undefined ? quiz.allowNegativeMarking : false,
       });
 
       // Parse course field to set program/departments/sections
@@ -1177,9 +1298,36 @@ const QuizCreator = () => {
             }
           }
 
+          // Use existing blanks data from JSON, don't override it
+          const questionText = q.question || '';
+          let parsedBlanks = q.blanks || [];
+          
+          // If no blanks but question has blank placeholders, parse them
+          if (parsedBlanks.length === 0 && questionText.includes('<blank')) {
+            const blankMatches = questionText.match(/<blank\s+index="(\d+)"\s*\/>/g);
+            if (blankMatches) {
+              parsedBlanks = blankMatches.map(match => {
+                const indexMatch = match.match(/index="(\d+)"/); 
+                const blankIndex = indexMatch ? parseInt(indexMatch[1]) : 1;
+                return {
+                  blank_index: blankIndex,
+                  accepted_answers: [],
+                  case_sensitive: false,
+                };
+              });
+              parsedBlanks.sort((a, b) => a.blank_index - b.blank_index);
+            }
+          }
+          
+          // Clean up accepted_answers arrays
+          parsedBlanks = parsedBlanks.map(blank => ({
+            ...blank,
+            accepted_answers: blank.accepted_answers.filter(answer => answer.trim() !== '')
+          }));
+
           return {
             id: q.id,
-            question: q.question || '',
+            question: questionText,
             topic: q.topic || 'NA',
             summary: q.summary || 'NA',
             question_order: q.question_order || 0,
@@ -1189,6 +1337,8 @@ const QuizCreator = () => {
             image: q.image || '',
             difficulty: q.difficulty || 'MEDIUM',
             subject: q.subject || '',
+            question_type: q.question_type || 'MULTIPLE_CHOICE',
+            blanks: parsedBlanks,
             imageFile,
             originalImageFileName: imageFile?.name,
             options: q.options?.map((opt: any) => ({
@@ -1205,6 +1355,8 @@ const QuizCreator = () => {
       setNumberOfQuestions(questionsWithImages.length);
       // Reset autosave to prevent accidental overwrites
       setAutoSaveOn(false);
+      // Reset current question index to 0 to show first imported question
+      setCurrentQuestionIndex(0);
       setCurrentScreen(1);
       
       toast({
@@ -1305,6 +1457,13 @@ const QuizCreator = () => {
 
       const questionsForSave = questionsWithUploadedImages.map(q => {
         const { imageFile, ...questionWithoutFile } = q;
+        // Clean up blanks accepted_answers before saving
+        if (questionWithoutFile.blanks) {
+          questionWithoutFile.blanks = questionWithoutFile.blanks.map(blank => ({
+            ...blank,
+            accepted_answers: blank.accepted_answers.filter(answer => answer.trim() !== '')
+          }));
+        }
         return questionWithoutFile;
       });
 
@@ -1537,6 +1696,74 @@ const QuizCreator = () => {
     setQuestions(questions.map(q => 
       q.id === questionId 
         ? { ...q, options: q.options.filter(opt => opt.id !== optionId) }
+        : q
+    ));
+  };
+
+  const addBlank = (questionId: number) => {
+    const question = questions.find(q => q.id === questionId);
+    if (!question) return;
+
+    // Ensure blanks array exists
+    const blanks = question.blanks || [];
+    
+    // Find the next available blank index
+    const existingIndices = blanks.map(b => b.blank_index);
+    const nextIndex = Math.max(0, ...existingIndices) + 1;
+
+    // Insert blank placeholder at cursor position in question text
+    const textarea = document.getElementById(`question-textarea-${questionId}`) as HTMLTextAreaElement;
+    const cursorPos = textarea ? textarea.selectionStart : question.question.length;
+    const blankPlaceholder = `<blank index="${nextIndex}"/>`;
+    const newQuestionText = question.question.slice(0, cursorPos) + blankPlaceholder + question.question.slice(cursorPos);
+
+    setQuestions(questions.map(q => 
+      q.id === questionId 
+        ? {
+            ...q,
+            question: newQuestionText,
+            blanks: [...(q.blanks || []), {
+              blank_index: nextIndex,
+              accepted_answers: [],
+              case_sensitive: false,
+            }]
+          }
+        : q
+    ));
+
+    // Restore cursor position
+    setTimeout(() => {
+      if (textarea) {
+        textarea.focus();
+        const newPos = cursorPos + blankPlaceholder.length;
+        textarea.setSelectionRange(newPos, newPos);
+      }
+    }, 0);
+  };
+
+  const removeBlank = (questionId: number, blankIndex: number) => {
+    setQuestions(questions.map(q => 
+      q.id === questionId 
+        ? {
+            ...q,
+            question: q.question.replace(new RegExp(`<blank\\s+index="${blankIndex}"\\s*/>`, 'g'), ''),
+            blanks: q.blanks.filter(b => b.blank_index !== blankIndex)
+          }
+        : q
+    ));
+  };
+
+  const updateBlank = (questionId: number, blankIndex: number, field: string, value: any) => {
+    setQuestions(questions.map(q => 
+      q.id === questionId 
+        ? {
+            ...q,
+            blanks: q.blanks.map(b => 
+              b.blank_index === blankIndex 
+                ? { ...b, [field]: value }
+                : b
+            )
+          }
         : q
     ));
   };
@@ -1840,7 +2067,7 @@ const QuizCreator = () => {
       const updatedMetadata = {
         ...metadata,
         updated_at: currentTime,
-        total_points: questions.length,
+        total_points: metadata.total_points || questions.length,
       };
 
       // Log to Google Form
@@ -1894,6 +2121,13 @@ const QuizCreator = () => {
                 is_correct: opt.is_correct,
                 option_order: optIndex + 1,
               }));
+            
+            // Clean up blanks array by removing empty accepted_answers
+            const cleanedBlanks = (cleanQuestion.blanks || []).map(blank => ({
+              ...blank,
+              accepted_answers: blank.accepted_answers.filter(answer => answer.trim() !== '')
+            })).filter(blank => blank.accepted_answers.length > 0);
+            
             return {
               id: cleanQuestion.id,
               quiz_id: metadata.id,
@@ -1907,9 +2141,15 @@ const QuizCreator = () => {
               image: cleanQuestion.image || null,
               difficulty: cleanQuestion.difficulty,
               subject: cleanQuestion.subject || '',
-              options: filteredOptions,
+              question_type: cleanQuestion.question_type || 'MULTIPLE_CHOICE',
+              options: cleanQuestion.question_type === 'FILL_BLANK' ? [] : filteredOptions,
+              blanks: cleanQuestion.question_type === 'FILL_BLANK' ? cleanedBlanks : [],
             };
           }),
+          // Add quiz settings from distribution modal
+          free_traversal: (window as any).latestQuizSettings?.free_traversal ?? true,
+          allowPartialMarking: (window as any).latestQuizSettings?.allowPartialMarking ?? false,
+          allowNegativeMarking: (window as any).latestQuizSettings?.allowNegativeMarking ?? false,
           // Add subjects list for Screen2/Screen3
           subjects: subjects,
           // Add question_distribution if set from distribution dialog
@@ -2060,12 +2300,14 @@ const QuizCreator = () => {
         image_url: '',
         image: '',
         difficulty: 'LOW',
+        question_type: 'MULTIPLE_CHOICE',
         options: [
           { id: 1, option_text: '', is_correct: false, option_order: 0 },
           { id: 2, option_text: '', is_correct: false, option_order: 0 },
           { id: 3, option_text: '', is_correct: false, option_order: 0 },
           { id: 4, option_text: '', is_correct: false, option_order: 0 },
         ],
+        blanks: [],
       });
     }
     
@@ -2082,12 +2324,14 @@ const QuizCreator = () => {
         image_url: '',
         image: '',
         difficulty: 'MEDIUM',
+        question_type: 'MULTIPLE_CHOICE',
         options: [
           { id: 1, option_text: '', is_correct: false, option_order: 0 },
           { id: 2, option_text: '', is_correct: false, option_order: 0 },
           { id: 3, option_text: '', is_correct: false, option_order: 0 },
           { id: 4, option_text: '', is_correct: false, option_order: 0 },
         ],
+        blanks: [],
       });
     }
     
@@ -2104,12 +2348,14 @@ const QuizCreator = () => {
         image_url: '',
         image: '',
         difficulty: 'HIGH',
+        question_type: 'MULTIPLE_CHOICE',
         options: [
           { id: 1, option_text: '', is_correct: false, option_order: 0 },
           { id: 2, option_text: '', is_correct: false, option_order: 0 },
           { id: 3, option_text: '', is_correct: false, option_order: 0 },
           { id: 4, option_text: '', is_correct: false, option_order: 0 },
         ],
+        blanks: [],
       });
     }
     
@@ -2170,12 +2416,14 @@ const QuizCreator = () => {
               image_url: '',
               image: '',
               difficulty: 'LOW',
+              question_type: 'MULTIPLE_CHOICE',
               options: [
                 { id: 1, option_text: '', is_correct: false, option_order: 0 },
                 { id: 2, option_text: '', is_correct: false, option_order: 0 },
                 { id: 3, option_text: '', is_correct: false, option_order: 0 },
                 { id: 4, option_text: '', is_correct: false, option_order: 0 },
               ],
+              blanks: [],
             });
           }
           
@@ -2192,12 +2440,14 @@ const QuizCreator = () => {
               image_url: '',
               image: '',
               difficulty: 'MEDIUM',
+              question_type: 'MULTIPLE_CHOICE',
               options: [
                 { id: 1, option_text: '', is_correct: false, option_order: 0 },
                 { id: 2, option_text: '', is_correct: false, option_order: 0 },
                 { id: 3, option_text: '', is_correct: false, option_order: 0 },
                 { id: 4, option_text: '', is_correct: false, option_order: 0 },
               ],
+              blanks: [],
             });
           }
           
@@ -2214,12 +2464,14 @@ const QuizCreator = () => {
               image_url: '',
               image: '',
               difficulty: 'HIGH',
+              question_type: 'MULTIPLE_CHOICE',
               options: [
                 { id: 1, option_text: '', is_correct: false, option_order: 0 },
                 { id: 2, option_text: '', is_correct: false, option_order: 0 },
                 { id: 3, option_text: '', is_correct: false, option_order: 0 },
                 { id: 4, option_text: '', is_correct: false, option_order: 0 },
               ],
+              blanks: [],
             });
           }
           
@@ -2426,7 +2678,7 @@ const QuizCreator = () => {
                 variant={autoSaveOn ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setAutoSaveOn(v => !v)}
-                className={`flex items-center space-x-2 ${autoSaveOn ? 'bg-green-600 text-white hover:bg-green-700' : ''}`}
+                className={`flex items-center space-x-2 ${autoSaveOn ? 'bg-green-600 text-white hover:bg-green-700' : ''} ${!autoSaveOn && isDark ? 'text-black border-white/30 hover:bg-white/10' : ''}`}
                 title={autoSaveOn ? 'Autosave is ON (saving every 10s)' : 'Autosave is OFF'}
               >
                 <RefreshCw className={`h-4 w-4 ${isSaving ? 'animate-spin' : ''}`} />
@@ -2497,7 +2749,7 @@ const QuizCreator = () => {
                 variant={autoSaveOn ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setAutoSaveOn(v => !v)}
-                className={`flex items-center space-x-1 h-8 px-2 ${autoSaveOn ? 'bg-green-600 text-white hover:bg-green-700' : ''} ${isDark ? 'bg-white/10' : ''}`}
+                className={`flex items-center space-x-1 h-8 px-2 ${autoSaveOn ? 'bg-green-600 text-white hover:bg-green-700' : ''} ${isDark ? 'bg-white/10' : ''} ${!autoSaveOn && isDark ? 'text-white border-white/30 hover:bg-white/10' : ''}`}
                 title={autoSaveOn ? 'Autosave is ON (saving every 10s)' : 'Autosave is OFF'}
               >
                 <RefreshCw className={`h-3 w-3 ${isSaving ? 'animate-spin' : ''}`} />
@@ -2882,6 +3134,9 @@ const QuizCreator = () => {
               updateOption={updateOption}
               addOption={addOption}
               removeOption={removeOption}
+              addBlank={addBlank}
+              removeBlank={removeBlank}
+              updateBlank={updateBlank}
               handleImageUpload={handleImageUpload}
               removeImage={removeImage}
               deleteQuestion={deleteQuestion}
@@ -2919,10 +3174,11 @@ const QuizCreator = () => {
               setCurrentScreen={setCurrentScreen}
               toast={toast}
               subjects={subjects}
-              onDistributionSet={(numDisplayed, numEasy, numMedium, numHigh) => {
+              onDistributionSet={(numDisplayed, numEasy, numMedium, numHigh, totalPoints) => {
                 setMetadata(prev => ({
                   ...prev,
                   num_displayed_questions: numDisplayed,
+                  total_points: totalPoints || numDisplayed,
                   num_easy_questions: numEasy,
                   num_medium_questions: numMedium,
                   num_high_questions: numHigh,

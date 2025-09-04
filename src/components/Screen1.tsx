@@ -54,7 +54,7 @@ const programs = [
 ];
 
 const semesters = [
-  'Sem-I', 'Sem-II', 'Sem-III', 'Sem-IV', 'Sem-V', 'Sem-VI', 'Sem-VII', 'Sem-VIII', 'Sem-IX', 'Sem-X'
+  'Sem-I', 'Sem-II', 'Sem-III', 'Sem-IV', 'Sem-V', 'Sem-VI', 'Sem-VII', 'Module-I', 'Module-II', 'Module-III', 'Module-IV', 'Module-V', 'Module-VI', 'Module-VII'
 ];
 
 const Screen1: React.FC<Screen1Props> = ({
@@ -157,7 +157,7 @@ const Screen1: React.FC<Screen1Props> = ({
               <SelectTrigger>
                 <SelectValue placeholder="Select semester" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-60 overflow-y-auto">
                 {semesters.map(sem => (
                   <SelectItem key={sem} value={sem}>{sem}</SelectItem>
                 ))}
@@ -247,7 +247,7 @@ const Screen1: React.FC<Screen1Props> = ({
                 <SelectTrigger className="absolute inset-0 opacity-0">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="max-h-80 overflow-y-auto">
+                <SelectContent className="max-h-60 overflow-y-auto">
                   {(['custom', 'N/A', ...sections.filter(s => s !== 'custom' && s !== 'N/A')]).map(sec => {
                     const checked = selectedSections.includes(sec);
                     const toggle = () => {
