@@ -8,7 +8,7 @@ const testimonials = [
   {
     name: "Dr. Arun Kumar Poonia",
     role: "Assistant Professor",
-    institution: "SoET",
+    institution: "School of Engineering & Technology",
     image: "/profiles/Arun-Kumar-Poonia-1-scaled.jpg",
     quote:
       "An Impactful green initiative - user friendly! Makes online quizzes more secure and ethical by incorporating anti -cheating mechanisms befitting Gen Z students!",
@@ -16,7 +16,7 @@ const testimonials = [
   {
     name: "Dr. Reena Kumari",
     role: "Assistant Professor",
-    institution: "SoM",
+    institution: "School of Management",
     image: "/profiles/reenakumari.jpg",
     quote:
       "PrashnaSetu software has made the Quiz evaluations very fast and transparent process. It has successfully eradicated all unfair practices during Quiz Evaluations. It's user friendly for both the students and the faculties. I have personally used this for my Quiz evaluations. It has turned to be the best experience for me and as well as for my students.",
