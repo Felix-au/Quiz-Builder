@@ -708,7 +708,7 @@ export default function HomePage() {
 
         {/* Testimonials Section */}
         <section id="testimonials" className="w-full max-w-6xl mx-auto mt-12 md:mt-0 md:min-h-[calc(100vh-80px)] md:flex md:flex-col md:justify-center md:snap-center md:snap-always">
-          <br></br><br></br>
+          <br></br><br></br><br></br><br></br>
           <h3 className={`text-3xl font-bold text-center mb-6 ${themes[theme].headerText}`}>What Our Users Say</h3>
           <TestimonialsSection onDark={isDark} />
         </section>
