@@ -30,6 +30,7 @@ type SearchResultItem = {
   marksObtained: number | null;
   totalMarks: number | null;
   numDisplayedQuestions: number | null;
+  totalPoints?: number | null;
   status: string | null;
   // present in instructor search results; optional in student view
   studentName?: string | null;
@@ -107,6 +108,8 @@ type DetailDTO = {
       fullScreenFaults: number | null;
       status: string | null;
       showDetailedResult?: boolean | null;
+      allowPartialMarking?: boolean | null;
+      allowNegativeMarking?: boolean | null;
     };
   };
   questions: Array<{
@@ -118,6 +121,12 @@ type DetailDTO = {
     difficulty: string | null;
     topic: string | null;
     subject: string | null;
+    questionType?: 'MULTIPLE_CHOICE' | 'FILL_BLANK' | null;
+    blanks?: Array<{
+      blankIndex: number;
+      acceptedAnswers: string[];
+      caseSensitive: boolean;
+    }>;
     options: Array<{
       id: number;
       text: string;
@@ -127,6 +136,12 @@ type DetailDTO = {
     isCorrect: boolean;
     selectedOptionIds: number[];
     correctOptionIds: number[];
+    fibAnswer?: {
+      blanks: Array<{
+        blankIndex: number;
+        answerText: string;
+      }>
+    } | null;
   }>;
 };
 
@@ -479,22 +494,56 @@ export default function ViewResult() {
     }
   };
 
-  const computeEarned = (q: DetailDTO["questions"][number]) => {
+  const computeEarned = (
+    q: DetailDTO["questions"][number],
+    allowPartial?: boolean | null,
+    allowNegative?: boolean | null,
+  ) => {
     const points = q.points ?? 1;
+    const negativeFactor = allowNegative ? -0.25 : 0;
+
+    if (q.questionType === 'FILL_BLANK') {
+      const blanks = q.blanks || [];
+      const ansMap = new Map<number, string>();
+      (q.fibAnswer?.blanks || []).forEach(b => ansMap.set(b.blankIndex, (b.answerText || '').toString()));
+
+      let total = blanks.length;
+      let correctCount = 0;
+      let hasWrong = false;
+      for (const b of blanks) {
+        const raw = (ansMap.get(b.blankIndex) || '').toString();
+        if (raw === '') {
+          // empty is not wrong and not correct
+          continue;
+        }
+        const accepted = (b.acceptedAnswers || []).map(a => (a || '').toString());
+        const match = b.caseSensitive
+          ? accepted.includes(raw)
+          : accepted.map(a => a.toLowerCase()).includes(raw.toLowerCase());
+        if (match) correctCount += 1;
+        else hasWrong = true;
+      }
+
+      if (hasWrong) return allowNegative ? (negativeFactor * points) : 0;
+      if (correctCount === total) return points;
+      if (correctCount > 0 && allowPartial) return (correctCount / Math.max(total, 1)) * points;
+      return 0;
+    }
+
+    // Default: MULTIPLE_CHOICE logic
     const correct = new Set(q.correctOptionIds);
     const selected = new Set(q.selectedOptionIds);
-    // If any wrong option is selected -> 0
+    let hasWrong = false;
+    let correctCount = 0;
     for (const id of selected) {
-      if (!correct.has(id)) return 0;
+      if (!correct.has(id)) hasWrong = true;
+      else correctCount += 1;
     }
-    // Exact match required: all correct selected and no extras
-    if (selected.size === correct.size) {
-      for (const id of correct) {
-        if (!selected.has(id)) return 0;
-      }
-      return points; // full marks
-    }
-    return 0; // partial selections without wrong -> still 0
+    const total = correct.size;
+    if (hasWrong) return allowNegative ? (negativeFactor * points) : 0;
+    if (correctCount === total) return points;
+    if (correctCount > 0 && allowPartial) return (correctCount / Math.max(total, 1)) * points;
+    return 0;
   };
 
   const doSearch = async () => {
@@ -1139,7 +1188,7 @@ export default function ViewResult() {
                             <td className="p-2 text-xs text-gray-700">{r.enrollmentNumber || '—'}</td>
                           </>
                         )}
-                        <td className="p-2">{r.marksObtained} / {r.numDisplayedQuestions ?? '—'}</td>
+                        <td className="p-2">{r.marksObtained} / {r.totalPoints ?? '—'}</td>
                         <td className="p-2">{r.durationMinutes ?? '—'} min</td>
                         <td className="p-2">{fmtDT(r.startTime)}</td>
                         <td className="p-2">{fmtDT(r.endTime)}</td>
@@ -1176,7 +1225,7 @@ export default function ViewResult() {
                       <div>Student: {detail.summary.student.name} ({detail.summary.student.enrollmentNumber})</div>
                       <div>Email: {detail.summary.student.email} | Section: {detail.summary.student.section}</div>
                       <div>Start: {fmtDT(detail.summary.timing.startTime)} | End: {fmtDT(detail.summary.timing.endTime)} | Duration: {detail.summary.timing.durationMinutes} min</div>
-                      <div>Score: {detail.summary.scoring.marksObtained} / {detail.summary.numDisplayedQuestions ?? '—'} {detail.summary.scoring.percentage !== null ? `(${detail.summary.scoring.percentage}%)` : ''}</div>
+                      <div>Score: {detail.summary.scoring.marksObtained} / {detail.summary.scoring.totalMarks ?? '—'} {detail.summary.scoring.percentage !== null ? `(${detail.summary.scoring.percentage}%)` : ''}</div>
                       {(
                         detail.summary.scoring.easyCorrect != null ||
                         detail.summary.scoring.mediumCorrect != null ||
@@ -1210,7 +1259,7 @@ export default function ViewResult() {
                           <div className="flex items-start justify-between gap-3">
                             <div className="font-medium text-black">Q{q.index}. <LatexInline text={q.questionText} /></div>
                             {(() => {
-                              const earned = computeEarned(q);
+                              const earned = computeEarned(q, detail.summary.meta?.allowPartialMarking, detail.summary.meta?.allowNegativeMarking);
                               const isCorrect = earned > 0;
                               const textColor = isCorrect ? 'text-emerald-800' : 'text-rose-800';
                               const bgColor = isCorrect ? 'bg-emerald-200' : 'bg-rose-200';
@@ -1236,26 +1285,58 @@ export default function ViewResult() {
                               <img src={q.imageUrl} alt="question" className="max-h-64 rounded-lg" />
                             </div>
                           )}
-                          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
-                            {q.options.map(o => (
-                              <div
-                                key={o.id}
-                                className={`px-3 py-2 rounded-lg border text-sm ${o.isCorrect ? 'border-emerald-400 bg-emerald-50' : o.isSelected ? 'border-rose-400 bg-rose-50' : 'border-gray-200 bg-white'}`}
-                              >
-                                <div className="flex items-center justify-between gap-2">
-                                  <LatexInline text={o.text} />
-                                  <div className="flex items-center gap-1 text-xs">
-                                    {o.isCorrect && (
-                                      <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">Correct</span>
-                                    )}
-                                    {o.isSelected && (
-                                      <span className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">Selected</span>
-                                    )}
+                          {q.questionType === 'FILL_BLANK' ? (
+                            <div className="mt-3 space-y-2">
+                              {(q.blanks || []).map((b) => {
+                                const studentAns = (q.fibAnswer?.blanks || []).find(x => x.blankIndex === b.blankIndex)?.answerText || '';
+                                const accepted = (b.acceptedAnswers || []);
+                                const matched = studentAns === '' ? false : (b.caseSensitive
+                                  ? accepted.includes(studentAns)
+                                  : accepted.map(a => a.toLowerCase()).includes(studentAns.toLowerCase()));
+                                return (
+                                  <div key={b.blankIndex} className="px-3 py-2 rounded-lg border text-sm bg-white">
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <span className="font-medium">Blank {b.blankIndex}:</span>{' '}
+                                        <span>Accepted: {accepted.length ? accepted.join(', ') : '—'}</span>
+                                      </div>
+                                      <div className="text-xs">
+                                        {studentAns === '' ? (
+                                          <span className="px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-800 border border-gray-200">Unanswered</span>
+                                        ) : matched ? (
+                                          <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">Correct</span>
+                                        ) : (
+                                          <span className="px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">Incorrect</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="mt-1 text-xs text-gray-700">Your answer: {studentAns || '—'}</div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                              {q.options.map(o => (
+                                <div
+                                  key={o.id}
+                                  className={`px-3 py-2 rounded-lg border text-sm ${o.isCorrect ? 'border-emerald-400 bg-emerald-50' : o.isSelected ? 'border-rose-400 bg-rose-50' : 'border-gray-200 bg-white'}`}
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <LatexInline text={o.text} />
+                                    <div className="flex items-center gap-1 text-xs">
+                                      {o.isCorrect && (
+                                        <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">Correct</span>
+                                      )}
+                                      {o.isSelected && (
+                                        <span className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">Selected</span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
-                          </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

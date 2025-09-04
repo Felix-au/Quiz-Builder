@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import { Link } from "react-router-dom";
-import { PlusCircle, PlayCircle, BarChart3, ShieldCheck, Brain, Eye, FileDown, Timer, Sun, Moon } from "lucide-react";
+import { PlusCircle, PlayCircle, BarChart3, ShieldCheck, Brain, Eye, FileDown, Timer, Sun, Moon, Users } from "lucide-react";
 import VideoGallery from "./VideoGallery";
+import TestimonialsSection from "./TestimonialsSection";
 import { useTheme } from "@/contexts/ThemeContext";
 
 // ------------------------------
@@ -229,6 +230,16 @@ export default function HomePage() {
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const handleScrollToTestimonials = () => {
+    const el = document.getElementById("testimonials");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleScrollToHero = () => {
+    const el = document.getElementById("hero");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const { innerWidth, innerHeight } = window;
     const nx = e.clientX / innerWidth - 0.5;
@@ -384,7 +395,7 @@ export default function HomePage() {
         <div className="container flex flex-col justify-center px-4">
           {/* Desktop Header */}
           <div className="hidden md:flex items-center justify-between h-20">
-            <div className="flex items-center gap-3 cursor-pointer h-full">
+            <div className="flex items-center gap-3 cursor-pointer h-full" onClick={handleScrollToHero} role="button" aria-label="Go to top">
               <img
                 src={isDark ? "/logo1dark.png" : "/logo1light.png"}
                 alt="PrashnaSetu Logo"
@@ -401,6 +412,13 @@ export default function HomePage() {
                   View Results
                 </button>
               </Link>
+              <button
+                onClick={handleScrollToTestimonials}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold shadow focus-visible:ring-2 border transition cursor-pointer select-none ${tone.gray}`}
+              >
+                <Users className="w-5 h-5" />
+                Testimonials
+              </button>
               <button
                 onClick={handleScrollToVideo}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold shadow focus-visible:ring-2 border transition cursor-pointer select-none ${tone.indigo}`}
@@ -505,7 +523,7 @@ export default function HomePage() {
           {/* Mobile Header */}
           <div className="md:hidden py-3">
             <div className="flex items-center justify-between mb-2 h-16">
-              <div className="flex items-center gap-2 cursor-pointer h-full">
+              <div className="flex items-center gap-2 cursor-pointer h-full" onClick={handleScrollToHero} role="button" aria-label="Go to top">
                 <img
                   src={isDark ? "/logo1dark.png" : "/logo1light.png"}
                   alt="PrashnaSetu Logo"
@@ -557,6 +575,13 @@ export default function HomePage() {
                   View Results
                 </button>
               </Link>
+              <button
+                onClick={handleScrollToTestimonials}
+                className={`px-3 py-1 rounded font-medium border flex items-center gap-1 ${tone.gray}`}
+              >
+                <Users className="w-4 h-4" />
+                Testimonials
+              </button>
               <button
                 onClick={handleScrollToVideo}
                 className={`px-3 py-1 rounded font-medium border flex items-center gap-1 ${tone.indigo}`}
@@ -611,7 +636,7 @@ export default function HomePage() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center px-4 pt-36 pb-12">
         {/* Hero wrapper: fills the viewport (minus header height) */}
-        <section className="min-h-[calc(100vh-80px)] md:snap-start md:snap-always flex flex-col justify-center">
+        <section id="hero" className="min-h-[calc(100vh-80px)] md:snap-start md:snap-always flex flex-col justify-center">
         {/* Title & Tagline (no card) */}
         <div className="w-full max-w-4xl mx-auto text-center mb-6">
           <h1 className={`text-4xl md:text-5xl font-extrabold tracking-tight ${themes[theme].headerText}`}>PrashnaSetu</h1>
@@ -681,6 +706,13 @@ export default function HomePage() {
         </div>
         </section>
 
+        {/* Testimonials Section */}
+        <section id="testimonials" className="w-full max-w-6xl mx-auto mt-12 md:mt-0 md:min-h-[calc(100vh-80px)] md:flex md:flex-col md:justify-center md:snap-center md:snap-always">
+          <br></br><br></br>
+          <h3 className={`text-3xl font-bold text-center mb-6 ${themes[theme].headerText}`}>What Our Users Say</h3>
+          <TestimonialsSection onDark={isDark} />
+        </section>
+
         {/* Salient Features */}
         <section className="w-full max-w-6xl mx-auto min-h-screen md:snap-start md:snap-always flex items-center">
           <div className="w-full">
@@ -705,7 +737,6 @@ export default function HomePage() {
             </div>
           </div>
         </section>
-        
 
         {/* Video Gallery at the end */}
         <section id="video-gallery" className="w-full max-w-6xl mx-auto mt-12 md:mt-0 md:min-h-[calc(100vh-80px)] md:flex md:flex-col md:justify-center md:snap-center md:snap-always">

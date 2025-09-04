@@ -105,6 +105,22 @@ function buildDetailDTO(attempt, quiz) {
       const hasWrongSelected = selected.some(id => !correctIds.includes(id));
       const isCorrect = !hasWrongSelected && selected.length === correctIds.length && selected.every(id => correctIds.includes(id));
 
+      // FIB: prepare student's answers for this question
+      let fibAnswer = null;
+      if (q.questionType === 'FILL_BLANK') {
+        const fib = (attempt.fibAnswers || []).find(f => asNumberOrLong(f.questionId) === qid);
+        if (fib && Array.isArray(fib.blanks)) {
+          fibAnswer = {
+            blanks: fib.blanks.map(b => ({
+              blankIndex: asNumberOrLong(b.blankIndex),
+              answerText: (b.answerText ?? '').toString(),
+            }))
+          };
+        } else {
+          fibAnswer = { blanks: [] };
+        }
+      }
+
       return {
         index: idx + 1,
         questionId: qid,
@@ -114,6 +130,12 @@ function buildDetailDTO(attempt, quiz) {
         difficulty: q.difficulty || null,
         topic: q.topic || null,
         subject: q.subject || quiz.subject || null,
+        questionType: q.questionType || null,
+        blanks: Array.isArray(q.blanks) ? q.blanks.map(b => ({
+          blankIndex: asNumberOrLong(b.blankIndex),
+          acceptedAnswers: Array.isArray(b.acceptedAnswers) ? b.acceptedAnswers.map(x => (x ?? '').toString()) : [],
+          caseSensitive: !!b.caseSensitive,
+        })) : [],
         options: (q.options || []).map(o => {
           const oid = asNumberOrLong(o.id);
           return {
@@ -126,6 +148,7 @@ function buildDetailDTO(attempt, quiz) {
         isCorrect,
         selectedOptionIds: selected,
         correctOptionIds: correctIds,
+        fibAnswer,
       };
     })
     .filter(Boolean);
@@ -174,6 +197,8 @@ function buildDetailDTO(attempt, quiz) {
         fullScreenFaults: attempt.fullScreenFaults,
         status: attempt.status,
         showDetailedResult: typeof quiz.showDetailedResult === 'boolean' ? quiz.showDetailedResult : true,
+        allowPartialMarking: !!quiz.allowPartialMarking,
+        allowNegativeMarking: !!quiz.allowNegativeMarking,
       }
     },
     questions,
@@ -319,6 +344,7 @@ async function main() {
           quizCode: quiz.quizCode || null,
           subject: quiz.subject || null,
           numDisplayedQuestions: quiz.numDisplayedQuestions ?? null,
+          totalPoints: quiz.totalPoints ?? null,
           instructorName: quiz.instructorName || null,
           course: quiz.course || null,
           startTime: a.startTime,
@@ -386,6 +412,7 @@ async function main() {
           quizCode: quiz?.quizCode || null,
           subject: quiz?.subject || null,
           numDisplayedQuestions: quiz?.numDisplayedQuestions ?? null,
+          totalPoints: quiz?.totalPoints ?? null,
           instructorName: quiz?.instructorName || null,
           course: quiz?.course || null,
           startTime: a.startTime,
