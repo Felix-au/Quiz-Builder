@@ -1280,6 +1280,7 @@ export default function ViewResult() {
                           <div className="text-xs text-gray-700 mt-0.5">Course Outcome and Bloom's Taxonomy: {q.topic || '—'}</div>
                           <div className="text-xs text-gray-700 mt-0.5">Topic: {q.subject || '—'}</div>
                           <div className="text-xs text-gray-700 mt-0.5">Difficulty: {q.difficulty || '—'}</div>
+                          <div className="text-xs text-gray-700 mt-0.5">Marks: {q.points}</div>
                           {q.imageUrl && (
                             <div className="mt-2">
                               <img src={q.imageUrl} alt="question" className="max-h-64 rounded-lg" />

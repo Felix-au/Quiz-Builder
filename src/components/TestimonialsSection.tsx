@@ -34,6 +34,13 @@ const testimonials = [
     institution: "GG",
     image: "/profiles/profile2.jpg",
     quote: "Implementation was seamless, and the proctoring features ensure academic integrity. Our faculty loves the user-friendly design.",
+  },
+  {
+    name: "Dr. Palak Goel",
+    role: "Assistant Professor",
+    institution: "School of Engineering & Technology",
+    image: "/profiles/palakgoel.png",
+    quote: "I used Prashnasetu for conducting a Mathematics quiz, and it was a smooth and efficient experience, an excellent tool for academic assessments. Thanks to Dr. Kiran Sharma and the team for their efforts.",
   }
 ];
 
