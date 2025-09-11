@@ -243,6 +243,19 @@ async function main() {
     }
   });
 
+  // GET by id (public)
+  app.get('/api/testimonials/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const doc = await testimonialsCol.findOne({ _id: new ObjectId(id) });
+      if (!doc) return res.status(404).json({ error: 'not found' });
+      const v = doc;
+      res.json({ _id: v._id?.toString?.(), name: v.name, role: v.role, institution: v.institution, image: v.image, quote: v.quote });
+    } catch (e) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   // Admin: password helpers and middleware
   async function getAdminPasswordDoc() {
     try {
