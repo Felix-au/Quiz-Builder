@@ -293,6 +293,28 @@ const Screen3: React.FC<Screen3Props> = (props) => {
             seen.add(norm);
           }
           if (hasDuplicate) missingFields.push('MCQ: No two options should be completely identical');
+        } else if (qType === 'FILL_BLANK') {
+          // FIB validations: each blank should have at least one accepted answer
+          // Support both camelCase and snake_case shapes used in the editor
+          const blanks = Array.isArray(q.blanks) ? q.blanks : [];
+          const blanksWithoutAnswers: number[] = [];
+          blanks.forEach((b: any, idxZero: number) => {
+            const acceptedRaw = Array.isArray(b?.acceptedAnswers)
+              ? b.acceptedAnswers
+              : (Array.isArray(b?.accepted_answers) ? b.accepted_answers : []);
+            const nonEmpty = acceptedRaw
+              .map((a: any) => (a ?? '').toString().trim())
+              .filter((s: string) => s.length > 0);
+            if (nonEmpty.length === 0) {
+              const idx = (typeof b?.blankIndex === 'number' ? b.blankIndex
+                : (typeof b?.blank_index === 'number' ? b.blank_index
+                : (idxZero + 1)));
+              blanksWithoutAnswers.push(idx);
+            }
+          });
+          if (blanks.length > 0 && blanksWithoutAnswers.length > 0) {
+            missingFields.push(`FIB: Add at least one accepted answer for blank(s): ${blanksWithoutAnswers.join(', ')}`);
+          }
         }
         return { index: idx + 1, id: q.id, missingFields };
       })

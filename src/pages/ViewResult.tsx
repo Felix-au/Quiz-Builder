@@ -14,7 +14,7 @@ import { Sun, Moon } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { saveAs } from 'file-saver';
 
-const API_BASE = import.meta.env.VITE_RESULTS_API_URL || "https://result-xxa7.onrender.com";
+const API_BASE = import.meta.env.VITE_RESULTS_API_URL || "https://result-ocy1.onrender.com";
 
 type SearchResultItem = {
   _id: string | null;

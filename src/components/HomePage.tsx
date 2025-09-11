@@ -204,8 +204,8 @@ export default function HomePage() {
       }
     };
     // Render services
-    ping('https://quiz-builder-9afc.onrender.com', 'Email'); // email service
-    ping('https://result-xxa7.onrender.com', 'Result'); // results service
+    ping('https://quiz-builder-d06p.onrender.com', 'Email'); // email service
+    ping('https://result-ocy1.onrender.com', 'Result'); // results service
     return () => {
       clearTimeout(timeout);
       controller.abort();
@@ -412,13 +412,7 @@ export default function HomePage() {
                   View Results
                 </button>
               </Link>
-              <button
-                onClick={handleScrollToTestimonials}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold shadow focus-visible:ring-2 border transition cursor-pointer select-none ${tone.gray}`}
-              >
-                <Users className="w-5 h-5" />
-                Testimonials
-              </button>
+              
               <button
                 onClick={handleScrollToVideo}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold shadow focus-visible:ring-2 border transition cursor-pointer select-none ${tone.indigo}`}
@@ -476,13 +470,7 @@ export default function HomePage() {
     ))}
   </div>
 </div>
-              <Link to="/credits">
-                <button className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold shadow focus-visible:ring-2 border transition ${tone.green}`}>
-  {/* Mail/Contact icon for Credits & Contact */}
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 8.5V18a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 18V8.5m18 0A2.5 2.5 0 0018.5 6h-13A2.5 2.5 0 003 8.5m18 0V6a2 2 0 00-2-2H5a2 2 0 00-2 2v2.5m18 0l-9 6.5-9-6.5" /></svg>
-  Contact Us
-</button>
-              </Link>
+              
               <motion.button
                 whileTap={reduceMotion ? undefined : { scale: 0.95 }}
                 onClick={() => setTheme(targetTheme)}
@@ -575,13 +563,7 @@ export default function HomePage() {
                   View Results
                 </button>
               </Link>
-              <button
-                onClick={handleScrollToTestimonials}
-                className={`px-3 py-1 rounded font-medium border flex items-center gap-1 ${tone.gray}`}
-              >
-                <Users className="w-4 h-4" />
-                Testimonials
-              </button>
+              
               <button
                 onClick={handleScrollToVideo}
                 className={`px-3 py-1 rounded font-medium border flex items-center gap-1 ${tone.indigo}`}
@@ -625,9 +607,7 @@ export default function HomePage() {
     ))}
   </div>
 </div>
-              <Link to="/credits">
-                <button className={`px-3 py-1 rounded font-medium border ${tone.green}`}>Contact Us</button>
-              </Link>
+              
             </div>
           </div>
         </div>
@@ -785,14 +765,32 @@ export default function HomePage() {
       </AnimatePresence>
 
       {/* Footer Desktop */}
-      <div className={`hidden md:block fixed bottom-0 left-0 w-full ${footerShell} py-3 text-center text-xs ${footerText} z-50 shadow-lg`}>
-        <p>© Copyrighted by CAD-CS, BML Munjal University</p>
+      <div className={`hidden md:flex fixed bottom-0 left-0 w-full ${footerShell} py-3 items-center justify-center px-6 text-xs ${footerText} z-50 shadow-lg`}>
+        <div className="flex items-center gap-3">
+          <Link to="/credits" className="hover:underline">
+            <span className="inline-flex items-center gap-1.5 transform translate-y-[5%]">
+              <Users className="w-4 h-4" />
+              Team
+            </span>
+          </Link>
+          <span className="opacity-60">|</span>
+          <span>© Copyrighted by CAD-CS, BML Munjal University</span>
         </div>
+      </div>
 
       {/* Footer Mobile */}
-      <div className={`md:hidden text-center text-xs ${footerText} mt-6 mb-2 ${footerShell} shadow`}>
-        <p>© Copyrighted by CAD-CS, BML Munjal University</p>
+      <div className={`md:hidden ${footerShell} ${footerText} shadow fixed bottom-0 left-0 w-full`}> 
+        <div className="flex items-center justify-center gap-3 py-2 text-xs">
+          <Link to="/credits" className="hover:underline">
+            <span className="inline-flex items-center gap-1.5 transform translate-y-[5%]">
+              <Users className="w-4 h-4" />
+              Team
+            </span>
+          </Link>
+          <span className="opacity-60">|</span>
+          <span>© Copyrighted by CAD-CS, BML Munjal University</span>
         </div>
+      </div>
     </div>
   );
 }

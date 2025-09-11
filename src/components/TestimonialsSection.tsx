@@ -13,7 +13,7 @@ type Testimonial = {
   quote: string;
 };
 
-const API_BASE = import.meta.env.VITE_RESULTS_API_URL || "https://result-xxa7.onrender.com";
+const API_BASE = import.meta.env.VITE_RESULTS_API_URL || "https://result-ocy1.onrender.com";
 
 export default function TestimonialsSection({ onDark = false }: { onDark?: boolean }) {
   const [current, setCurrent] = useState(0);

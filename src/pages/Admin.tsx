@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 
-const API_BASE = import.meta.env.VITE_RESULTS_API_URL || "https://result-xxa7.onrender.com";
+const API_BASE = import.meta.env.VITE_RESULTS_API_URL || "https://result-ocy1.onrender.com";
 
 type Testimonial = {
   _id?: string;

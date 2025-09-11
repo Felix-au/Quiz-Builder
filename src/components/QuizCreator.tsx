@@ -2192,7 +2192,7 @@ const QuizCreator = () => {
             variant: 'destructive',
           });
         } else {
-          const response = await fetch('https://quiz-builder-9afc.onrender.com/send-quiz-email', {
+          const response = await fetch('https://quiz-builder-d06p.onrender.com/send-quiz-email', {
             method: 'POST',
             body: formData,
           });
