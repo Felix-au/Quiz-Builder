@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sun, Moon } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { saveAs } from 'file-saver';
 
 const API_BASE = import.meta.env.VITE_RESULTS_API_URL || "https://result-xxa7.onrender.com";
 
@@ -243,6 +244,89 @@ export default function ViewResult() {
     }
     return arr;
   }, [results, isInstructorView, instFilters, sortBy, sortDir]);
+
+  // Export helpers (Instructor view only)
+  const exportRows = React.useMemo(() => {
+    if (!isInstructorView) return [] as any[];
+    return displayedResults.map(r => ({
+      QuizName: r.quizName ?? '',
+      QuizCode: r.quizCode ?? '',
+      Subject: r.subject ?? '',
+      StudentName: r.studentName ?? '',
+      StudentEmail: r.studentEmail ?? '',
+      EnrollmentNumber: r.enrollmentNumber ?? '',
+      Course: r.course ?? '',
+      StartTime: r.startTime ?? '',
+      EndTime: r.endTime ?? '',
+      DurationMinutes: r.durationMinutes ?? null,
+      MarksObtained: r.marksObtained ?? null,
+      MaximumMarks: r.totalPoints ?? null,
+    }));
+  }, [displayedResults, isInstructorView]);
+
+  const getExportBaseName = () => {
+    const date = new Date();
+    const stamp = date.toISOString().slice(0,19).replace(/[:T]/g, '-');
+    let base = 'results';
+    if (isInstructorView && quizNameInput.trim()) {
+      base = quizNameInput.trim().replace(/\s+/g, '_').replace(/[^A-Za-z0-9_-]/g, '');
+    }
+    return `${base}_${stamp}`;
+  };
+
+  const exportJSON = () => {
+    if (!exportRows.length) return;
+    const blob = new Blob([JSON.stringify(exportRows, null, 2)], { type: 'application/json;charset=utf-8' });
+    saveAs(blob, `${getExportBaseName()}.json`);
+  };
+
+  const toCSV = (rows: any[]) => {
+    if (!rows.length) return '';
+    const headers = Object.keys(rows[0]);
+    const escape = (val: any) => {
+      if (val === null || val === undefined) return '';
+      const str = String(val);
+      // Escape quotes by doubling them, wrap in quotes if contains comma, quote, or newline
+      const needsQuote = /[",\n\r]/.test(str);
+      const s = str.replace(/"/g, '""');
+      return needsQuote ? `"${s}"` : s;
+    };
+    const lines = [headers.join(',')];
+    for (const row of rows) {
+      lines.push(headers.map(h => escape((row as any)[h])).join(','));
+    }
+    // Prepend BOM for Excel UTF-8
+    return '\uFEFF' + lines.join('\r\n');
+  };
+
+  const exportCSV = () => {
+    if (!exportRows.length) return;
+    const csv = toCSV(exportRows);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    saveAs(blob, `${getExportBaseName()}.csv`);
+  };
+
+  // Simple Excel export using HTML table (.xls) compatible with Excel
+  const exportExcel = () => {
+    if (!exportRows.length) return;
+    const headers = Object.keys(exportRows[0]);
+    const escapeHtml = (s: any) => String(s ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+    const rowsHtml = exportRows.map(r => `
+      <tr>${headers.map(h => `<td>${escapeHtml((r as any)[h])}</td>`).join('')}</tr>
+    `).join('');
+    const table = `<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>Export</title></head><body>
+      <table border=\"1\"><thead><tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>
+      <tbody>${rowsHtml}</tbody></table>
+    </body></html>`;
+    const blob = new Blob([table], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    // Use .xls so Excel opens directly
+    saveAs(blob, `${getExportBaseName()}.xls`);
+  };
 
   const toggleSort = (key: NonNullable<typeof sortBy>) => {
     if (sortBy === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
@@ -1207,6 +1291,60 @@ export default function ViewResult() {
               </div>
             )}
           </div>
+
+          {/* Floating export buttons (Instructor view only) */}
+          {isInstructorView && displayedResults.length > 0 && (
+            <div className="fixed bottom-16 right-6 z-50 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={exportCSV}
+                className="h-10 px-4 rounded-full shadow-lg bg-indigo-600 text-white hover:bg-indigo-700 border border-white/20 flex items-center gap-2"
+                title="Export as CSV"
+                aria-label="Export as CSV"
+              >
+                {/* CSV icon: file with folded corner + columns + download arrow */}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-4 w-4">
+                  {/* file */}
+                  <path d="M6 3h7l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="currentColor" opacity="0.9"/>
+                  <path d="M13 3v5a2 2 0 0 0 2 2h5" fill="none" stroke="white" strokeWidth="1.2" opacity="0.7"/>
+                  {/* grid bars to suggest CSV columns */}
+                  <rect x="7.2" y="10" width="2.2" height="6.5" rx="0.6" fill="#ffffff" opacity="0.9"/>
+                  <rect x="10.8" y="10" width="2.2" height="6.5" rx="0.6" fill="#ffffff" opacity="0.9"/>
+                  <rect x="14.4" y="10" width="2.2" height="6.5" rx="0.6" fill="#ffffff" opacity="0.9"/>
+                  {/* download arrow */}
+                  <path d="M12 8v3m0 0l-1.8-1.8M12 11l1.8-1.8" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                CSV
+              </button>
+              <button
+                type="button"
+                onClick={exportExcel}
+                className="h-10 px-4 rounded-full shadow-lg bg-emerald-600 text-white hover:bg-emerald-700 border border-white/20 flex items-center gap-2"
+                title="Export as Excel (.xls)"
+                aria-label="Export as Excel (.xls)"
+              >
+                {/* Excel icon (X) */}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-4 w-4">
+                  <rect x="3" y="4" width="18" height="16" rx="2" fill="#065f46" className="opacity-30" />
+                  <path d="M8 8l3.5 4L8 16m8-8l-3.5 4L16 16" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                </svg>
+                Excel
+              </button>
+              <button
+                type="button"
+                onClick={exportJSON}
+                className="h-10 px-4 rounded-full shadow-lg bg-gray-900 text-white hover:bg-black border border-white/20 flex items-center gap-2"
+                title="Export as JSON"
+                aria-label="Export as JSON"
+              >
+                {/* JSON icon ({}) */}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-4 w-4">
+                  <path d="M9 7c-2 0-3 1-3 3v1c0 1-1 2-2 2m5 4c-2 0-3-1-3-3v-1c0-1-1-2-2-2M15 7c2 0 3 1 3 3v1c0 1 1 2 2 2m-5 4c2 0 3-1 3-3v-1c0-1 1-2 2-2" stroke="white" strokeWidth="1.6" fill="none" strokeLinecap="round"/>
+                </svg>
+                JSON
+              </button>
+            </div>
+          )}
 
           {/* Detail section */}
           {selectedAttemptId !== null && (

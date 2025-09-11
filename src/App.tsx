@@ -11,6 +11,7 @@ import QuizCreator from "@/components/QuizCreator";
 import NotFound from "./pages/NotFound";
 import ViewResult from "./pages/ViewResult";
 import Credits from "@/components/Credits";
+import Admin from "@/pages/Admin";
 import { toast } from "@/components/ui/use-toast";
 import React from "react";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -49,6 +50,7 @@ const AppContent = () => {
         <Route path="/" element={<HomePage />} />
         <Route path="/home" element={<LoginScreen />} />
         <Route path="/results" element={<ViewResult />} />
+        <Route path="/admin" element={<Admin />} />
         <Route path="/credits" element={<Credits />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -60,6 +62,7 @@ const AppContent = () => {
       <Route path="/" element={<HomePage />} />
       <Route path="/home" element={<QuizCreator />} />
       <Route path="/results" element={<ViewResult />} />
+      <Route path="/admin" element={<Admin />} />
       <Route path="/credits" element={<Credits />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

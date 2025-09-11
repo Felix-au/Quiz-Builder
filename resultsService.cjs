@@ -217,6 +217,8 @@ async function main() {
   const attemptsCol = db.collection(COLL_ATTEMPTS);
   const quizzesCol = db.collection(COLL_QUIZZES);
   const userSyncCol = db.collection('user_sync');
+  const testimonialsCol = db.collection('testimonials');
+  const adminPwdCol = db.collection('password');
   // Ensure index on emailLower for fast lookups and uniqueness
   try {
     await userSyncCol.createIndex({ emailLower: 1 }, { unique: true, name: 'emailLower_unique' });
@@ -237,6 +239,123 @@ async function main() {
       res.json({ quizzes: results.map(r => ({ quizId: asNumberOrLong(r.quizId), quizName: r.quizName, quizCode: r.quizCode })) });
     } catch (err) {
       console.error('Suggest error:', err);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Admin: password helpers and middleware
+  async function getAdminPasswordDoc() {
+    try {
+      // Try known _id first (from spec), fallback to first doc
+      const knownId = '68c3333bbdafdec6239add7d';
+      let doc = null;
+      try { doc = await adminPwdCol.findOne({ _id: new ObjectId(knownId) }); } catch (_) {}
+      if (!doc) doc = await adminPwdCol.findOne({});
+      return doc;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function verifyAdmin(req, res, next) {
+    try {
+      const provided = (req.headers['x-admin-password'] || req.body?.password || req.query?.password || '').toString();
+      if (!provided) return res.status(401).json({ error: 'admin password required' });
+      const doc = await getAdminPasswordDoc();
+      if (!doc) return res.status(500).json({ error: 'admin password not configured' });
+      if (provided !== doc.password) return res.status(401).json({ error: 'invalid admin password' });
+      return next();
+    } catch (e) {
+      return res.status(500).json({ error: 'verification failed' });
+    }
+  }
+
+  // GET admin password document (as requested)
+  app.get('/api/admin/password', async (_req, res) => {
+    try {
+      const doc = await getAdminPasswordDoc();
+      if (!doc) return res.status(404).json({ error: 'not found' });
+      return res.json({ password: doc.password, _id: doc._id?.toString?.() });
+    } catch (e) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Optional: explicit verify endpoint
+  app.post('/api/admin/verify', async (req, res) => {
+    try {
+      const provided = (req.body?.password || '').toString();
+      const doc = await getAdminPasswordDoc();
+      if (!doc) return res.status(404).json({ ok: false, error: 'not configured' });
+      return res.json({ ok: provided === doc.password });
+    } catch (e) {
+      res.status(500).json({ ok: false });
+    }
+  });
+
+  // Testimonials CRUD
+  // GET: public list (no password required for viewing)
+  app.get('/api/testimonials', async (_req, res) => {
+    try {
+      const rows = await testimonialsCol.find({}).sort({ _id: -1 }).toArray();
+      const data = rows.map(r => ({
+        _id: r._id?.toString?.(),
+        name: r.name || '',
+        role: r.role || '',
+        institution: r.institution || '',
+        image: r.image || '',
+        quote: r.quote || '',
+      }));
+      res.json({ testimonials: data });
+    } catch (e) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // CREATE
+  app.post('/api/testimonials', verifyAdmin, async (req, res) => {
+    try {
+      const { name, role, institution, image, quote } = req.body || {};
+      const doc = {
+        name: (name || '').toString(),
+        role: (role || '').toString(),
+        institution: (institution || '').toString(),
+        image: (image || '').toString(),
+        quote: (quote || '').toString(),
+        createdAt: new Date(),
+      };
+      const r = await testimonialsCol.insertOne(doc);
+      res.json({ _id: r.insertedId?.toString?.(), ...doc });
+    } catch (e) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // UPDATE
+  app.put('/api/testimonials/:id', verifyAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const patch = {};
+      ['name','role','institution','image','quote'].forEach(k => {
+        if (req.body?.[k] != null) patch[k] = String(req.body[k]);
+      });
+      const r = await testimonialsCol.findOneAndUpdate({ _id: new ObjectId(id) }, { $set: patch }, { returnDocument: 'after' });
+      if (!r.value) return res.status(404).json({ error: 'not found' });
+      const v = r.value;
+      res.json({ _id: v._id?.toString?.(), name: v.name, role: v.role, institution: v.institution, image: v.image, quote: v.quote });
+    } catch (e) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // DELETE
+  app.delete('/api/testimonials/:id', verifyAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const r = await testimonialsCol.deleteOne({ _id: new ObjectId(id) });
+      if (!r.deletedCount) return res.status(404).json({ error: 'not found' });
+      res.json({ ok: true });
+    } catch (e) {
       res.status(500).json({ error: 'Internal server error' });
     }
   });

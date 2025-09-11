@@ -272,6 +272,28 @@ const Screen3: React.FC<Screen3Props> = (props) => {
         if (!q.question || q.question.trim() === '') missingFields.push('Question Text');
         if (!q.difficulty || q.difficulty === 'N/A') missingFields.push('Difficulty');
         if (!q.subject || q.subject === 'N/A' || q.subject === '') missingFields.push('Topic');
+        // Additional MCQ validations
+        const qType = q.question_type || 'MULTIPLE_CHOICE';
+        if (qType === 'MULTIPLE_CHOICE') {
+          const options = Array.isArray(q.options) ? q.options : [];
+          const hasCorrect = options.some((o: any) => !!o.is_correct);
+          if (!hasCorrect) missingFields.push('MCQ: At least one option should be marked correct');
+
+          // Check duplicate option texts (case-insensitive, trimmed, collapsed spaces)
+          const seen = new Set<string>();
+          let hasDuplicate = false;
+          for (const o of options) {
+            const norm = (o?.option_text ?? '')
+              .toString()
+              .trim()
+              .replace(/\s+/g, ' ')
+              .toLowerCase();
+            if (!norm) continue; // ignore empty options for duplicate check
+            if (seen.has(norm)) { hasDuplicate = true; break; }
+            seen.add(norm);
+          }
+          if (hasDuplicate) missingFields.push('MCQ: No two options should be completely identical');
+        }
         return { index: idx + 1, id: q.id, missingFields };
       })
       .filter(item => item.missingFields.length > 0);
