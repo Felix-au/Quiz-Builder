@@ -344,22 +344,7 @@ async function main() {
     }
   });
 
-  // UPDATE
-  app.put('/api/testimonials/:id', verifyAdmin, async (req, res) => {
-    try {
-      const { id } = req.params;
-      const patch = {};
-      ['name','role','institution','image','quote'].forEach(k => {
-        if (req.body?.[k] != null) patch[k] = String(req.body[k]);
-      });
-      const r = await testimonialsCol.findOneAndUpdate({ _id: new ObjectId(id) }, { $set: patch }, { returnDocument: 'after' });
-      if (!r.value) return res.status(404).json({ error: 'not found' });
-      const v = r.value;
-      res.json({ _id: v._id?.toString?.(), name: v.name, role: v.role, institution: v.institution, image: v.image, quote: v.quote });
-    } catch (e) {
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  });
+  // UPDATE endpoint removed as per requirements (no edit support)
 
   // DELETE
   app.delete('/api/testimonials/:id', verifyAdmin, async (req, res) => {

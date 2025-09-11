@@ -25,7 +25,6 @@ export default function Admin() {
   const [loading, setLoading] = React.useState(false);
 
   const [form, setForm] = React.useState<Testimonial>({ name: "", role: "", institution: "", image: "", quote: "" });
-  const [editingId, setEditingId] = React.useState<string | null>(null);
 
   const fetchItems = async () => {
     setLoading(true);
@@ -63,13 +62,12 @@ export default function Admin() {
 
   const resetForm = () => {
     setForm({ name: "", role: "", institution: "", image: "", quote: "" });
-    setEditingId(null);
   };
 
   const submit = async () => {
     setError(null);
-    const method = editingId ? 'PUT' : 'POST';
-    const url = editingId ? `${API_BASE}/api/testimonials/${editingId}` : `${API_BASE}/api/testimonials`;
+    const method = 'POST';
+    const url = `${API_BASE}/api/testimonials`;
     try {
       const resp = await fetch(url, {
         method,
@@ -88,11 +86,6 @@ export default function Admin() {
     } catch (e: any) {
       setError(e?.message || 'Failed to save');
     }
-  };
-
-  const edit = (t: Testimonial) => {
-    setEditingId(t._id || null);
-    setForm({ name: t.name || "", role: t.role || "", institution: t.institution || "", image: t.image || "", quote: t.quote || "" });
   };
 
   const del = async (id: string) => {
@@ -137,7 +130,7 @@ export default function Admin() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Form */}
             <div className="md:col-span-1 bg-white/80 text-black rounded-xl border p-4">
-              <h3 className="font-semibold mb-3">{editingId ? 'Edit' : 'Create'} Testimonial</h3>
+              <h3 className="font-semibold mb-3">Create Testimonial</h3>
               <div className="space-y-2">
                 <div>
                   <label className="block text-sm font-medium mb-1">Name</label>
@@ -160,8 +153,7 @@ export default function Admin() {
                   <textarea className="w-full rounded-lg border border-gray-300 px-3 py-2" rows={4} value={form.quote} onChange={e => setForm(f => ({ ...f, quote: e.target.value }))} />
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button onClick={submit}>{editingId ? 'Update' : 'Create'}</Button>
-                  {editingId && <Button variant="outline" onClick={resetForm}>Cancel</Button>}
+                  <Button onClick={submit}>Create</Button>
                 </div>
                 {error && <div className="mt-2 text-sm text-red-700 bg-red-100 border border-red-200 rounded px-3 py-2">{error}</div>}
               </div>
@@ -186,7 +178,6 @@ export default function Admin() {
                         <div className="text-sm mt-1">{t.quote}</div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" onClick={() => edit(t)}>Edit</Button>
                         <Button variant="destructive" onClick={() => del(t._id!)}>Delete</Button>
                       </div>
                     </div>

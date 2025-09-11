@@ -4,49 +4,22 @@ import { motion } from "framer-motion";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
-const testimonials = [
-  {
-    name: "Dr. Arun Kumar Poonia",
-    role: "Assistant Professor",
-    institution: "School of Engineering & Technology",
-    image: "/profiles/Arun-Kumar-Poonia-1-scaled.jpg",
-    quote:
-      "An Impactful green initiative - user friendly! Makes online quizzes more secure and ethical by incorporating anti -cheating mechanisms befitting Gen Z students!",
-  },
-  {
-    name: "Dr. Reena Kumari",
-    role: "Assistant Professor",
-    institution: "School of Management",
-    image: "/profiles/reenakumari.jpg",
-    quote:
-      "PrashnaSetu software has made the Quiz evaluations very fast and transparent process. It has successfully eradicated all unfair practices during Quiz Evaluations. It's user friendly for both the students and the faculties. I have personally used this for my Quiz evaluations. It has turned to be the best experience for me and as well as for my students.",
-  },
-  {
-    name: "Suresh Kumar",
-    role: "Assessment Coordinator",
-    institution: "GG",
-    image: "/profiles/profile2.jpg",
-    quote: "PrashnaSetu's multi-role access control and performance analytics have streamlined our entire assessment workflow.",
-  },
-  {
-    name: "James Wilson",
-    role: "IT Administrator",
-    institution: "GG",
-    image: "/profiles/profile2.jpg",
-    quote: "Implementation was seamless, and the proctoring features ensure academic integrity. Our faculty loves the user-friendly design.",
-  },
-  {
-    name: "Dr. Palak Goel",
-    role: "Assistant Professor",
-    institution: "School of Engineering & Technology",
-    image: "/profiles/palakgoel.png",
-    quote: "I used Prashnasetu for conducting a Mathematics quiz, and it was a smooth and efficient experience, an excellent tool for academic assessments. Thanks to Dr. Kiran Sharma and the team for their efforts.",
-  }
-];
+type Testimonial = {
+  _id?: string;
+  name: string;
+  role: string;
+  institution: string;
+  image: string;
+  quote: string;
+};
+
+const API_BASE = import.meta.env.VITE_RESULTS_API_URL || "https://result-xxa7.onrender.com";
 
 export default function TestimonialsSection({ onDark = false }: { onDark?: boolean }) {
   const [current, setCurrent] = useState(0);
   const sliderRef = useRef<Slider>(null);
+  const [items, setItems] = useState<Testimonial[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const settings = {
     infinite: true,
@@ -110,11 +83,31 @@ export default function TestimonialsSection({ onDark = false }: { onDark?: boole
     };
   }, []);
 
+  // Fetch testimonials from backend
+  useEffect(() => {
+    let alive = true;
+    const run = async () => {
+      try {
+        const resp = await fetch(`${API_BASE}/api/testimonials`, { cache: 'no-store' });
+        const data = await resp.json().catch(() => ({}));
+        if (!alive) return;
+        setItems(Array.isArray(data?.testimonials) ? data.testimonials : []);
+      } catch (_) {
+        if (!alive) return;
+        setItems([]);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    };
+    run();
+    return () => { alive = false; };
+  }, []);
+
   return (
     <div className="relative w-full py-8">
       <div className="w-full select-none testimonials-carousel">
         <Slider ref={sliderRef} {...settings}>
-          {testimonials.map((testimonial, idx) => (
+          {items.map((testimonial, idx) => (
             <div key={testimonial.name + idx} className="px-3">
               <motion.div
                 className="flex flex-col items-center justify-center transition-all duration-500"
@@ -160,7 +153,7 @@ export default function TestimonialsSection({ onDark = false }: { onDark?: boole
 
       {/* Custom Dot Navigation */}
       <div className="flex justify-center mt-8 mb-4">
-        {testimonials.map((_, idx) => (
+        {items.map((_, idx) => (
           <button
             key={idx}
             onClick={() => {
