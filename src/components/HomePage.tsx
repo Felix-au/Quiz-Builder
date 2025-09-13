@@ -289,6 +289,7 @@ export default function HomePage() {
     : 'bg-gradient-to-br from-white/70 to-indigo-50/60 border border-indigo-200/60';
   const cardTextPrimary = isDark ? 'text-white' : 'text-black';
   const cardTextSecondary = isDark ? 'text-white/85' : 'text-gray-700';
+  const linkTone = isDark ? 'text-blue-300 hover:text-blue-200' : 'text-blue-700 hover:text-blue-900';
   const videoBtnTone = isDark
     ? 'px-6 py-3 rounded-xl bg-amber-400/20 text-amber-200 font-semibold shadow hover:bg-amber-400/30 focus-visible:ring-2 focus-visible:ring-amber-300/30 border border-amber-300/30 transition-transform duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-2'
     : 'px-6 py-3 rounded-xl bg-amber-100 text-amber-800 font-semibold shadow hover:bg-amber-200 focus-visible:ring-2 focus-visible:ring-amber-300 border border-amber-200 transition-transform duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-2';
@@ -723,6 +724,50 @@ export default function HomePage() {
           <h3 className={`text-3xl font-bold text-center mb-6 ${themes[theme].headerText}`}>Video Guides</h3>
           <VideoGallery onDark={isDark} />
         </section>
+        {/* Site links/branding area with solid background. Short height, snaps to bottom. */}
+        <section className={`${isDark ? 'bg-black/100' : 'bg-white/100'} w-full md:snap-end md:snap-always mx-[-1rem] relative z-10 isolate`}>
+          <div className="w-full max-w-6xl mx-auto px-2 md:px-4 py-4 md:py-6 pb-24 md:pb-28">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+              {/* Branding: logo only, vertically centered */}
+              <div className="flex items-center self-center md:justify-start translate-y-1 md:translate-y-6">
+                <img
+                  src={isDark ? "/logo1dark.png" : "/logo1light.png"}
+                  alt="PrashnaSetu Logo"
+                  className="h-16 md:h-20 w-auto object-contain"
+                />
+              </div>
+              {/* Quick Links column */}
+              <div className="flex flex-col md:items-center gap-2 translate-y-1 md:translate-y-6">
+                <h4 className={`text-sm md:text-base font-semibold ${themes[theme].headerText}`}>Quick Links</h4>
+                <nav className="flex flex-col items-start text-left gap-1 text-sm md:text-base">
+                  <Link to="/home" className={`${linkTone} transition-colors underline-offset-2 hover:underline font-medium`}>Create Quiz</Link>
+                  <Link to="/results" className={`${linkTone} transition-colors underline-offset-2 hover:underline font-medium`}>Results</Link>
+                  <Link to="/credits" className={`${linkTone} transition-colors underline-offset-2 hover:underline font-medium`}>Team</Link>
+                </nav>
+              </div>
+              {/* Contact column */}
+              <div className="flex flex-col md:items-end gap-2 translate-y-1 md:translate-y-6">
+                <h4 className={`text-sm md:text-base font-semibold ${themes[theme].headerText}`}>Contact</h4>
+                <div className={`text-sm md:text-base ${cardTextSecondary} md:text-right`}>
+                  <div>
+                    Email: <a href="mailto:cadcs@bmu.edu.in" className={`${linkTone} underline-offset-2 hover:underline`}>cadcs@bmu.edu.in</a>
+                  </div>
+                  <div className="mt-1">
+                    Address: CADCS, BML Munjal University, Gurugram, India
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section aria-hidden="true" className={`${isDark ? 'bg-black/100' : 'bg-white/100'} mx-[-1rem] relative z-10 isolate`}>
+          <div className="flex flex-col gap-1 w-full max-w-6xl mx-auto px-2 md:px-4">
+            <div className="h-4 opacity-0">.</div>
+            <div className="h-4 opacity-0">.</div>
+            <div className="h-4 opacity-0">.</div>
+            <div className="h-4 opacity-0">.</div>
+          </div>
+        </section>
       </main>
 
       {/* Inline Video Modal */}
@@ -767,13 +812,6 @@ export default function HomePage() {
       {/* Footer Desktop */}
       <div className={`hidden md:flex fixed bottom-0 left-0 w-full ${footerShell} py-3 items-center justify-center px-6 text-xs ${footerText} z-50 shadow-lg`}>
         <div className="flex items-center gap-3">
-          <Link to="/credits" className="hover:underline">
-            <span className="inline-flex items-center gap-1.5 transform translate-y-[5%]">
-              <Users className="w-4 h-4" />
-              Team
-            </span>
-          </Link>
-          <span className="opacity-60">|</span>
           <span>© Copyrighted by CAD-CS, BML Munjal University</span>
         </div>
       </div>
@@ -781,13 +819,6 @@ export default function HomePage() {
       {/* Footer Mobile */}
       <div className={`md:hidden ${footerShell} ${footerText} shadow fixed bottom-0 left-0 w-full`}> 
         <div className="flex items-center justify-center gap-3 py-2 text-xs">
-          <Link to="/credits" className="hover:underline">
-            <span className="inline-flex items-center gap-1.5 transform translate-y-[5%]">
-              <Users className="w-4 h-4" />
-              Team
-            </span>
-          </Link>
-          <span className="opacity-60">|</span>
           <span>© Copyrighted by CAD-CS, BML Munjal University</span>
         </div>
       </div>
