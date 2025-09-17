@@ -37,6 +37,7 @@ type SearchResultItem = {
   studentName?: string | null;
   studentEmail?: string | null;
   enrollmentNumber?: string | null;
+  studentSection?: string | null;
 };
 
 // Minimal two-theme model cloned from Home/Credits
@@ -199,9 +200,10 @@ export default function ViewResult() {
     name: '',
     email: '',
     enrollment: '',
+    section: '',
   });
   const [sortBy, setSortBy] = React.useState<
-    'name' | 'email' | 'enrollment' | 'marks' | 'duration' | 'start' | 'end' | 'subject' | 'quiz' | null
+    'name' | 'email' | 'enrollment' | 'section' | 'marks' | 'duration' | 'start' | 'end' | 'subject' | 'quiz' | null
   >('enrollment');
   const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('asc');
 
@@ -211,9 +213,11 @@ export default function ViewResult() {
       const name = instFilters.name.trim().toLowerCase();
       const email = instFilters.email.trim().toLowerCase();
       const enrollment = instFilters.enrollment.trim().toLowerCase();
+      const section = instFilters.section.trim().toLowerCase();
       if (name) arr = arr.filter(r => (r.studentName || '').toLowerCase().includes(name));
       if (email) arr = arr.filter(r => (r.studentEmail || '').toLowerCase().includes(email));
       if (enrollment) arr = arr.filter(r => (r.enrollmentNumber || '').toLowerCase().includes(enrollment));
+      if (section) arr = arr.filter(r => (r.studentSection || '').toLowerCase().includes(section));
 
       if (sortBy) {
         const getVal = (r: SearchResultItem) => {
@@ -221,6 +225,7 @@ export default function ViewResult() {
             case 'name': return r.studentName ?? '';
             case 'email': return r.studentEmail ?? '';
             case 'enrollment': return r.enrollmentNumber ?? '';
+            case 'section': return r.studentSection ?? '';
             case 'subject': return r.subject ?? '';
             case 'quiz': return r.quizName ?? '';
             case 'marks': return r.marksObtained ?? -Infinity;
@@ -255,6 +260,7 @@ export default function ViewResult() {
       StudentName: r.studentName ?? '',
       StudentEmail: r.studentEmail ?? '',
       EnrollmentNumber: r.enrollmentNumber ?? '',
+      StudentSection: r.studentSection ?? '',
       Course: r.course ?? '',
       StartTime: r.startTime ?? '',
       EndTime: r.endTime ?? '',
@@ -415,6 +421,17 @@ export default function ViewResult() {
       minute: "2-digit",
       second: "2-digit",
       hour12: false,
+    }).format(d);
+  };
+
+  const fmtDate = (s: string | null) => {
+    if (!s) return "—";
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return s;
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
     }).format(d);
   };
 
@@ -891,7 +908,7 @@ export default function ViewResult() {
       <br></br>
 
       <div className="max-w-5xl mx-auto bg-white/80 text-black rounded-2xl shadow-xl border border-indigo-200/60 px-6 py-12">
-        <h1 className="text-2xl font-bold mb-4">View Results</h1>
+        <h1 className="text-2xl font-bold mb-4">View Results {isInstructorView ? '(Instructor View)' : '(Student View)'}</h1>
         {!user ? (
           <div className="py-6">
             <div className="text-center text-gray-900 font-semibold mb-4">Login first to access results</div>
@@ -1155,9 +1172,15 @@ export default function ViewResult() {
                       value={instFilters.enrollment}
                       onChange={e => setInstFilters(s => ({ ...s, enrollment: e.target.value }))}
                     />
+                    <input
+                      className="h-8 rounded border border-gray-300 px-2"
+                      placeholder="Filter Section"
+                      value={instFilters.section}
+                      onChange={e => setInstFilters(s => ({ ...s, section: e.target.value }))}
+                    />
                     <button
                       type="button"
-                      onClick={() => setInstFilters({ name: '', email: '', enrollment: '' })}
+                      onClick={() => setInstFilters({ name: '', email: '', enrollment: '', section: '' })}
                       className="h-8 px-3 rounded bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200"
                       title="Clear filters"
                     >
@@ -1172,11 +1195,11 @@ export default function ViewResult() {
                       >
                         <option value="">None</option>
                         <option value="enrollment">Enrollment Number</option>
-                        <option value="name">Name</option>
+                        <option value="section">Section</option>
+                        <option value="marks">Marks</option>
                         <option value="email">Email</option>
                         <option value="marks">Marks</option>
-                        <option value="start">Start Time</option>
-                        <option value="end">End Time</option>
+                        <option value="end">Date</option>
                       </select>
                       <button
                         type="button"
@@ -1193,13 +1216,11 @@ export default function ViewResult() {
                   <thead>
                     <tr className="text-left text-gray-600">
                       <th className="p-2 w-12">#</th>
-                      <th className="p-2">
-                        {isInstructorView ? (
-                          <button onClick={() => toggleSort('quiz')} className="flex items-center gap-1">
-                            Quiz {sortBy === 'quiz' && (<span>{sortDir === 'asc' ? '▲' : '▼'}</span>)}
-                          </button>
-                        ) : 'Quiz'}
-                      </th>
+                      {!isInstructorView && (
+                        <th className="p-2">
+                          Quiz
+                        </th>
+                      )}
                       <th className="p-2">
                         {isInstructorView ? (
                           <button onClick={() => toggleSort('subject')} className="flex items-center gap-1">
@@ -1224,6 +1245,11 @@ export default function ViewResult() {
                               Enrollment {sortBy === 'enrollment' && (<span>{sortDir === 'asc' ? '▲' : '▼'}</span>)}
                             </button>
                           </th>
+                          <th className="p-2">
+                            <button onClick={() => toggleSort('section')} className="flex items-center gap-1">
+                              Section {sortBy === 'section' && (<span>{sortDir === 'asc' ? '▲' : '▼'}</span>)}
+                            </button>
+                          </th>
                         </>
                       )}
                       <th className="p-2">
@@ -1242,17 +1268,10 @@ export default function ViewResult() {
                       </th>
                       <th className="p-2">
                         {isInstructorView ? (
-                          <button onClick={() => toggleSort('start')} className="flex items-center gap-1">
-                            Start {sortBy === 'start' && (<span>{sortDir === 'asc' ? '▲' : '▼'}</span>)}
-                          </button>
-                        ) : 'Start'}
-                      </th>
-                      <th className="p-2">
-                        {isInstructorView ? (
                           <button onClick={() => toggleSort('end')} className="flex items-center gap-1">
-                            End {sortBy === 'end' && (<span>{sortDir === 'asc' ? '▲' : '▼'}</span>)}
+                            Date {sortBy === 'end' && (<span>{sortDir === 'asc' ? '▲' : '▼'}</span>)}
                           </button>
-                        ) : 'End'}
+                        ) : 'Date'}
                       </th>
                       <th className="p-2">Action</th>
                     </tr>
@@ -1261,21 +1280,23 @@ export default function ViewResult() {
                     {displayedResults.map((r, i) => (
                       <tr key={`${r.attemptId}`} className="border-t border-gray-200">
                         <td className="p-2 w-12 text-gray-500">{i + 1}</td>
-                        <td className="p-2">
-                          <div className="font-medium">{r.quizName || '—'}{r.quizCode ? ` (${r.quizCode})` : ''}</div>
-                        </td>
+                        {!isInstructorView && (
+                          <td className="p-2">
+                            <div className="font-medium">{r.quizName || '—'}{r.quizCode ? ` (${r.quizCode})` : ''}</div>
+                          </td>
+                        )}
                         <td className="p-2">{r.subject || '—'}</td>
                         {isInstructorView && (
                           <>
                             <td className="p-2 text-sm font-medium text-gray-900">{r.studentName || '—'}</td>
                             <td className="p-2 text-xs text-gray-700">{r.studentEmail || '—'}</td>
                             <td className="p-2 text-xs text-gray-700">{r.enrollmentNumber || '—'}</td>
+                            <td className="p-2 text-xs text-gray-700">{r.studentSection || '—'}</td>
                           </>
                         )}
                         <td className="p-2">{r.marksObtained} / {r.totalPoints ?? '—'}</td>
                         <td className="p-2">{r.durationMinutes ?? '—'} min</td>
-                        <td className="p-2">{fmtDT(r.startTime)}</td>
-                        <td className="p-2">{fmtDT(r.endTime)}</td>
+                        <td className="p-2">{fmtDate(r.endTime)}</td>
                         <td className="p-2">
                           <button
                             onClick={() => viewDetail(r.attemptId)}

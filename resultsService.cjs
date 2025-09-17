@@ -474,6 +474,7 @@ async function main() {
           studentName: a.studentName || null,
           studentEmail: a.studentEmail || null,
           enrollmentNumber: a.enrollmentNumber || null,
+          studentSection: a.section || null,
         };
       });
 
