@@ -194,16 +194,17 @@ export default function ViewResult() {
   const [detailLoading, setDetailLoading] = React.useState(false);
   const [detailError, setDetailError] = React.useState<string | null>(null);
   const detailRef = React.useRef<HTMLDivElement | null>(null);
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
 
   // Instructor-only: filters and sorting
   const [instFilters, setInstFilters] = React.useState({
     name: '',
     email: '',
     enrollment: '',
-    section: '',
+    section: 'all',
   });
   const [sortBy, setSortBy] = React.useState<
-    'name' | 'email' | 'enrollment' | 'section' | 'marks' | 'duration' | 'start' | 'end' | 'subject' | 'quiz' | null
+    'name' | 'email' | 'enrollment' | 'section' | 'marks' | 'duration' | 'start' | 'end' | 'quiz' | null
   >('enrollment');
   const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('asc');
 
@@ -217,7 +218,7 @@ export default function ViewResult() {
       if (name) arr = arr.filter(r => (r.studentName || '').toLowerCase().includes(name));
       if (email) arr = arr.filter(r => (r.studentEmail || '').toLowerCase().includes(email));
       if (enrollment) arr = arr.filter(r => (r.enrollmentNumber || '').toLowerCase().includes(enrollment));
-      if (section) arr = arr.filter(r => (r.studentSection || '').toLowerCase().includes(section));
+      if (section && section !== 'all') arr = arr.filter(r => (r.studentSection || '').toLowerCase() === section.toLowerCase());
 
       if (sortBy) {
         const getVal = (r: SearchResultItem) => {
@@ -226,7 +227,6 @@ export default function ViewResult() {
             case 'email': return r.studentEmail ?? '';
             case 'enrollment': return r.enrollmentNumber ?? '';
             case 'section': return r.studentSection ?? '';
-            case 'subject': return r.subject ?? '';
             case 'quiz': return r.quizName ?? '';
             case 'marks': return r.marksObtained ?? -Infinity;
             case 'duration': return r.durationMinutes ?? -Infinity;
@@ -250,13 +250,20 @@ export default function ViewResult() {
     return arr;
   }, [results, isInstructorView, instFilters, sortBy, sortDir]);
 
+  // Distinct sections for dropdown
+  const distinctSections = React.useMemo(() => {
+    if (!isInstructorView) return [];
+    const sections = new Set<string>();
+    results.forEach(r => {
+      if (r.studentSection) sections.add(r.studentSection);
+    });
+    return Array.from(sections).sort();
+  }, [results, isInstructorView]);
+
   // Export helpers (Instructor view only)
   const exportRows = React.useMemo(() => {
     if (!isInstructorView) return [] as any[];
     return displayedResults.map(r => ({
-      QuizName: r.quizName ?? '',
-      QuizCode: r.quizCode ?? '',
-      Subject: r.subject ?? '',
       StudentName: r.studentName ?? '',
       StudentEmail: r.studentEmail ?? '',
       EnrollmentNumber: r.enrollmentNumber ?? '',
@@ -696,6 +703,7 @@ export default function ViewResult() {
     setDetail(null);
     setDetailError(null);
     setDetailLoading(true);
+    setIsModalOpen(true);
     try {
       const resp = await fetch(`${API_BASE}/api/results/${attemptId}`);
       if (!resp.ok) throw new Error(`Fetch detail failed: ${resp.status}`);
@@ -1146,7 +1154,7 @@ export default function ViewResult() {
 
           {/* Results list */}
           <div className="mt-6">
-            <h2 className="text-lg font-semibold">{isInstructorView ? 'Student Attempts' : 'Your Attempts'}</h2>
+            <h2 className="text-lg font-semibold">{isInstructorView ? `Student Attempts for Subject: ${results[0]?.subject || 'Unknown'}` : 'Your Attempts'}</h2>
             {results.length === 0 && !searchLoading && (
               <div className="text-sm text-gray-700 mt-2">No attempts found. Check your inputs.</div>
             )}
@@ -1172,15 +1180,19 @@ export default function ViewResult() {
                       value={instFilters.enrollment}
                       onChange={e => setInstFilters(s => ({ ...s, enrollment: e.target.value }))}
                     />
-                    <input
-                      className="h-8 rounded border border-gray-300 px-2"
-                      placeholder="Filter Section"
+                    <select
+                      className="h-8 rounded border border-gray-300 px-2 bg-white"
                       value={instFilters.section}
                       onChange={e => setInstFilters(s => ({ ...s, section: e.target.value }))}
-                    />
+                    >
+                      <option value="all">All Sections</option>
+                      {distinctSections.map(sec => (
+                        <option key={sec} value={sec}>{sec}</option>
+                      ))}
+                    </select>
                     <button
                       type="button"
-                      onClick={() => setInstFilters({ name: '', email: '', enrollment: '', section: '' })}
+                      onClick={() => setInstFilters({ name: '', email: '', enrollment: '', section: 'all' })}
                       className="h-8 px-3 rounded bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200"
                       title="Clear filters"
                     >
@@ -1221,13 +1233,11 @@ export default function ViewResult() {
                           Quiz
                         </th>
                       )}
-                      <th className="p-2">
-                        {isInstructorView ? (
-                          <button onClick={() => toggleSort('subject')} className="flex items-center gap-1">
-                            Subject {sortBy === 'subject' && (<span>{sortDir === 'asc' ? '▲' : '▼'}</span>)}
-                          </button>
-                        ) : 'Subject'}
-                      </th>
+                      {!isInstructorView && (
+                        <th className="p-2">
+                          Subject
+                        </th>
+                      )}
                       {isInstructorView && (
                         <>
                           <th className="p-2">
@@ -1285,7 +1295,9 @@ export default function ViewResult() {
                             <div className="font-medium">{r.quizName || '—'}{r.quizCode ? ` (${r.quizCode})` : ''}</div>
                           </td>
                         )}
-                        <td className="p-2">{r.subject || '—'}</td>
+                        {!isInstructorView && (
+                          <td className="p-2">{r.subject || '—'}</td>
+                        )}
                         {isInstructorView && (
                           <>
                             <td className="p-2 text-sm font-medium text-gray-900">{r.studentName || '—'}</td>
@@ -1367,10 +1379,19 @@ export default function ViewResult() {
             </div>
           )}
 
-          {/* Detail section */}
-          {selectedAttemptId !== null && (
-            <div ref={detailRef} className="mt-8 scroll-mt-28">
-              <h2 className="text-lg font-semibold mb-2">Detailed Result</h2>
+          {/* Detail Modal */}
+          <Dialog open={isModalOpen} onOpenChange={(open) => {
+            setIsModalOpen(open);
+            if (!open) {
+              setSelectedAttemptId(null);
+              setDetail(null);
+              setDetailError(null);
+            }
+          }}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Detailed Result</DialogTitle>
+              </DialogHeader>
               {detailLoading && <div className="text-sm text-gray-700">Loading result...</div>}
               {detailError && <div className="text-sm text-red-700 bg-red-100 border border-red-200 rounded-lg px-3 py-2">{detailError}</div>}
               {detail && (
@@ -1503,8 +1524,8 @@ export default function ViewResult() {
                   )}
                 </div>
               )}
-            </div>
-          )}
+            </DialogContent>
+          </Dialog>
         </div>        <br></br>
         <br></br>
       </div>
